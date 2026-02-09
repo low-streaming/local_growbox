@@ -1,8 +1,8 @@
 # Local Grow Box für Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
-[![github_release](https://img.shields.io/github/v/release/yourusername/local_grow_box?style=for-the-badge)](https://github.com/yourusername/local_grow_box/releases)
-[![github_license](https://img.shields.io/github/license/yourusername/local_grow_box?style=for-the-badge)](https://github.com/yourusername/local_grow_box/blob/master/LICENSE)
+[![github_release](https://img.shields.io/github/v/release/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/releases)
+[![github_license](https://img.shields.io/github/license/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/blob/master/LICENSE)
 
 [English Version below](#local-grow-box-for-home-assistant)
 
@@ -65,8 +65,8 @@ Schalten Sie den **Hauptschalter** um, um die Automatisierung zu pausieren/fortz
 # Local Grow Box for Home Assistant
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
-[![github_release](https://img.shields.io/github/v/release/yourusername/local_grow_box?style=for-the-badge)](https://github.com/yourusername/local_grow_box/releases)
-[![github_license](https://img.shields.io/github/license/yourusername/local_grow_box?style=for-the-badge)](https://github.com/yourusername/local_grow_box/blob/master/LICENSE)
+[![github_release](https://img.shields.io/github/v/release/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/releases)
+[![github_license](https://img.shields.io/github/license/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/blob/master/LICENSE)
 
 **A cloud-free, local integration for managing indoor grow environments.**
 
