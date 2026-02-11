@@ -86,6 +86,10 @@ class LocalGrowBoxPanel extends HTMLElement {
                     --card-bg: var(--ha-card-background, var(--card-background-color, #fff));
                     --primary-text: var(--primary-text-color);
                     --secondary-text: var(--secondary-text-color);
+                    --success-color: #4caf50;
+                    --warning-color: #ff9800;
+                    --danger-color: #f44336;
+                    --info-color: #2196f3;
                     display: block;
                     background-color: var(--primary-background-color);
                     min-height: 100vh;
@@ -219,8 +223,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .sensor-grid {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: 12px 24px;
-                    margin-top: auto; /* Push to bottom of content area */
+                    gap: 16px 24px;
+                    margin-top: auto;
                     padding-top: 20px;
                     border-top: 1px solid rgba(0,0,0,0.05);
                 }
@@ -235,7 +239,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                     font-size: 20px;
                     width: 24px;
                     text-align: center;
-                    color: var(--accent-color);
+                    color: var(--primary-text);
+                    opacity: 0.8;
                 }
 
                 .sensor-info {
@@ -248,22 +253,43 @@ class LocalGrowBoxPanel extends HTMLElement {
                     justify-content: space-between;
                     align-items: baseline;
                     font-size: 14px;
-                    margin-bottom: 4px;
+                    margin-bottom: 6px;
+                }
+                
+                .sensor-val-main {
+                    font-weight: 700;
+                    font-size: 15px;
+                }
+                
+                .sensor-unit {
+                    font-size: 0.8em;
+                    opacity: 0.7;
+                    font-weight: normal;
                 }
 
-                .sensor-bar-mini {
-                    height: 6px;
+                /* Segmented Bar */
+                .sensor-bar-segmented {
+                    display: flex;
+                    gap: 2px;
+                    height: 8px;
+                    width: 100%;
                     background: rgba(0,0,0,0.05);
-                    border-radius: 3px;
-                    overflow: hidden;
+                    border-radius: 2px;
+                    padding: 1px;
                 }
-                .sensor-bar-mini-fill {
+                
+                .bar-segment {
+                    flex: 1;
                     height: 100%;
-                    border-radius: 3px;
-                    background: var(--accent-color);
+                    background: rgba(0,0,0,0.1);
+                    border-radius: 1px;
+                    opacity: 0.2;
+                    transition: all 0.3s;
                 }
-                .sensor-bar-mini-fill.warn { background: #ff9800; }
-                .sensor-bar-mini-fill.cool { background: #2196f3; }
+                
+                .bar-segment.active {
+                    opacity: 1;
+                }
 
                 .sensor-icon {
                     width: 32px;
@@ -410,6 +436,34 @@ class LocalGrowBoxPanel extends HTMLElement {
             return this._hass.states[entityId];
         };
 
+        // Helper to determine color based on value and type
+        const getSensorStatus = (type, value) => {
+            if (value === null || value === undefined) return { color: '#ccc', level: 0 };
+
+            // Value is numeric or string "on"/"off"
+            if (type === 'temp') {
+                if (value < 18) return { color: 'var(--info-color)', level: 1 }; // Cold
+                if (value > 28) return { color: 'var(--danger-color)', level: 4 }; // Hot
+                return { color: 'var(--success-color)', level: 3 }; // Good
+            }
+            if (type === 'humidity') {
+                if (value < 40) return { color: 'var(--warning-color)', level: 1 }; // Dry
+                if (value > 70) return { color: 'var(--danger-color)', level: 4 }; // Wet
+                return { color: 'var(--success-color)', level: 3 }; // Good
+            }
+            if (type === 'light') {
+                return value === 'on'
+                    ? { color: 'var(--warning-color)', level: 3 } // On (Yellow/Orange)
+                    : { color: '#9e9e9e', level: 1 }; // Off
+            }
+            if (type === 'fan') {
+                return value === 'on'
+                    ? { color: 'var(--success-color)', level: 3 }
+                    : { color: '#9e9e9e', level: 1 };
+            }
+            return { color: 'var(--primary-color)', level: 2 };
+        };
+
         let cardsHtml = '';
 
         if (this._devices && this._devices.length > 0) {
@@ -463,7 +517,6 @@ class LocalGrowBoxPanel extends HTMLElement {
                     const cameraEntity = masterState.attributes.camera_entity;
                     const cameraState = this._hass.states[cameraEntity];
                     if (cameraState) {
-                        // Use entity_picture if available (contains token), else fallback
                         const camUrl = cameraState.attributes.entity_picture || `/api/camera_proxy_stream/${cameraEntity}`;
                         cameraHtml = `
                             <div class="card-image">
@@ -476,33 +529,48 @@ class LocalGrowBoxPanel extends HTMLElement {
                     }
                 }
 
-                // Sensor Grid Rendering
-                const renderGridItem = (icon, val, sub, pct, colorClass) => `
+                // Values for sensors
+                const tempVal = tempState ? parseFloat(tempState.state) : null;
+                const humVal = humidityState ? parseFloat(humidityState.state) : null;
+                const lightVal = lightState ? lightState.state : null;
+                const fanVal = fanState ? fanState.state : null;
+
+                // Status calculations
+                const tempStatus = getSensorStatus('temp', tempVal);
+                const humStatus = getSensorStatus('humidity', humVal);
+                const lightStatus = getSensorStatus('light', lightVal);
+                const fanStatus = getSensorStatus('fan', fanVal);
+
+                // Grid Item Renderer with Segmented Bars
+                const renderSegmentedItem = (icon, valStr, unit, status) => {
+                    const maxSegments = 4;
+                    let segmentsHtml = '';
+                    for (let i = 1; i <= maxSegments; i++) {
+                        const isActive = i <= status.level;
+                        // For inactive segments, keep them transparent/default but inside the container
+                        const color = isActive ? status.color : 'transparent';
+                        // Toggle opacity handled by CSS class .active, here we set color inline for active ones
+                        const style = isActive ? `background-color: ${status.color}; opacity: 1;` : '';
+                        segmentsHtml += `<div class="bar-segment" style="${style}"></div>`;
+                    }
+
+                    return `
                     <div class="sensor-item">
                         <div class="sensor-icon-small">${icon}</div>
                         <div class="sensor-info">
                             <div class="sensor-status-row">
-                                <span style="font-weight:700;">${val}</span>
-                                <span style="font-size:11px; opacity:0.6;">${sub}</span>
+                                <span class="sensor-val-main">${valStr} <span class="sensor-unit">${unit}</span></span>
                             </div>
-                            <div class="sensor-bar-mini">
-                                <div class="sensor-bar-mini-fill ${colorClass}" style="width: ${pct}%"></div>
+                            <div class="sensor-bar-segmented">
+                                ${segmentsHtml}
                             </div>
                         </div>
                     </div>
-                `;
+                    `;
+                };
 
-                // Calculate display values
-                const tempVal = tempState ? parseFloat(tempState.state) : 0;
-                const tempStr = tempState ? `${tempState.state} ${tempState.attributes.unit_of_measurement || '°C'}` : '--';
-                const tempPct = Math.min(100, (tempVal / 40) * 100);
-
-                const humVal = humidityState ? parseFloat(humidityState.state) : 0;
-                const humStr = humidityState ? `${humidityState.state} ${humidityState.attributes.unit_of_measurement || '%'}` : '--';
-                const humPct = Math.min(100, humVal);
-
-                const lightOn = lightState && lightState.state === 'on';
-                const fanOn = fanState && fanState.state === 'on';
+                const tempDisplay = tempState ? tempState.state : '--';
+                const humDisplay = humidityState ? humidityState.state : '--';
 
                 return `
                     <div class="card">
@@ -538,12 +606,12 @@ class LocalGrowBoxPanel extends HTMLElement {
                                 </div>
                              </div>
 
-                             <!-- Environment Grid -->
+                             <!-- Environment Grid with Segmented Bars -->
                              <div class="sensor-grid">
-                                ${renderGridItem('🌡️', tempStr, 'Temp', tempPct, tempVal > 28 ? 'warn' : 'cool')}
-                                ${renderGridItem('☁️', humStr, 'Feuchtigkeit', humPct, 'cool')}
-                                ${renderGridItem('💡', lightOn ? 'AN' : 'AUS', 'Licht', lightOn ? 100 : 0, 'warn')}
-                                ${renderGridItem('💨', fanOn ? 'AN' : 'AUS', 'Lüfter', fanOn ? 100 : 0, 'cool')}
+                                ${renderSegmentedItem('🌡️', tempDisplay, '°C', tempStatus)}
+                                ${renderSegmentedItem('☁️', humDisplay, '%', humStatus)}
+                                ${renderSegmentedItem('💡', lightVal === 'on' ? 'AN' : 'AUS', '', lightStatus)}
+                                ${renderSegmentedItem('💨', fanVal === 'on' ? 'AN' : 'AUS', '', fanStatus)}
                              </div>
 
                         </div>
