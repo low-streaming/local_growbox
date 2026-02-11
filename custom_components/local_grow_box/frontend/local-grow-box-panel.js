@@ -312,81 +312,117 @@ class LocalGrowBoxPanel extends HTMLElement {
             `;
         }
 
-        root.innerHTML = `
+        const html = `
             ${style}
             <div class="header">
                 <h1>My Grow Room</h1>
-                <button class="add-btn" id="add-btn">Add Plant +</button>
+                <div class="add-btn" id="add-plant-btn">+</div>
             </div>
             <div class="content">
                 ${cardsHtml}
             </div>
+
+            <!-- Modal -->
+            <div class="modal-backdrop" id="add-modal">
+                <div class="modal">
+                    <h2>Add New Plant</h2>
+                    <p>To add a new Grow Box, you need to configure a new integration entry in Home Assistant Settings.</p>
+                    <div class="modal-actions">
+                        <button class="modal-btn cancel" id="modal-cancel">Cancel</button>
+                        <button class="modal-btn confirm" id="modal-confirm">Go to Settings</button>
+                    </div>
+                </div>
+            </div>
         `;
 
-        // Bind Events
-        root.getElementById('add-btn').addEventListener('click', () => this._addPlant());
+        root.innerHTML = html;
 
+        // Bind Events
+
+        // Add Plant Button
+        const addBtn = root.getElementById('add-plant-btn');
+        if (addBtn) {
+            addBtn.addEventListener('click', () => {
+                const modal = root.getElementById('add-modal');
+                modal.classList.add('open');
+            });
+        }
+
+        // Modal Actions
+        const modalCancel = root.getElementById('modal-cancel');
+        if (modalCancel) {
+            modalCancel.addEventListener('click', () => {
+                const modal = root.getElementById('add-modal');
+                modal.classList.remove('open');
+            });
+        }
+
+        const modalConfirm = root.getElementById('modal-confirm');
+        if (modalConfirm) {
+            modalConfirm.addEventListener('click', () => {
+                const modal = root.getElementById('add-modal');
+                modal.classList.remove('open');
+                this._navigateToAddIntegration();
+            });
+        }
+
+        // Outside click to close
+        const modalBackdrop = root.getElementById('add-modal');
+        if (modalBackdrop) {
+            modalBackdrop.addEventListener('click', (e) => {
+                if (e.target === modalBackdrop) {
+                    modalBackdrop.classList.remove('open');
+                }
+            });
+        }
+
+        // Bind Card Events
         if (this._devices) {
             this._devices.forEach((device, index) => {
-                // Phase Select
-                const phaseSel = root.getElementById(`phase-${index}`);
-                if (phaseSel) {
-                    phaseSel.addEventListener('change', (e) => {
-                        this._setPhase(e.target.dataset.entity, e.target.value);
-                    });
+                const phaseSelect = root.getElementById(`phase-${index}`);
+                if (phaseSelect) {
+                    phaseSelect.addEventListener('change', (e) => this._setPhase(e.target.dataset.entity, e.target.value));
                 }
-                // Master Toggle
+
                 const masterBtn = root.getElementById(`master-${index}`);
                 if (masterBtn) {
-                    masterBtn.addEventListener('click', (e) => {
-                        this._toggle(e.currentTarget.dataset.entity);
-                    });
+                    masterBtn.addEventListener('click', (e) => this._toggleEntity(masterBtn.dataset.entity));
                 }
-                // Pump Toggle
+
                 const pumpBtn = root.getElementById(`pump-${index}`);
                 if (pumpBtn) {
-                    pumpBtn.addEventListener('click', (e) => {
-                        this._toggle(e.currentTarget.dataset.entity);
-                    });
+                    pumpBtn.addEventListener('click', (e) => this._toggleEntity(pumpBtn.dataset.entity));
                 }
-                // Settings
-                const setBtn = root.getElementById(`settings-${index}`);
-                if (setBtn) {
-                    setBtn.addEventListener('click', (e) => {
-                        this._openSettings(e.currentTarget.dataset.device);
+
+                const settingsBtn = root.getElementById(`settings-${index}`);
+                if (settingsBtn) {
+                    settingsBtn.addEventListener('click', () => {
+                        const event = new CustomEvent("hass-more-info", {
+                            bubbles: true,
+                            composed: true,
+                            detail: { entityId: device.entities.master }
+                        });
+                        this.dispatchEvent(event);
                     });
                 }
             });
         }
     }
 
-    _toggle(entityId) {
-        if (!entityId || !this._hass) return;
-        const state = this._hass.states[entityId];
-        const service = state.state === 'on' ? 'turn_off' : 'turn_on';
-        this._hass.callService('switch', service, { entity_id: entityId });
+    _navigateToAddIntegration() {
+        history.pushState(null, "", "/config/integrations/dashboard");
+        const event = new Event("location-changed", { bubbles: true, composed: true });
+        this.dispatchEvent(event);
     }
 
-    _setPhase(entityId, value) {
-        if (!entityId || !this._hass) return;
-        this._hass.callService('select', 'select_option', { entity_id: entityId, option: value });
+    _toggleEntity(entityId) {
+        if (!this._hass || !entityId) return;
+        this._hass.callService("homeassistant", "toggle", { entity_id: entityId });
     }
 
-    _addPlant() {
-        // Since we can't easily trigger the config flow config panel from here without internals,
-        // we'll navigate to the integrations page and show a message.
-        // Or deeper: /config/integrations/dashboard/add?domain=local_grow_box
-        const url = "/config/integrations/dashboard";
-        history.pushState(null, "", url);
-        window.dispatchEvent(new Event('location-changed', { bubbles: true, composed: true }));
-
-        // Show a toast or alert - primitive but effective
-        setTimeout(() => alert("Click 'Add Integration' and search for 'Local Grow Box' to add a new plant."), 500);
-    }
-
-    _openSettings(deviceId) {
-        history.pushState(null, "", `/config/devices/device/${deviceId}`);
-        window.dispatchEvent(new Event('location-changed', { bubbles: true, composed: true }));
+    _setPhase(entityId, option) {
+        if (!this._hass || !entityId) return;
+        this._hass.callService("select", "select_option", { entity_id: entityId, option: option });
     }
 }
 
