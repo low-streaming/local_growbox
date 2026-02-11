@@ -11,6 +11,7 @@ from homeassistant.const import Platform, CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
+from homeassistant.components.http import StaticPathConfig
 
 from .const import (
     DOMAIN,
@@ -36,11 +37,13 @@ LIGHT_START_HOUR = 6
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Local Grow Box component."""
     # Register the frontend panel
-    hass.http.register_static_path(
-        "/local_grow_box",
-        hass.config.path("custom_components/local_grow_box/frontend"),
-        True,
-    )
+    await hass.http.async_register_static_paths([
+        StaticPathConfig(
+            "/local_grow_box",
+            hass.config.path("custom_components/local_grow_box/frontend"),
+            True
+        )
+    ])
 
     hass.components.frontend.async_register_panel(
         "local-grow-box",
