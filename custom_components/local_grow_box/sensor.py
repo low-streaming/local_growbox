@@ -9,10 +9,12 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfPressure
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity # If needed
 
 from .const import DOMAIN, CONF_TEMP_SENSOR, CONF_HUMIDITY_SENSOR
 
@@ -29,64 +31,65 @@ async def async_setup_entry(
     config = manager.config
     
     async_add_entities([
-        VPDSensor(hass, manager, config[CONF_TEMP_SENSOR], config[CONF_HUMIDITY_SENSOR])
+        GrowBoxVPDSensor(hass, manager, entry.entry_id),
+        GrowBoxDaysInPhaseSensor(hass, manager, entry.entry_id)
     ])
 
-
-class VPDSensor(SensorEntity):
+class GrowBoxVPDSensor(SensorEntity):
     """Representation of a VPD Sensor."""
 
     _attr_has_entity_name = True
     _attr_name = "Vapor Pressure Deficit"
-    _attr_native_unit_of_measurement = UnitOfPressure.KPA
-    _attr_device_class = SensorDeviceClass.PRESSURE
+    _attr_native_unit_of_measurement = "kPa"
+    _attr_device_class = None # specific device class for VPD? Pressure? Generic for now.
     _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:water-percent"
 
-    def __init__(self, hass, manager, temp_entity_id, humidity_entity_id):
+    def __init__(self, hass, manager, entry_id):
         """Initialize the sensor."""
         self.hass = hass
         self.manager = manager
-        self._temp_entity_id = temp_entity_id
-        self._humidity_entity_id = humidity_entity_id
-        self._attr_unique_id = f"{manager.entry.entry_id}_vpd"
+        self._entry_id = entry_id
+        self._attr_unique_id = f"{entry_id}_vpd"
 
-    async def async_added_to_hass(self):
+    @property
+    def native_value(self) -> float:
+        """Return the value of the sensor."""
+        return round(self.manager.vpd, 2)
+        
+    async def async_added_to_hass(self) -> None:
         """Register callbacks."""
-        from homeassistant.helpers.event import async_track_state_change_event
-
-        async def update_sensor(event):
-            self.async_schedule_update_ha_state(True)
-
-        self.async_on_remove(
-            async_track_state_change_event(
-                self.hass, [self._temp_entity_id, self._humidity_entity_id], update_sensor
-            )
-        )
-
+        # The manager updates logic every minute, we should update state then too?
+        # Ideally manager calls update_ha_state on entities.
+        # For now, let's poll or rely on generic updates. 
+        # Since we are local_polling, HA will ask us.
+        pass
+        
     def update(self):
-        """Calculate VPD."""
-        temp_state = self.hass.states.get(self._temp_entity_id)
-        hum_state = self.hass.states.get(self._humidity_entity_id)
+        """Fetch new state data for the sensor."""
+        # Manager calculates VPD using its own loop.
+        pass
 
-        if temp_state is None or hum_state is None:
-            self._attr_native_value = None
-            return
+class GrowBoxDaysInPhaseSensor(SensorEntity):
+    """Representation of Days in Phase Sensor."""
 
-        try:
-            T = float(temp_state.state)
-            RH = float(hum_state.state)
-        except (ValueError, TypeError):
-            self._attr_native_value = None
-            return
+    _attr_has_entity_name = True
+    _attr_name = "Days in Current Phase"
+    _attr_native_unit_of_measurement = "days"
+    _attr_icon = "mdi:calendar-clock"
 
-        # Calculate SVP (Saturation Vapor Pressure) in kPa
-        # Formula: 0.61078 * exp(17.27 * T / (T + 237.3))
-        svp = 0.61078 * math.exp(17.27 * T / (T + 237.3))
-        
-        # Calculate AVP (Actual Vapor Pressure)
-        avp = svp * (RH / 100.0)
-        
-        # VPD
-        vpd = svp - avp
-        
-        self._attr_native_value = round(vpd, 2)
+    def __init__(self, hass, manager, entry_id):
+        """Initialize the sensor."""
+        self.hass = hass
+        self.manager = manager
+        self._entry_id = entry_id
+        self._attr_unique_id = f"{entry_id}_days_in_phase"
+
+    @property
+    def native_value(self) -> int:
+        """Return the value of the sensor."""
+        return self.manager.days_in_phase
+
+
+
+

@@ -12,13 +12,19 @@ PHASE_SEEDLING = "seedling"
 PHASE_VEGETATIVE = "vegetative"
 PHASE_FLOWERING = "flowering"
 PHASE_DRYING = "drying"
+PHASE_CURING = "curing"
 
 GROW_PHASES = [
     PHASE_SEEDLING,
     PHASE_VEGETATIVE,
     PHASE_FLOWERING,
     PHASE_DRYING,
+    PHASE_CURING,
 ]
+
+# Defaults
+DEFAULT_TARGET_TEMP = 24.0
+DEFAULT_MAX_HUMIDITY = 60.0
 
 # Phase Defaults (Hours of Light) - can be made configurable later
 PHASE_LIGHT_HOURS = {

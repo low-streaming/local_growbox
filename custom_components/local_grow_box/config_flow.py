@@ -11,7 +11,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
 
-from .const import DOMAIN, CONF_LIGHT_ENTITY, CONF_FAN_ENTITY, CONF_TEMP_SENSOR, CONF_HUMIDITY_SENSOR
+from .const import (
+    DOMAIN, 
+    CONF_LIGHT_ENTITY, 
+    CONF_FAN_ENTITY, 
+    CONF_TEMP_SENSOR, 
+    CONF_HUMIDITY_SENSOR,
+    CONF_TARGET_TEMP,
+    CONF_MAX_HUMIDITY
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,6 +39,8 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_HUMIDITY_SENSOR): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="humidity")
         ),
+        vol.Optional(CONF_TARGET_TEMP, default=24.0): vol.Coerce(float),
+        vol.Optional(CONF_MAX_HUMIDITY, default=60.0): vol.Coerce(float),
     }
 )
 
