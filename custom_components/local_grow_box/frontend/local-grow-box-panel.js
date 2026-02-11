@@ -20,72 +20,15 @@ class LocalGrowBoxPanel extends HTMLElement {
     }
 
     _update() {
-        if (!this._hass) {
-            return;
-        }
+        if (!this._hass) return;
 
-        // Find all config entries for our domain
-        // We can't easily query config entries from frontend without a websocket call.
-        // But we can find entities that belong to our integration if we knew them.
-        // A better way is to look for the "master switches" which have a unique ID pattern.
-        // or finding devices. 
-        // For simplicity, let's look for entities with unique_id ending in _master_switch
-        // Actually, we can just fetch all entities and filter by platform/integration if exposed.
-        // But "local_grow_box" entities don't have a reliable easy-to-query attribute in states.
-        // However, we can look for specific entity IDs or attributes.
-
-        // Strategy: Look for all switches with "master_control" in the name or ID?
-        // Better: The integration should expose a list of "Grow Boxes".
-        // Let's assume we find them by iterating all states and finding ones that look like ours.
-        // Specifically, we look for the "select" entity which tracks the phase, as it's unique per box.
-
-        const entities = Object.values(this._hass.states);
-        const boxes = [];
-
-        // Find all "Grow Phase" selects. unique_id pattern: {entry_id}_phase
-        // Entity ID typically: select.grow_phase, select.grow_phase_2, etc.
-        // We can check the integration attribute if available, but standard states don't always have it.
-        // Let's look for the phase selector.
-
-        const phaseSelects = entities.filter(e =>
-            e.entity_id.startsWith('select.') &&
-            e.attributes.options &&
-            e.attributes.options.includes('vegetative') &&
-            e.attributes.options.includes('flowering')
-        );
-
-        phaseSelects.forEach(select => {
-            // We can try to derive the other entities from the device registry, 
-            // but we don't have easy access to device registry here without WS calls.
-            // Assumption: The user sets up the integration. 
-            // The entities are usually grouped or namable.
-
-            // Allow manual configuration? No, that defeats the "Zero Config" goal.
-
-            // Let's simplify. We will just list *all* grow box instances we can find.
-            // We need to find the related entities (Fan, Light, Sensor, Pump) for this "Box".
-            // Since we don't have the backend linking explicitly in the state object, 
-            // we might need a helper.
-            // BUT: The device registry links them.
-            // We can call 'config/device_registry/list' via websocket.
-
-            boxes.push({
-                id: select.entity_id,
-                name: select.attributes.friendly_name || "Grow Box",
-                phase_entity: select.entity_id,
-                // We'll guess the others or needed a lookup. 
-                // Creating a proper backend API would be best. 
-                // For now, let's query the device registry.
-            });
-        });
-
-        // We need to do this async build only once or on change.
+        // Initialize fetching devices once
         if (!this._initialized) {
             this._initialized = true;
             this._fetchDevices();
         }
 
-        // If we have data, render.
+        // Re-render if we have devices to show status updates
         if (this._devices) {
             this._render();
         }
@@ -94,54 +37,46 @@ class LocalGrowBoxPanel extends HTMLElement {
     async _fetchDevices() {
         if (!this._hass) return;
 
-        // Fetch devices
-        const devices = await this._hass.callWS({ type: 'config/device_registry/list' });
-        const entities = await this._hass.callWS({ type: 'config/entity_registry/list' });
+        try {
+            const devices = await this._hass.callWS({ type: 'config/device_registry/list' });
+            const entities = await this._hass.callWS({ type: 'config/entity_registry/list' });
 
-        // Filter for our integration
-        const myDevices = devices.filter(d =>
-            d.identifiers && d.identifiers.some(id => id[0] === 'local_grow_box')
-        );
+            // Filter: Look for devices with identifiers matching our domain
+            const myDevices = devices.filter(d =>
+                d.identifiers && d.identifiers.some(id => id[0] === 'local_grow_box')
+            );
 
-        this._devices = myDevices.map(device => {
-            // Find entities for this device
-            const deviceEntities = entities.filter(e => e.device_id === device.id);
+            this._devices = myDevices.map(device => {
+                const deviceEntities = entities.filter(e => e.device_id === device.id);
 
-            const findEntity = (domain, uniqueIdSuffix) => {
-                const ent = deviceEntities.find(e => e.unique_id.endsWith(uniqueIdSuffix));
-                return ent ? ent.entity_id : null;
-            };
+                const findEntity = (uniqueIdSuffix) => {
+                    const ent = deviceEntities.find(e => e.unique_id.endsWith(uniqueIdSuffix));
+                    return ent ? ent.entity_id : null;
+                };
 
-            // Unique IDs set in backend:
-            // Phase: {entry_id}_phase
-            // Master: {entry_id}_master_switch
-            // VPD: {entry_id}_vpd
-            // Pump: {entry_id}_water_pump
-            // Days: {entry_id}_days_in_phase
+                return {
+                    name: device.name_by_user || device.name,
+                    id: device.id,
+                    entities: {
+                        phase: findEntity('_phase'),
+                        master: findEntity('_master_switch'),
+                        vpd: findEntity('_vpd'),
+                        pump: findEntity('_water_pump'),
+                        days: findEntity('_days_in_phase'),
+                    }
+                };
+            });
 
-            // But we don't know entry_id easily here without parsing unique_id.
-            // unique_id format is typically "{entry_id}_{suffix}"
-
-            return {
-                name: device.name_by_user || device.name,
-                id: device.id,
-                entities: {
-                    phase: findEntity('select', '_phase'),
-                    master: findEntity('switch', '_master_switch'),
-                    vpd: findEntity('sensor', '_vpd'),
-                    pump: findEntity('switch', '_water_pump'),
-                    days: findEntity('sensor', '_days_in_phase'),
-                }
-            };
-        });
-
-        this._render();
+            this._render();
+        } catch (err) {
+            console.error("Error fetching grow boxes:", err);
+        }
     }
 
     _render() {
         const root = this.shadowRoot;
 
-        // Styles
+        // STYLES
         const style = `
             <style>
                 :host {
@@ -152,6 +87,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     background-color: var(--primary-background-color);
                     min-height: 100vh;
                     font-family: var(--paper-font-body1_-_font-family);
+                    color: var(--primary-text-color);
                 }
                 .header {
                     background-color: var(--app-header-background-color);
@@ -165,6 +101,16 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .header h1 {
                     margin: 0;
                     font-size: 20px;
+                    font-weight: 500;
+                }
+                .add-btn {
+                    background: var(--primary-color);
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 8px 16px;
+                    cursor: pointer;
+                    font-size: 14px;
                     font-weight: 500;
                 }
                 .content {
@@ -190,11 +136,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                     align-items: center;
                 }
                 .card-image {
-                    height: 200px;
+                    height: 150px;
+                    background-color: #4CAF50; /* Fallback color */
+                    background-image: url('/local/growbox-default.jpg');
                     background-size: cover;
                     background-position: center;
-                    background-color: #ddd; /* placeholder */
-                    position: relative;
                 }
                 .card-content {
                     padding: 16px;
@@ -208,23 +154,24 @@ class LocalGrowBoxPanel extends HTMLElement {
                     width: 24px;
                     height: 24px;
                     margin-right: 12px;
-                    color: var(--secondary-text-color);
+                    font-size: 20px;
+                    text-align: center;
                 }
-                .sensor-bar {
+                .sensor-bar-container {
                     flex: 1;
-                    height: 8px;
                     background-color: var(--secondary-background-color);
-                    border-radius: 4px;
+                    height: 10px;
+                    border-radius: 5px;
                     overflow: hidden;
-                    position: relative;
+                    margin-right: 12px;
                 }
-                .sensor-value-fill {
+                .sensor-bar-fill {
                     height: 100%;
-                    background-color: var(--primary-color);
-                    border-radius: 4px;
+                    border-radius: 5px;
+                    transition: width 0.5s ease-out;
                 }
                 .sensor-text {
-                    width: 60px;
+                    min-width: 60px;
                     text-align: right;
                     font-size: 14px;
                 }
@@ -241,50 +188,36 @@ class LocalGrowBoxPanel extends HTMLElement {
                     flex-direction: column;
                     align-items: center;
                     color: var(--primary-text-color);
+                    opacity: 0.6;
+                    transition: opacity 0.2s;
+                }
+                .control-btn:hover {
+                    opacity: 1.0;
+                }
+                .control-btn.active {
+                    opacity: 1.0;
+                    color: var(--primary-color);
                 }
                 .control-icon {
-                   background: var(--secondary-background-color);
-                   border-radius: 50%;
-                   padding: 10px;
+                   font-size: 24px;
                    margin-bottom: 4px;
-                   transition: background-color 0.3s;
-                }
-                .control-btn.active .control-icon {
-                    background: var(--primary-color);
-                    color: white;
                 }
                 select {
-                    padding: 8px;
+                    padding: 4px;
                     border-radius: 4px;
                     border: 1px solid var(--divider-color);
+                    background: var(--card-background-color);
+                    color: var(--primary-text-color);
                 }
-                .fab {
-                    position: fixed;
-                    bottom: 24px;
-                    right: 24px;
-                    background-color: var(--primary-color);
-                    color: white;
-                    width: 56px;
-                    height: 56px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-                    cursor: pointer;
-                    font-size: 24px;
-                }
-                /* Flower Card Bars Colors */
-                .bar-temp { background: linear-gradient(90deg, #3498db, #2ecc71, #e74c3c); }
-                .bar-hum { background: linear-gradient(90deg, #e67e22, #2ecc71, #3498db); }
-                .bar-vpd { background: linear-gradient(90deg, #3498db, #2ecc71, #e74c3c); }
+                /* Gradients */
+                .grad-vpd { background: linear-gradient(90deg, #3498db, #2ecc71, #e74c3c); }
             </style>
         `;
 
         let cardsHtml = '';
 
         if (this._devices && this._devices.length > 0) {
-            cardsHtml = this._devices.map(device => {
+            cardsHtml = this._devices.map((device, index) => {
                 const masterState = this._hass.states[device.entities.master];
                 const pumpState = this._hass.states[device.entities.pump];
                 const vpdState = this._hass.states[device.entities.vpd];
@@ -295,49 +228,49 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const isPumpOn = pumpState && pumpState.state === 'on';
 
                 const vpdVal = vpdState ? parseFloat(vpdState.state) : 0;
-                // Max VPD assumption 3.0?
                 const vpdPercent = Math.min(100, Math.max(0, (vpdVal / 3.0) * 100));
 
                 const phaseOptions = phaseState ? phaseState.attributes.options : [];
                 const currentPhase = phaseState ? phaseState.state : '';
 
+                // We attach IDs to elements to bind events later
                 return `
                     <div class="card">
                         <div class="card-header">
                             <span>${device.name}</span>
-                            <span style="font-size: 0.8em; color: var(--secondary-text-color)">${daysState ? daysState.state + ' days' : ''}</span>
+                            <span style="font-size: 0.8em; opacity: 0.7">${daysState ? daysState.state + ' days' : ''}</span>
                         </div>
-                        <div class="card-image" style="background-image: url('/local/growbox-default.jpg')">
-                            <!-- Placeholder image, user should be able to configure this -->
-                        </div>
+                        <div class="card-image"></div>
                         <div class="card-content">
                              <div class="sensor-row">
-                                <div class="sensor-text">Phase</div>
-                                <select onchange="document.querySelector('local-grow-box-panel')._setPhase('${device.entities.phase}', this.value)">
-                                    ${phaseOptions.map(opt => `<option value="${opt}" ${opt === currentPhase ? 'selected' : ''}>${opt}</option>`).join('')}
-                                </select>
+                                <span class="sensor-icon">🌱</span>
+                                <div style="flex:1">
+                                    <select id="phase-${index}" data-entity="${device.entities.phase}">
+                                        ${phaseOptions.map(opt => `<option value="${opt}" ${opt === currentPhase ? 'selected' : ''}>${opt}</option>`).join('')}
+                                    </select>
+                                </div>
                              </div>
                              
                              <div class="sensor-row">
-                                <div class="sensor-icon">💧</div>
-                                <div class="sensor-bar" style="background: #ddd;">
-                                    <div class="sensor-value-fill bar-vpd" style="width: ${vpdPercent}%;"></div>
+                                <span class="sensor-icon">💧</span>
+                                <div class="sensor-bar-container">
+                                    <div class="sensor-bar-fill grad-vpd" style="width: ${vpdPercent}%;"></div>
                                 </div>
                                 <div class="sensor-text">${vpdState ? vpdVal + ' kPa' : 'N/A'}</div>
                              </div>
                         </div>
                         <div class="controls">
-                            <div class="control-btn ${isMasterOn ? 'active' : ''}" onclick="document.querySelector('local-grow-box-panel')._toggle('${device.entities.master}')">
+                            <div class="control-btn ${isMasterOn ? 'active' : ''}" id="master-${index}" data-entity="${device.entities.master}">
                                 <div class="control-icon">🔌</div>
                                 <span>Master</span>
                             </div>
                             ${device.entities.pump ? `
-                            <div class="control-btn ${isPumpOn ? 'active' : ''}" onclick="document.querySelector('local-grow-box-panel')._toggle('${device.entities.pump}')">
+                            <div class="control-btn ${isPumpOn ? 'active' : ''}" id="pump-${index}" data-entity="${device.entities.pump}">
                                 <div class="control-icon">🚿</div>
                                 <span>Pump</span>
                             </div>
                             ` : ''}
-                             <div class="control-btn" onclick="document.querySelector('local-grow-box-panel')._openSettings('${device.id}')">
+                             <div class="control-btn" id="settings-${index}" data-device="${device.id}">
                                 <div class="control-icon">⚙️</div>
                                 <span>Settings</span>
                             </div>
@@ -346,49 +279,87 @@ class LocalGrowBoxPanel extends HTMLElement {
                 `;
             }).join('');
         } else {
-            cardsHtml = '<div style="padding: 20px; text-align: center;">No Grow Boxes found. Click + to add one.</div>';
+            cardsHtml = `
+                <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--secondary-text-color);">
+                    <h2>No Grow Boxes Found</h2>
+                    <p>Please add a "Local Grow Box" integration first.</p>
+                </div>
+            `;
         }
 
         root.innerHTML = `
             ${style}
             <div class="header">
                 <h1>My Grow Room</h1>
+                <button class="add-btn" id="add-btn">Add Plant +</button>
             </div>
             <div class="content">
                 ${cardsHtml}
             </div>
-            <div class="fab" onclick="document.querySelector('local-grow-box-panel')._addPlant()">+</div>
         `;
+
+        // Bind Events
+        root.getElementById('add-btn').addEventListener('click', () => this._addPlant());
+
+        if (this._devices) {
+            this._devices.forEach((device, index) => {
+                // Phase Select
+                const phaseSel = root.getElementById(`phase-${index}`);
+                if (phaseSel) {
+                    phaseSel.addEventListener('change', (e) => {
+                        this._setPhase(e.target.dataset.entity, e.target.value);
+                    });
+                }
+                // Master Toggle
+                const masterBtn = root.getElementById(`master-${index}`);
+                if (masterBtn) {
+                    masterBtn.addEventListener('click', (e) => {
+                        this._toggle(e.currentTarget.dataset.entity);
+                    });
+                }
+                // Pump Toggle
+                const pumpBtn = root.getElementById(`pump-${index}`);
+                if (pumpBtn) {
+                    pumpBtn.addEventListener('click', (e) => {
+                        this._toggle(e.currentTarget.dataset.entity);
+                    });
+                }
+                // Settings
+                const setBtn = root.getElementById(`settings-${index}`);
+                if (setBtn) {
+                    setBtn.addEventListener('click', (e) => {
+                        this._openSettings(e.currentTarget.dataset.device);
+                    });
+                }
+            });
+        }
     }
 
     _toggle(entityId) {
-        if (!entityId) return;
+        if (!entityId || !this._hass) return;
         const state = this._hass.states[entityId];
         const service = state.state === 'on' ? 'turn_off' : 'turn_on';
         this._hass.callService('switch', service, { entity_id: entityId });
     }
 
     _setPhase(entityId, value) {
-        if (!entityId) return;
+        if (!entityId || !this._hass) return;
         this._hass.callService('select', 'select_option', { entity_id: entityId, option: value });
     }
 
     _addPlant() {
-        // Navigate to integrations page or start flow
-        // history.pushState(null, "", "/config/integrations/dashboard/add?domain=local_grow_box"); 
-        // Force event
-        const event = new Event('location-changed', { bubbles: true, composed: true });
-        event.detail = { replace: false };
-        history.pushState(null, "", "/config/integrations/dashboard");
-        window.dispatchEvent(event);
+        // Since we can't easily trigger the config flow config panel from here without internals,
+        // we'll navigate to the integrations page and show a message.
+        // Or deeper: /config/integrations/dashboard/add?domain=local_grow_box
+        const url = "/config/integrations/dashboard";
+        history.pushState(null, "", url);
+        window.dispatchEvent(new Event('location-changed', { bubbles: true, composed: true }));
 
-        // Ideally we start the flow directly, but that requires internal knowledge of HA dialogs.
-        // Best approach: alert user to add integration.
-        alert("Please add a new 'Local Grow Box' integration from the Devices & Services screen.");
+        // Show a toast or alert - primitive but effective
+        setTimeout(() => alert("Click 'Add Integration' and search for 'Local Grow Box' to add a new plant."), 500);
     }
 
     _openSettings(deviceId) {
-        // Navigate to device page
         history.pushState(null, "", `/config/devices/device/${deviceId}`);
         window.dispatchEvent(new Event('location-changed', { bubbles: true, composed: true }));
     }

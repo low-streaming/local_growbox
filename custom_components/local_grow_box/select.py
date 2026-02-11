@@ -9,6 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
+from homeassistant.helpers.device_registry import DeviceInfo
 from .const import DOMAIN, GROW_PHASES, PHASE_VEGETATIVE
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,6 +38,16 @@ class GrowPhaseSelect(SelectEntity, RestoreEntity):
         self._entry_id = entry_id
         self._attr_unique_id = f"{entry_id}_phase"
         self._attr_current_option = manager.current_phase
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name=self.manager.config.get("name", "Local Grow Box"),
+            manufacturer="Local Grow Box",
+            model="Grow Box Controller",
+        )
 
     async def async_added_to_hass(self) -> None:
         """Run when entity about to be added."""
