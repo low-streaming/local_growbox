@@ -6,124 +6,92 @@
 
 [English Version below](#local-grow-box-for-home-assistant)
 
-**Eine Cloud-freie, lokale Integration zur Verwaltung von Indoor-Grow-Umgebungen.**
+**Eine Cloud-freie, lokale Integration zur Verwaltung von Indoor-Grow-Umgebungen mit eigenem Dashboard.**
 
-Diese benutzerdefinierte Komponente ermöglicht es Ihnen, Ihre vorhandenen Sensoren und intelligenten Steckdosen in einen vollautomatischen Grow-Box-Controller zu verwandeln.
+Verwandeln Sie Ihre vorhandenen Sensoren und intelligenten Steckdosen in einen vollautomatischen Grow-Box-Controller mit professionellem Dashboard.
 
-## Funktionen
+## 🌟 Funktionen
 
-- **100% Lokal**: Keine Cloud-Abhängigkeiten. Läuft vollständig auf Ihrer Home Assistant-Instanz.
-- **Automatisierte Lichtzyklen**: Schaltet das Licht basierend auf der ausgewählten Wachstumsphase automatisch.
-  - *Keimling (Seedling)*: 18h AN / 6h AUS (Startet um 06:00)
-  - *Vegetativ*: 18h AN / 6h AUS (Startet um 06:00)
-  - *Blüte (Flowering)*: 12h AN / 12h AUS (Startet um 06:00)
-- **Lüftersteuerung**: Automatische AN/AUS-Steuerung basierend auf Zieltemperatur und maximaler Luftfeuchtigkeit.
-- **VPD Funktionalität**: Berechnet das Dampfdruckdefizit (Vapour Pressure Deficit - VPD) in Echtzeit.
-- **Hauptschalter**: Ein einziger Schalter zum Aktivieren/Deaktivieren der gesamten Automatisierung.
+- **100% Lokal**: Keine Cloud. Volle Privatsphäre.
+- **Automatisierte Lichtzyklen**: 
+  - *Keimling/Vegetativ*: 18/6h
+  - *Blüte*: 12/12h
+- **Klimasteuerung**: Automatische Lüftersteuerung basierend auf Temperatur & Feuchtigkeit (VPD-optimiert).
+- **VPD Berechnung**: Echtzeit-Berechnung des Dampfdruckdefizits.
+- **Bewässerung**: Optionale Steuerung einer Wasserpumpe.
+- **Kamera-Integration**: Live-Ansicht Ihrer Pflanzen direkt im Dashboard.
+- **Grow Room Dashboard**: Ein spezielles Panel in der Seitenleiste für die Übersicht aller Grow-Boxen.
 
-## Installation
+## 🚀 Installation
 
 ### HACS (Empfohlen)
-1.  Gehen Sie zu HACS > Integrationen > 3 Punkte > Benutzerdefinierte Repositories.
-2.  Fügen Sie diese Repository-URL hinzu.
-3.  Installieren Sie **Local Grow Box**.
-4.  Starten Sie Home Assistant neu.
+1.  HACS > Integrationen > 3 Punkte > Benutzerdefinierte Repositories.
+2.  URL dieses Repositories hinzufügen.
+3.  **Local Grow Box** installieren und Home Assistant neu starten.
 
-### Manuell
-1.  Kopieren Sie den Ordner `custom_components/local_grow_box` in Ihr `config/custom_components/` Verzeichnis.
-2.  Starten Sie Home Assistant neu.
-
-## Konfiguration
+## ⚙️ Konfiguration
 
 1.  Gehen Sie zu **Einstellungen > Geräte & Dienste**.
-2.  Klicken Sie auf **Integration hinzufügen** und suchen Sie nach **Local Grow Box**.
-3.  Folgen Sie dem Einrichtungsassistenten:
-    -   **Name**: Benennen Sie Ihre Grow-Box.
-    -   **Licht-Entität**: Wählen Sie den Schalter, der Ihre Pflanzenlampe steuert.
-    -   **Lüfter-Entität**: Wählen Sie den Schalter, der Ihren Lüfter steuert.
-    -   **Temperatursensor**: Wählen Sie Ihr Thermometer.
-    -   **Feuchtigkeitssensor**: Wählen Sie Ihr Hygrometer.
-    -   **Ziel-Temperatur**: Gewünschte Temperatur (Standard: 24°C).
-    -   **Max. Feuchtigkeit**: Maximale Luftfeuchtigkeit bevor der Lüfter angeht (Standard: 60%).
+2.  **Integration hinzufügen** > **Local Grow Box**.
+3.  Konfigurieren Sie Ihre Geräte:
+    -   **Name**: z.B. "Tomaten Zelt"
+    -   **Licht & Lüfter**: Ihre Smart Plugs.
+    -   **Sensoren**: Temperatur & Feuchtigkeit.
+    -   **Pumpe (Optional)**: Für automatische Bewässerung.
+    -   **Kamera (Optional)**: Für Live-Überwachung.
+    -   **Zielwerte**: Temperatur und max. Feuchtigkeit einstellen.
 
-## Verwendung
+## 🖥️ Dashboard (Grow Room)
 
-Nach der Installation erhalten Sie ein neues Gerät mit den folgenden Entitäten:
-
--   **Sensor**: Dampfdruckdefizit (kPa), Tage in der aktuellen Phase
--   **Auswahl (Select)**: Wachstumsphase (Keimling, Vegetativ, Blüte, Trocknung, Curing)
--   **Schalter (Switch)**: Hauptschalter
-
-Ändern Sie die **Wachstumsphase**, um den Lichtplan automatisch anzupassen.
-Der Lüfter wird automatisch aktiviert, wenn die Temperatur oder Feuchtigkeit die Grenzwerte überschreitet.
-
-## Roadmap
-
--   [ ] Anpassbare Lichtpläne pro Phase (in UI).
--   [ ] Lüftergeschwindigkeitssteuerung (PWM/0-10V).
--   [ ] CO2-Steuerung.
+Die Integration installiert automatisch ein **"Grow Room"** Panel in Ihrer Seitenleiste.
+-   **Übersicht**: Alle Ihre Grow-Boxen auf einen Blick.
+-   **Steuerung**: Phase wählen, Master-Switch, Pumpe.
+-   **Kamera**: Live-Bild direkt auf der Karte.
+-   **Daten**: Visuelle Balken für Temperatur, Feuchtigkeit und VPD.
 
 ---
 
 # Local Grow Box for Home Assistant
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
-[![github_release](https://img.shields.io/github/v/release/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/releases)
-[![github_license](https://img.shields.io/github/license/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/blob/master/LICENSE)
+**A cloud-free, local integration for managing indoor grow environments with a custom dashboard.**
 
-**A cloud-free, local integration for managing indoor grow environments.**
+Turn your existing sensors and smart plugs into a fully automated Grow Box controller.
 
-This custom component allows you to turn your existing sensors and smart plugs into a fully automated Grow Box controller.
+## 🌟 Features
 
-## Features
+- **100% Local**: No cloud dependencies.
+- **Automated Light Cycles**:
+  - *Seedling/Vegetative*: 18/6h
+  - *Flowering*: 12/12h
+- **Climate Control**: Automated fan control based on temp & humidity target.
+- **VPD Calculation**: Real-time Vapor Pressure Deficit calculation.
+- **Watering**: Optional water pump control.
+- **Camera Support**: Live view of your plants in the dashboard.
+- **Grow Room Dashboard**: A dedicated sidebar panel to monitor all your grow boxes.
 
-- **100% Local**: No cloud dependencies. Runs entirely on your Home Assistant instance.
-- **Automated Light Cycles**: Automatically switches lights based on the selected growth phase.
-  - *Seedling*: 18h ON / 6h OFF (Starts at 06:00)
-  - *Vegetative*: 18h ON / 6h OFF (Starts at 06:00)
-  - *Flowering*: 12h ON / 12h OFF (Starts at 06:00)
-- **Fan Control**: Automatic ON/OFF control based on target temperature and max humidity.
-- **VPD Functionality**: Calculates Vapor Pressure Deficit (VPD) in real-time.
-- **Master Control**: Single switch to enable/disable all automation.
-
-## Installation
+## 🚀 Installation
 
 ### HACS (Recommended)
-1.  Go to HACS > Integrations > 3 Dots > Custom Repositories.
+1.  HACS > Integrations > Custom Repositories.
 2.  Add this repository URL.
-3.  Install **Local Grow Box**.
-4.  Restart Home Assistant.
+3.  Install **Local Grow Box** and restart Home Assistant.
 
-### Manual
-1.  Copy the `custom_components/local_grow_box` folder to your `config/custom_components/` directory.
-2.  Restart Home Assistant.
-
-## Configuration
+## ⚙️ Configuration
 
 1.  Go to **Settings > Devices & Services**.
-2.  Click **Add Integration** and search for **Local Grow Box**.
-3.  Follow the setup wizard:
-    -   **Name**: Name your grow box.
-    -   **Light Entity**: Select the switch controlling your grow light.
-    -   **Fan Entity**: Select the switch controlling your fan.
-    -   **Temperature Sensor**: Select your thermometer.
-    -   **Humidity Sensor**: Select your hygrometer.
-    -   **Target Temp**: Desired temperature (Default: 24°C).
-    -   **Max Humidity**: Max humidity before fan turns on (Default: 60%).
+2.  **Add Integration** > **Local Grow Box**.
+3.  Configure your hardware:
+    -   **Name**: e.g. "Tomato Tent"
+    -   **Light & Fan**: Select your smart switches.
+    -   **Sensors**: Select your thermometer/hygrometer.
+    -   **Pump (Optional)**: For irrigation.
+    -   **Camera (Optional)**: For live monitoring.
+    -   **Targets**: Set target temp and max humidity.
 
-## Usage
+## 🖥️ Dashboard (Grow Room)
 
-After installation, you will get a new device with the following entities:
-
--   **Sensor**: Vapor Pressure Deficit (kPa), Days in Phase
--   **Select**: Grow Phase (Seedling, Vegetative, Flowering, Drying, Curing)
--   **Switch**: Master Control
-
-Change the **Grow Phase** to automatically adjust the light schedule.
-The fan will automatically turn on when temperature or humidity exceeds the limits.
-
-## Roadmap
-
--   [ ] Customizable light schedules per phase (in UI).
--   [ ] Fan speed control (PWM/0-10V).
--   [ ] CO2 Control.
+The integration automatically adds a **"Grow Room"** panel to your sidebar.
+-   **Overview**: See all your grow boxes in one place.
+-   **Control**: Change phases, toggle master switch or pump.
+-   **Camera**: Live feed directly on the card.
+-   **Data**: Visual bars for Temp, Humidity, and VPD.
