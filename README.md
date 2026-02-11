@@ -17,6 +17,7 @@ Diese benutzerdefinierte Komponente ermöglicht es Ihnen, Ihre vorhandenen Senso
   - *Keimling (Seedling)*: 18h AN / 6h AUS (Startet um 06:00)
   - *Vegetativ*: 18h AN / 6h AUS (Startet um 06:00)
   - *Blüte (Flowering)*: 12h AN / 12h AUS (Startet um 06:00)
+- **Lüftersteuerung**: Automatische AN/AUS-Steuerung basierend auf Zieltemperatur und maximaler Luftfeuchtigkeit.
 - **VPD Funktionalität**: Berechnet das Dampfdruckdefizit (Vapour Pressure Deficit - VPD) in Echtzeit.
 - **Hauptschalter**: Ein einziger Schalter zum Aktivieren/Deaktivieren der gesamten Automatisierung.
 
@@ -42,23 +43,25 @@ Diese benutzerdefinierte Komponente ermöglicht es Ihnen, Ihre vorhandenen Senso
     -   **Lüfter-Entität**: Wählen Sie den Schalter, der Ihren Lüfter steuert.
     -   **Temperatursensor**: Wählen Sie Ihr Thermometer.
     -   **Feuchtigkeitssensor**: Wählen Sie Ihr Hygrometer.
+    -   **Ziel-Temperatur**: Gewünschte Temperatur (Standard: 24°C).
+    -   **Max. Feuchtigkeit**: Maximale Luftfeuchtigkeit bevor der Lüfter angeht (Standard: 60%).
 
 ## Verwendung
 
 Nach der Installation erhalten Sie ein neues Gerät mit den folgenden Entitäten:
 
--   **Sensor**: Dampfdruckdefizit (kPa)
--   **Auswahl (Select)**: Wachstumsphase (Keimling, Vegetativ, Blüte, Trocknung)
+-   **Sensor**: Dampfdruckdefizit (kPa), Tage in der aktuellen Phase
+-   **Auswahl (Select)**: Wachstumsphase (Keimling, Vegetativ, Blüte, Trocknung, Curing)
 -   **Schalter (Switch)**: Hauptschalter
 
 Ändern Sie die **Wachstumsphase**, um den Lichtplan automatisch anzupassen.
-Schalten Sie den **Hauptschalter** um, um die Automatisierung zu pausieren/fortzusetzen.
+Der Lüfter wird automatisch aktiviert, wenn die Temperatur oder Feuchtigkeit die Grenzwerte überschreitet.
 
 ## Roadmap
 
--   [ ] Anpassbare Lichtpläne pro Phase.
--   [ ] Lüftergeschwindigkeitssteuerung basierend auf VPD / Temperaturzielen.
--   [ ] Unterstützung für mehrere Licht-/Lüfter-Entitäten.
+-   [ ] Anpassbare Lichtpläne pro Phase (in UI).
+-   [ ] Lüftergeschwindigkeitssteuerung (PWM/0-10V).
+-   [ ] CO2-Steuerung.
 
 ---
 
@@ -79,6 +82,7 @@ This custom component allows you to turn your existing sensors and smart plugs i
   - *Seedling*: 18h ON / 6h OFF (Starts at 06:00)
   - *Vegetative*: 18h ON / 6h OFF (Starts at 06:00)
   - *Flowering*: 12h ON / 12h OFF (Starts at 06:00)
+- **Fan Control**: Automatic ON/OFF control based on target temperature and max humidity.
 - **VPD Functionality**: Calculates Vapor Pressure Deficit (VPD) in real-time.
 - **Master Control**: Single switch to enable/disable all automation.
 
@@ -104,20 +108,22 @@ This custom component allows you to turn your existing sensors and smart plugs i
     -   **Fan Entity**: Select the switch controlling your fan.
     -   **Temperature Sensor**: Select your thermometer.
     -   **Humidity Sensor**: Select your hygrometer.
+    -   **Target Temp**: Desired temperature (Default: 24°C).
+    -   **Max Humidity**: Max humidity before fan turns on (Default: 60%).
 
 ## Usage
 
 After installation, you will get a new device with the following entities:
 
--   **Sensor**: Vapor Pressure Deficit (kPa)
--   **Select**: Grow Phase (Seedling, Vegetative, Flowering, Drying)
+-   **Sensor**: Vapor Pressure Deficit (kPa), Days in Phase
+-   **Select**: Grow Phase (Seedling, Vegetative, Flowering, Drying, Curing)
 -   **Switch**: Master Control
 
 Change the **Grow Phase** to automatically adjust the light schedule.
-Toggle **Master Control** to pause/resume automation.
+The fan will automatically turn on when temperature or humidity exceeds the limits.
 
 ## Roadmap
 
--   [ ] Customizable light schedules per phase.
--   [ ] Fan speed control based on VPD / Temp targets.
--   [ ] Support for multiple light/fan entities.
+-   [ ] Customizable light schedules per phase (in UI).
+-   [ ] Fan speed control (PWM/0-10V).
+-   [ ] CO2 Control.
