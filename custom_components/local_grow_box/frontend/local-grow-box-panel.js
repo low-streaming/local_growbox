@@ -2,6 +2,7 @@ class LocalGrowBoxPanel extends HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
+        this._initialized = false;
     }
 
     set hass(hass) {
@@ -84,6 +85,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     --text-primary-color: #ffffff;
                     --card-bg: var(--ha-card-background, var(--card-background-color, #fff));
                     --primary-text: var(--primary-text-color);
+                    --secondary-text: var(--secondary-text-color);
                     display: block;
                     background-color: var(--primary-background-color);
                     min-height: 100vh;
@@ -140,6 +142,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     flex-direction: column;
                     transition: transform 0.2s, box-shadow 0.2s;
                     border: 1px solid var(--divider-color, rgba(0,0,0,0.1));
+                    height: 100%;
                 }
                 .card:hover {
                     transform: translateY(-2px);
@@ -204,15 +207,64 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .card-content {
                     padding: 20px;
                     flex: 1;
+                    display: flex;
+                    flex-direction: column;
                 }
                 .sensor-row {
                     display: flex;
                     align-items: center;
                     margin-bottom: 20px;
-                    background: rgba(0,0,0,0.02);
-                    padding: 12px;
-                    border-radius: 12px;
                 }
+                
+                .sensor-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 12px 24px;
+                    margin-top: auto; /* Push to bottom of content area */
+                    padding-top: 20px;
+                    border-top: 1px solid rgba(0,0,0,0.05);
+                }
+
+                .sensor-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+                
+                .sensor-icon-small {
+                    font-size: 20px;
+                    width: 24px;
+                    text-align: center;
+                    color: var(--accent-color);
+                }
+
+                .sensor-info {
+                    flex: 1;
+                    overflow: hidden;
+                }
+
+                .sensor-status-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: baseline;
+                    font-size: 14px;
+                    margin-bottom: 4px;
+                }
+
+                .sensor-bar-mini {
+                    height: 6px;
+                    background: rgba(0,0,0,0.05);
+                    border-radius: 3px;
+                    overflow: hidden;
+                }
+                .sensor-bar-mini-fill {
+                    height: 100%;
+                    border-radius: 3px;
+                    background: var(--accent-color);
+                }
+                .sensor-bar-mini-fill.warn { background: #ff9800; }
+                .sensor-bar-mini-fill.cool { background: #2196f3; }
+
                 .sensor-icon {
                     width: 32px;
                     height: 32px;
@@ -224,6 +276,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     background: white;
                     border-radius: 50%;
                     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                    flex-shrink: 0;
                 }
                 .sensor-data {
                     flex: 1;
@@ -307,22 +360,55 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .modal-backdrop {
                     background: rgba(0, 0, 0, 0.6);
                     backdrop-filter: blur(4px);
+                    position: fixed;
+                    top: 0; left: 0; width: 100%; height: 100%;
+                    display: none;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 100;
+                }
+                .modal-backdrop.open {
+                    display: flex;
                 }
                 .modal {
+                    background: white;
+                    padding: 30px;
+                    width: 90%;
+                    max-width: 500px;
                     border-radius: 20px;
                     box-shadow: 0 20px 40px rgba(0,0,0,0.4);
                 }
-                .modal h2 { margin-bottom: 16px; color: var(--primary-color); }
+                .modal h2 { margin-top: 0; margin-bottom: 16px; color: var(--primary-color); }
+                .modal-actions {
+                    margin-top: 24px;
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 12px;
+                }
                 .modal-btn {
                     padding: 12px 24px;
-                    font-size: 15px;
+                    font-size: 14px;
+                    border: none;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: 600;
+                }
+                .modal-btn.cancel {
+                    background: #f5f5f5;
+                    color: #333;
                 }
                 .modal-btn.confirm {
                     background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+                    color: white;
                     box-shadow: 0 4px 15px rgba(0,150,136, 0.4);
                 }
             </style>
         `;
+
+        const getEntityState = (entityId) => {
+            if (!entityId) return null;
+            return this._hass.states[entityId];
+        };
 
         let cardsHtml = '';
 
@@ -334,20 +420,41 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const daysState = this._hass.states[device.entities.days];
                 const phaseState = this._hass.states[device.entities.phase];
 
+                // Additional Sensors from Attributes
+                const tempEntity = masterState ? masterState.attributes.temp_sensor : null;
+                const humidityEntity = masterState ? masterState.attributes.humidity_sensor : null;
+                const lightEntity = masterState ? masterState.attributes.light_entity : null;
+                const fanEntity = masterState ? masterState.attributes.fan_entity : null;
+
+                const tempState = getEntityState(tempEntity);
+                const humidityState = getEntityState(humidityEntity);
+                const lightState = getEntityState(lightEntity);
+                const fanState = getEntityState(fanEntity);
+
                 const isMasterOn = masterState && masterState.state === 'on';
                 const isPumpOn = pumpState && pumpState.state === 'on';
 
                 const vpdVal = vpdState ? parseFloat(vpdState.state) : 0;
                 const vpdPercent = Math.min(100, Math.max(0, (vpdVal / 3.0) * 100));
 
-                const phaseOptions = (phaseState && phaseState.attributes && phaseState.attributes.options) ? phaseState.attributes.options : [];
+                const defaultPhaseOptions = ['seedling', 'vegetative', 'flowering', 'drying', 'curing'];
+                const phaseOptions = (phaseState && phaseState.attributes && phaseState.attributes.options) ? phaseState.attributes.options : defaultPhaseOptions;
                 const currentPhase = phaseState ? phaseState.state : '';
+
+                // Translation Map
+                const phaseTranslations = {
+                    'seedling': 'Keimling',
+                    'vegetative': 'Wachstum',
+                    'flowering': 'Blüte',
+                    'drying': 'Trocknen',
+                    'curing': 'Veredelung'
+                };
 
                 // Camera handling
                 let cameraHtml = `
                     <div class="card-image">
                        <div class="card-image-overlay">
-                            <span class="live-badge">No Camera</span>
+                            <span class="live-badge">Keine Kamera</span>
                         </div>
                     </div>
                 `;
@@ -356,7 +463,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                     const cameraEntity = masterState.attributes.camera_entity;
                     const cameraState = this._hass.states[cameraEntity];
                     if (cameraState) {
-                        const camUrl = `/api/camera_proxy_stream/${cameraEntity}`;
+                        // Use entity_picture if available (contains token), else fallback
+                        const camUrl = cameraState.attributes.entity_picture || `/api/camera_proxy_stream/${cameraEntity}`;
                         cameraHtml = `
                             <div class="card-image">
                                 <img src="${camUrl}" style="width: 100%; height: 100%; object-fit: cover;" />
@@ -368,14 +476,43 @@ class LocalGrowBoxPanel extends HTMLElement {
                     }
                 }
 
+                // Sensor Grid Rendering
+                const renderGridItem = (icon, val, sub, pct, colorClass) => `
+                    <div class="sensor-item">
+                        <div class="sensor-icon-small">${icon}</div>
+                        <div class="sensor-info">
+                            <div class="sensor-status-row">
+                                <span style="font-weight:700;">${val}</span>
+                                <span style="font-size:11px; opacity:0.6;">${sub}</span>
+                            </div>
+                            <div class="sensor-bar-mini">
+                                <div class="sensor-bar-mini-fill ${colorClass}" style="width: ${pct}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // Calculate display values
+                const tempVal = tempState ? parseFloat(tempState.state) : 0;
+                const tempStr = tempState ? `${tempState.state} ${tempState.attributes.unit_of_measurement || '°C'}` : '--';
+                const tempPct = Math.min(100, (tempVal / 40) * 100);
+
+                const humVal = humidityState ? parseFloat(humidityState.state) : 0;
+                const humStr = humidityState ? `${humidityState.state} ${humidityState.attributes.unit_of_measurement || '%'}` : '--';
+                const humPct = Math.min(100, humVal);
+
+                const lightOn = lightState && lightState.state === 'on';
+                const fanOn = fanState && fanState.state === 'on';
+
                 return `
                     <div class="card">
                         <div class="card-header">
                             <span>${device.name}</span>
-                            <span>${daysState ? daysState.state + ' Days' : '0 Days'}</span>
+                            <span>${daysState ? daysState.state + ' Tage' : '0 Tage'}</span>
                         </div>
                         ${cameraHtml}
                         <div class="card-content">
+                             <!-- Main Controls -->
                              <div class="sensor-row">
                                 <div class="sensor-icon">🌱</div>
                                 <div class="sensor-data">
@@ -383,7 +520,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                                         <span class="sensor-label">Phase</span>
                                     </div>
                                     <select id="phase-${index}" data-entity="${device.entities.phase}">
-                                        ${phaseOptions.map(opt => `<option value="${opt}" ${opt === currentPhase ? 'selected' : ''}>${opt}</option>`).join('')}
+                                        ${phaseOptions.map(opt => `<option value="${opt}" ${opt === currentPhase ? 'selected' : ''}>${phaseTranslations[opt] || opt}</option>`).join('')}
                                     </select>
                                 </div>
                              </div>
@@ -392,7 +529,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                                 <div class="sensor-icon">💧</div>
                                 <div class="sensor-data">
                                     <div style="display:flex; justify-content:space-between; align-items:center;">
-                                       <span class="sensor-label">VPD (Vapour Pressure Deficit)</span>
+                                       <span class="sensor-label">VPD (Dampfdruckdefizit)</span>
                                        <span class="sensor-value">${vpdState ? vpdVal + ' <small>kPa</small>' : '--'}</span>
                                     </div>
                                     <div class="sensor-bar-container">
@@ -400,6 +537,15 @@ class LocalGrowBoxPanel extends HTMLElement {
                                     </div>
                                 </div>
                              </div>
+
+                             <!-- Environment Grid -->
+                             <div class="sensor-grid">
+                                ${renderGridItem('🌡️', tempStr, 'Temp', tempPct, tempVal > 28 ? 'warn' : 'cool')}
+                                ${renderGridItem('☁️', humStr, 'Feuchtigkeit', humPct, 'cool')}
+                                ${renderGridItem('💡', lightOn ? 'AN' : 'AUS', 'Licht', lightOn ? 100 : 0, 'warn')}
+                                ${renderGridItem('💨', fanOn ? 'AN' : 'AUS', 'Lüfter', fanOn ? 100 : 0, 'cool')}
+                             </div>
+
                         </div>
                         <div class="controls">
                             <div class="control-btn ${isMasterOn ? 'active' : ''}" id="master-${index}" data-entity="${device.entities.master}">
@@ -408,11 +554,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                             </div>
                             <div class="control-btn ${isPumpOn ? 'active' : ''}" id="pump-${index}" data-entity="${device.entities.pump}" style="${!device.entities.pump ? 'opacity:0.2; pointer-events:none;' : ''}">
                                 <div class="control-icon">🚿</div>
-                                <span>Pump</span>
+                                <span>Pumpe</span>
                             </div>
                              <div class="control-btn" id="settings-${index}" data-device="${device.id}">
                                 <div class="control-icon">⚙️</div>
-                                <span>Settings</span>
+                                <span>Einstellungen</span>
                             </div>
                         </div>
                     </div>
@@ -422,8 +568,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             cardsHtml = `
                 <div style="grid-column: 1 / -1; text-align: center; padding: 60px; color: var(--secondary-text-color);">
                     <div style="font-size: 60px; margin-bottom: 20px; opacity: 0.5;">🌱</div>
-                    <h2 style="font-weight: 300;">No Grow Boxes Found</h2>
-                    <p>Start your journey by adding a "Local Grow Box" integration in settings.</p>
+                    <h2 style="font-weight: 300;">Keine Grow-Boxen gefunden</h2>
+                    <p>Beginnen Sie Ihre Reise, indem Sie eine "Local Grow Box"-Integration in den Einstellungen hinzufügen.</p>
                 </div>
             `;
         }
@@ -431,7 +577,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         const html = `
             ${style}
             <div class="header">
-                <h1>My Grow Room</h1>
+                <h1>Mein Anbauraum</h1>
                 <div class="add-btn" id="add-plant-btn">+</div>
             </div>
             <div class="content">
@@ -441,11 +587,11 @@ class LocalGrowBoxPanel extends HTMLElement {
             <!-- Modal -->
             <div class="modal-backdrop" id="add-modal">
                 <div class="modal">
-                    <h2>Add New Plant</h2>
-                    <p>To add a new Grow Box, you need to configure a new integration entry in Home Assistant Settings.</p>
+                    <h2>Neue Pflanze hinzufügen</h2>
+                    <p>Um eine neue Grow-Box hinzuzufügen, müssen Sie einen neuen Integrationseintrag in den Home Assistant-Einstellungen konfigurieren.</p>
                     <div class="modal-actions">
-                        <button class="modal-btn cancel" id="modal-cancel">Cancel</button>
-                        <button class="modal-btn confirm" id="modal-confirm">Go to Settings</button>
+                        <button class="modal-btn cancel" id="modal-cancel">Abbrechen</button>
+                        <button class="modal-btn confirm" id="modal-confirm">Zu den Einstellungen</button>
                     </div>
                 </div>
             </div>

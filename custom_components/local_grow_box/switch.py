@@ -10,7 +10,15 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN, CONF_PUMP_ENTITY, CONF_CAMERA_ENTITY
+from .const import (
+    DOMAIN, 
+    CONF_PUMP_ENTITY, 
+    CONF_CAMERA_ENTITY,
+    CONF_TEMP_SENSOR,
+    CONF_HUMIDITY_SENSOR,
+    CONF_LIGHT_ENTITY,
+    CONF_FAN_ENTITY
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,7 +66,11 @@ class GrowBoxMasterSwitch(SwitchEntity, RestoreEntity):
     def extra_state_attributes(self):
         """Return entity specific state attributes."""
         return {
-            "camera_entity": self.manager.config.get(CONF_CAMERA_ENTITY)
+            "camera_entity": self.manager.config.get(CONF_CAMERA_ENTITY),
+            "temp_sensor": self.manager.config.get(CONF_TEMP_SENSOR),
+            "humidity_sensor": self.manager.config.get(CONF_HUMIDITY_SENSOR),
+            "light_entity": self.manager.config.get(CONF_LIGHT_ENTITY),
+            "fan_entity": self.manager.config.get(CONF_FAN_ENTITY),
         }
 
     @property
