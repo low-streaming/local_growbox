@@ -230,7 +230,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const vpdVal = vpdState ? parseFloat(vpdState.state) : 0;
                 const vpdPercent = Math.min(100, Math.max(0, (vpdVal / 3.0) * 100));
 
-                const phaseOptions = phaseState ? phaseState.attributes.options : [];
+                const phaseOptions = (phaseState && phaseState.attributes && phaseState.attributes.options) ? phaseState.attributes.options : [];
                 const currentPhase = phaseState ? phaseState.state : '';
 
                 // Camera handling
