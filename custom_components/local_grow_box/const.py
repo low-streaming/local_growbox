@@ -4,6 +4,7 @@ DOMAIN = "local_grow_box"
 
 CONF_LIGHT_ENTITY = "light_entity"
 CONF_FAN_ENTITY = "fan_entity"
+CONF_PUMP_ENTITY = "pump_entity"
 CONF_TEMP_SENSOR = "temp_sensor"
 CONF_HUMIDITY_SENSOR = "humidity_sensor"
 

@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, CONF_PUMP_ENTITY
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,7 +20,12 @@ async def async_setup_entry(
 ) -> None:
     """Set up the switch platform."""
     manager = hass.data[DOMAIN][entry.entry_id]
-    async_add_entities([GrowBoxMasterSwitch(hass, manager, entry.entry_id)])
+    entities = [GrowBoxMasterSwitch(hass, manager, entry.entry_id)]
+    
+    if manager.config.get(CONF_PUMP_ENTITY):
+        entities.append(GrowBoxPumpSwitch(hass, manager, entry.entry_id))
+        
+    async_add_entities(entities)
 
 
 class GrowBoxMasterSwitch(SwitchEntity, RestoreEntity):
@@ -65,3 +70,54 @@ class GrowBoxMasterSwitch(SwitchEntity, RestoreEntity):
         self._is_on = False
         self.manager.set_master_switch(False)
         self.async_write_ha_state()
+
+class GrowBoxPumpSwitch(SwitchEntity, RestoreEntity):
+    """Representation of the Water Pump Switch."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Water Pump"
+    _attr_icon = "mdi:water-pump"
+
+    def __init__(self, hass, manager, entry_id):
+        """Initialize the switch."""
+        self.hass = hass
+        self.manager = manager
+        self._entry_id = entry_id
+        self._attr_unique_id = f"{entry_id}_water_pump"
+        self._pump_entity = manager.config[CONF_PUMP_ENTITY]
+        self._is_on = False
+
+    @property
+    def is_on(self) -> bool:
+        """Return true if switch is on."""
+        # Query actual entity state
+        state = self.hass.states.get(self._pump_entity)
+        if state:
+            return state.state == "on"
+        return False
+
+    async def async_turn_on(self, **kwargs) -> None:
+        """Turn the switch on."""
+        await self.hass.services.async_call(
+            "homeassistant", "turn_on", {"entity_id": self._pump_entity}
+        )
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs) -> None:
+        """Turn the switch off."""
+        await self.hass.services.async_call(
+            "homeassistant", "turn_off", {"entity_id": self._pump_entity}
+        )
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self):
+        """Register callbacks."""
+        # Listen for changes to the underlying pump entity
+        from homeassistant.helpers.event import async_track_state_change_event
+        
+        async def update_listener(event):
+            self.async_write_ha_state()
+            
+        self.async_on_remove(
+             async_track_state_change_event(self.hass, [self._pump_entity], update_listener)
+        )

@@ -15,6 +15,7 @@ from .const import (
     DOMAIN, 
     CONF_LIGHT_ENTITY, 
     CONF_FAN_ENTITY, 
+    CONF_PUMP_ENTITY,
     CONF_TEMP_SENSOR, 
     CONF_HUMIDITY_SENSOR,
     CONF_TARGET_TEMP,
@@ -32,6 +33,9 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         ),
         vol.Required(CONF_FAN_ENTITY): selector.EntitySelector(
             selector.EntitySelectorConfig(domain=["switch", "fan"])
+        ),
+        vol.Optional(CONF_PUMP_ENTITY): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["switch"])
         ),
         vol.Required(CONF_TEMP_SENSOR): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
