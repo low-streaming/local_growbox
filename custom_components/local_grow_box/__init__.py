@@ -34,7 +34,7 @@ PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH, Platform.SELECT]
 # Start time for light cycle (e.g., 06:00 AM)
 LIGHT_START_HOUR = 6 
 
-from homeassistant.components import frontend
+from homeassistant.components import frontend, panel_custom
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up the Local Grow Box component."""
@@ -47,15 +47,15 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         )
     ])
 
-    frontend.async_register_panel(
+    # Register custom panel
+    await panel_custom.async_register_panel(
         hass,
-        "local-grow-box",
-        "local_grow_box/local-grow-box-panel.js",
+        webcomponent_name="local-grow-box-panel",
+        frontend_url_path="grow-room",
         module_url="/local_grow_box/local-grow-box-panel.js",
-        embed_iframe=False,
+        sidebar_title="Grow Room",
+        sidebar_icon="mdi:sprout",
         require_admin=False,
-        title="Grow Room",
-        icon="mdi:sprout",
     )
     
     return True
