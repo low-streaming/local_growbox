@@ -16,10 +16,11 @@ from .const import (
     CONF_LIGHT_ENTITY, 
     CONF_FAN_ENTITY, 
     CONF_PUMP_ENTITY,
+    CONF_CAMERA_ENTITY,
     CONF_TEMP_SENSOR, 
     CONF_HUMIDITY_SENSOR,
     CONF_TARGET_TEMP,
-    CONF_MAX_HUMIDITY
+    CONF_MAX_HUMIDITY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -36,6 +37,9 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         ),
         vol.Optional(CONF_PUMP_ENTITY): selector.EntitySelector(
             selector.EntitySelectorConfig(domain=["switch"])
+        ),
+        vol.Optional(CONF_CAMERA_ENTITY): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain=["camera"])
         ),
         vol.Required(CONF_TEMP_SENSOR): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="temperature")

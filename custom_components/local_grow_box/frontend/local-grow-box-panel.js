@@ -233,6 +233,31 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const phaseOptions = phaseState ? phaseState.attributes.options : [];
                 const currentPhase = phaseState ? phaseState.state : '';
 
+                // Camera handling
+                let cameraHtml = `
+                    <div class="card-image" style="background-color: #4CAF50; background-image: url('/local/growbox-default.jpg'); background-size: cover; background-position: center;">
+                        <div style="position: absolute; bottom: 0; left: 0; right: 0; padding: 8px; background: rgba(0,0,0,0.6); color: white; display: flex; justify-content: center;">
+                            <span>Active</span>
+                        </div>
+                    </div>
+                `;
+
+                if (masterState && masterState.attributes.camera_entity) {
+                    const cameraEntity = masterState.attributes.camera_entity;
+                    const cameraState = this._hass.states[cameraEntity];
+                    if (cameraState) {
+                        // Use entity picture for simpler snapshot, or try a stream URL
+                        // Note: For live stream we'd need access to auth tokens which is complex here.
+                        // We will use the camera_proxy url which usually works if authenticated in browser.
+                        const camUrl = `/api/camera_proxy_stream/${cameraEntity}`;
+                        cameraHtml = `
+                            <div class="card-image" style="background-color: black; position: relative;">
+                                <img src="${camUrl}" style="width: 100%; height: 100%; object-fit: cover;" />
+                            </div>
+                        `;
+                    }
+                }
+
                 // We attach IDs to elements to bind events later
                 return `
                     <div class="card">
@@ -240,7 +265,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                             <span>${device.name}</span>
                             <span style="font-size: 0.8em; opacity: 0.7">${daysState ? daysState.state + ' days' : ''}</span>
                         </div>
-                        <div class="card-image"></div>
+                        ${cameraHtml}
                         <div class="card-content">
                              <div class="sensor-row">
                                 <span class="sensor-icon">🌱</span>

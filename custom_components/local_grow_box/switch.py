@@ -8,8 +8,9 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import DOMAIN, CONF_PUMP_ENTITY
+from .const import DOMAIN, CONF_PUMP_ENTITY, CONF_CAMERA_ENTITY
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -42,6 +43,23 @@ class GrowBoxMasterSwitch(SwitchEntity, RestoreEntity):
         self._entry_id = entry_id
         self._attr_unique_id = f"{entry_id}_master_switch"
         self._is_on = manager.master_switch_on
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name=self.manager.config.get("name", "Local Grow Box"),
+            manufacturer="Local Grow Box",
+            model="Grow Box Controller",
+        )
+
+    @property
+    def extra_state_attributes(self):
+        """Return entity specific state attributes."""
+        return {
+            "camera_entity": self.manager.config.get(CONF_CAMERA_ENTITY)
+        }
 
     @property
     def is_on(self) -> bool:
