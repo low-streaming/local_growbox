@@ -7,6 +7,8 @@ CONF_FAN_ENTITY = "fan_entity"
 CONF_PUMP_ENTITY = "pump_entity"
 CONF_TEMP_SENSOR = "temp_sensor"
 CONF_HUMIDITY_SENSOR = "humidity_sensor"
+CONF_TARGET_TEMP = "target_temp"
+CONF_MAX_HUMIDITY = "max_humidity"
 
 # Grow Phases
 PHASE_SEEDLING = "seedling"
