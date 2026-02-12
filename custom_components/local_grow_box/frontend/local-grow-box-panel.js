@@ -83,28 +83,36 @@ class LocalGrowBoxPanel extends HTMLElement {
                     --primary-color: #03a9f4;
                     --accent-color: #009688;
                     --text-primary-color: #ffffff;
-                    --card-bg: var(--ha-card-background, var(--card-background-color, #fff));
-                    --primary-text: var(--primary-text-color);
-                    --secondary-text: var(--secondary-text-color);
+                    --card-bg: #1c1c1e; /* Darker, sleek background */
+                    --primary-text: #ffffff;
+                    --secondary-text: #b0b0b0;
                     --success-color: #4caf50;
                     --warning-color: #ff9800;
                     --danger-color: #f44336;
                     --info-color: #2196f3;
+                    
+                    /* Gradients for bars */
+                    --grad-success: linear-gradient(90deg, #66bb6a, #43a047);
+                    --grad-warning: linear-gradient(90deg, #ffa726, #fb8c00);
+                    --grad-danger: linear-gradient(90deg, #ef5350, #e53935);
+                    --grad-info: linear-gradient(90deg, #42a5f5, #1e88e5);
+                    --grad-inactive: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+
                     display: block;
-                    background-color: var(--primary-background-color);
+                    background-color: #121212; /* Deep dark bg */
                     min-height: 100vh;
                     font-family: 'Roboto', 'Segoe UI', sans-serif;
                     color: var(--primary-text);
                     padding-bottom: 40px;
                 }
                 .header {
-                    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+                    background: linear-gradient(135deg, #0288d1, #00796b);
                     color: var(--text-primary-color);
                     padding: 24px;
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
                     margin-bottom: 24px;
                 }
                 .header h1 {
@@ -114,7 +122,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     letter-spacing: 0.5px;
                 }
                 .add-btn {
-                    background: rgba(255,255,255,0.2);
+                    background: rgba(255,255,255,0.15);
                     color: white;
                     width: 44px;
                     height: 44px;
@@ -124,12 +132,13 @@ class LocalGrowBoxPanel extends HTMLElement {
                     justify-content: center;
                     font-size: 28px;
                     cursor: pointer;
-                    transition: background 0.3s, transform 0.2s;
-                    backdrop-filter: blur(5px);
+                    transition: all 0.3s;
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255,255,255,0.2);
                 }
                 .add-btn:hover {
-                    background: rgba(255,255,255,0.4);
-                    transform: scale(1.05);
+                    background: rgba(255,255,255,0.3);
+                    transform: scale(1.1);
                 }
                 .content {
                     padding: 0 24px;
@@ -139,40 +148,43 @@ class LocalGrowBoxPanel extends HTMLElement {
                 }
                 .card {
                     background-color: var(--card-bg);
-                    border-radius: 16px;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 10px 15px rgba(0,0,0,0.1);
+                    border-radius: 20px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
                     overflow: hidden;
                     display: flex;
                     flex-direction: column;
-                    transition: transform 0.2s, box-shadow 0.2s;
-                    border: 1px solid var(--divider-color, rgba(0,0,0,0.1));
+                    transition: transform 0.3s, box-shadow 0.3s;
+                    border: 1px solid rgba(255,255,255,0.08); /* Subtle highlight */
                     height: 100%;
                 }
                 .card:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 12px rgba(0,0,0,0.1), 0 15px 25px rgba(0,0,0,0.15);
+                    transform: translateY(-4px);
+                    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+                    border-color: rgba(255,255,255,0.15);
                 }
                 .card-header {
-                    padding: 16px 20px;
-                    background: rgba(0,0,0,0.03);
+                    padding: 18px 24px;
+                    background: rgba(255,255,255,0.03);
                     font-size: 18px;
-                    font-weight: 600;
+                    font-weight: 500;
+                    letter-spacing: 0.5px;
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
-                    border-bottom: 1px solid rgba(0,0,0,0.05);
+                    border-bottom: 1px solid rgba(255,255,255,0.05);
                 }
                 .card-header span:last-child {
                    font-size: 0.75em;
-                   background: var(--primary-color);
+                   background: var(--info-color);
                    color: white;
-                   padding: 2px 8px;
-                   border-radius: 12px;
-                   font-weight: normal;
+                   padding: 4px 10px;
+                   border-radius: 20px;
+                   font-weight: 600;
+                   box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
                 }
                 .card-image {
-                    height: 200px;
-                    background-color: #2c3e50;
+                    height: 220px;
+                    background-color: #2c2c2e;
                     background-image: url('/local/growbox-default.jpg');
                     background-size: cover;
                     background-position: center;
@@ -183,22 +195,46 @@ class LocalGrowBoxPanel extends HTMLElement {
                     bottom: 0;
                     left: 0;
                     right: 0;
-                    padding: 10px;
-                    background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);
+                    padding: 12px;
+                    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
                     color: white;
                     display: flex;
-                    justify-content: flex-end;
+                    justify-content: space-between; /* Changed for edit btn */
+                    align-items: center;
+                }
+                .edit-image-btn {
+                    background: rgba(0,0,0,0.6);
+                    color: white;
+                    border: 1px solid rgba(255,255,255,0.3);
+                    border-radius: 50%;
+                    width: 32px;
+                    height: 32px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    font-size: 16px;
+                    transition: all 0.2s;
+                    opacity: 0; /* Hidden by default */
+                }
+                .card-image:hover .edit-image-btn {
+                    opacity: 1;
+                }
+                .edit-image-btn:hover {
+                    background: rgba(255,255,255,0.2);
+                    transform: scale(1.1);
                 }
                 .live-badge {
-                    background: rgba(255, 0, 0, 0.7);
-                    padding: 2px 6px;
-                    border-radius: 4px;
-                    font-size: 10px;
+                    background: rgba(244, 67, 54, 0.85);
+                    padding: 4px 8px;
+                    border-radius: 6px;
+                    font-size: 11px;
                     font-weight: bold;
                     text-transform: uppercase;
                     display: flex;
                     align-items: center;
-                    gap: 4px;
+                    gap: 6px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                 }
                 .live-badge::before {
                     content: '';
@@ -207,9 +243,10 @@ class LocalGrowBoxPanel extends HTMLElement {
                     height: 6px;
                     background: white;
                     border-radius: 50%;
+                    box-shadow: 0 0 4px rgba(255,255,255,0.8);
                 }
                 .card-content {
-                    padding: 20px;
+                    padding: 24px;
                     flex: 1;
                     display: flex;
                     flex-direction: column;
@@ -217,32 +254,33 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .sensor-row {
                     display: flex;
                     align-items: center;
-                    margin-bottom: 20px;
+                    margin-bottom: 24px;
                 }
                 
-                /* Layout similar to user request */
+                /* Refined Grid Layout */
                 .sensor-grid {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: 12px 24px;
+                    gap: 20px 32px; /* Increased gap */
                     margin-top: auto;
-                    padding-top: 20px;
-                    border-top: 1px solid rgba(0,0,0,0.05);
+                    padding-top: 24px;
+                    border-top: 1px solid rgba(255,255,255,0.08); /* Subtle separator */
                 }
 
                 .sensor-item {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    gap: 10px;
+                    gap: 16px;
                 }
                 
                 .sensor-icon-small {
-                    font-size: 20px;
-                    width: 24px;
+                    font-size: 22px;
+                    width: 28px;
                     text-align: center;
-                    color: var(--primary-text);
-                    opacity: 0.8;
+                    color: var(--secondary-text);
+                    opacity: 1;
+                    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
                     flex-shrink: 0;
                 }
 
@@ -250,12 +288,12 @@ class LocalGrowBoxPanel extends HTMLElement {
                      flex: 1;
                      display: flex;
                      align-items: center;
-                     gap: 12px;
+                     gap: 16px;
                 }
 
                 .sensor-bar-segmented {
                     display: flex;
-                    gap: 3px;
+                    gap: 4px;
                     height: 8px;
                     flex: 1; 
                     min-width: 50px;
@@ -264,69 +302,73 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .bar-segment {
                     flex: 1;
                     height: 100%;
-                    background: rgba(0,0,0,0.1);
-                    border-radius: 1px;
+                    background: rgba(255,255,255,0.1);
+                    border-radius: 2px;
+                    transition: background 0.3s;
                 }
 
                 .sensor-val-main {
-                    font-weight: 700;
-                    font-size: 14px;
+                    font-weight: 500;
+                    font-size: 15px;
                     white-space: nowrap;
                     text-align: right;
                     min-width: 60px;
+                    color: #fff;
                 }
                 
                 .sensor-unit {
-                    font-size: 0.8em;
-                    opacity: 0.7;
+                    font-size: 0.85em;
+                    opacity: 0.6;
                     font-weight: normal;
                 }
 
                 .sensor-icon {
-                    width: 32px;
-                    height: 32px;
-                    margin-right: 16px;
+                    width: 40px;
+                    height: 40px;
+                    margin-right: 20px;
                     font-size: 24px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    background: white;
+                    background: rgba(255,255,255,0.05);
                     border-radius: 50%;
-                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                    box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
                     flex-shrink: 0;
+                    border: 1px solid rgba(255,255,255,0.1);
                 }
                 .sensor-data {
                     flex: 1;
                 }
                 .sensor-bar-container {
-                    background-color: rgba(0,0,0,0.1);
-                    height: 8px;
-                    border-radius: 4px;
+                    background-color: rgba(255,255,255,0.08);
+                    height: 10px;
+                    border-radius: 5px;
                     overflow: hidden;
-                    margin-top: 8px;
+                    margin-top: 10px;
                 }
                 .sensor-bar-fill {
                     height: 100%;
-                    border-radius: 4px;
+                    border-radius: 5px;
                     transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
                 }
                 .sensor-value {
                     font-size: 18px;
-                    font-weight: 700;
+                    font-weight: 600;
                     float: right;
                 }
                 .sensor-label {
-                    font-size: 12px;
+                    font-size: 11px;
                     text-transform: uppercase;
-                    letter-spacing: 1px;
-                    opacity: 0.7;
+                    letter-spacing: 1.2px;
+                    opacity: 0.6;
+                    color: var(--secondary-text);
                 }
                 .controls {
                     display: grid;
                     grid-template-columns: repeat(3, 1fr);
-                    gap: 12px;
-                    padding: 20px;
-                    background: rgba(0,0,0,0.02);
+                    gap: 16px;
+                    padding: 24px;
+                    background: rgba(0,0,0,0.1); /* Darker footer */
                 }
                 .control-btn {
                     cursor: pointer;
@@ -334,49 +376,53 @@ class LocalGrowBoxPanel extends HTMLElement {
                     flex-direction: column;
                     align-items: center;
                     justify-content: center;
-                    padding: 12px;
-                    border-radius: 12px;
+                    padding: 16px;
+                    border-radius: 16px;
                     transition: all 0.2s;
-                    background: white;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-                    border: 1px solid transparent;
+                    background: rgba(255,255,255,0.05); /* Slight glassy */
+                    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                    border: 1px solid rgba(255,255,255,0.05);
                 }
                 .control-btn:hover {
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-                    transform: translateY(-1px);
+                    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+                    transform: translateY(-2px);
+                    background: rgba(255,255,255,0.1);
                 }
                 .control-btn.active {
                     background: var(--primary-color);
+                    background: linear-gradient(135deg, var(--primary-color), var(--info-color));
                     color: white;
-                    box-shadow: 0 4px 10px rgba(3, 169, 244, 0.4);
+                    box-shadow: 0 4px 15px rgba(3, 169, 244, 0.4);
+                    border: none;
                 }
                 .control-btn.active .control-icon {
                     color: white;
                 }
                 .control-icon {
-                    font-size: 28px;
-                    margin-bottom: 6px;
-                    color: #7f8c8d;
+                    font-size: 32px;
+                    margin-bottom: 8px;
+                    color: #757575;
                     transition: color 0.2s;
+                    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
                 }
                 select {
-                    padding: 8px 12px;
+                    padding: 10px 14px;
                     border-radius: 8px;
-                    border: 1px solid rgba(0,0,0,0.1);
-                    background: white;
-                    color: #333;
+                    border: 1px solid rgba(255,255,255,0.1);
+                    background: #2c2c2e;
+                    color: white;
                     font-size: 14px;
                     width: 100%;
                     outline: none;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                 }
                 /* Gradients */
-                .grad-vpd { background: linear-gradient(90deg, #3498db, #2ecc71, #e74c3c); }
+                .grad-vpd { background: linear-gradient(90deg, #29b6f6, #66bb6a, #ef5350); }
                 
                 /* Modal refinement */
                 .modal-backdrop {
-                    background: rgba(0, 0, 0, 0.6);
-                    backdrop-filter: blur(4px);
+                    background: rgba(0, 0, 0, 0.8);
+                    backdrop-filter: blur(8px);
                     position: fixed;
                     top: 0; left: 0; width: 100%; height: 100%;
                     display: none;
@@ -388,36 +434,42 @@ class LocalGrowBoxPanel extends HTMLElement {
                     display: flex;
                 }
                 .modal {
-                    background: white;
-                    padding: 30px;
+                    background: #2c2c2e;
+                    color: white;
+                    padding: 32px;
                     width: 90%;
-                    max-width: 500px;
-                    border-radius: 20px;
-                    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+                    max-width: 480px;
+                    border-radius: 24px;
+                    box-shadow: 0 25px 60px rgba(0,0,0,0.6);
+                    border: 1px solid rgba(255,255,255,0.1);
                 }
-                .modal h2 { margin-top: 0; margin-bottom: 16px; color: var(--primary-color); }
+                .modal h2 { margin-top: 0; margin-bottom: 20px; color: var(--primary-color); }
                 .modal-actions {
-                    margin-top: 24px;
+                    margin-top: 32px;
                     display: flex;
                     justify-content: flex-end;
-                    gap: 12px;
+                    gap: 16px;
                 }
                 .modal-btn {
                     padding: 12px 24px;
                     font-size: 14px;
                     border: none;
-                    border-radius: 8px;
+                    border-radius: 12px;
                     cursor: pointer;
                     font-weight: 600;
+                    letter-spacing: 0.5px;
                 }
                 .modal-btn.cancel {
-                    background: #f5f5f5;
-                    color: #333;
+                    background: rgba(255,255,255,0.1);
+                    color: white;
                 }
                 .modal-btn.confirm {
                     background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
                     color: white;
                     box-shadow: 0 4px 15px rgba(0,150,136, 0.4);
+                }
+                input[type="file"] {
+                    display: none;
                 }
             </style>
         `;
@@ -427,35 +479,35 @@ class LocalGrowBoxPanel extends HTMLElement {
             return this._hass.states[entityId];
         };
 
-        // Helper to determine color based on value and type
+        // Helper to determine color based on value and type - Returns GRADIENT string
         const getSensorStatus = (type, value) => {
-            if (value === null || value === undefined) return { color: 'rgba(0,0,0,0.1)', level: 0 }; // inactive gray
+            if (value === null || value === undefined) return { color: 'var(--grad-inactive)', level: 0 };
 
-            // Value is numeric or string "on"/"off"
             if (type === 'temp') {
-                if (value < 18) return { color: 'var(--info-color)', level: 1 }; // Cold
-                if (value > 28) return { color: 'var(--danger-color)', level: 4 }; // Hot
-                return { color: 'var(--success-color)', level: 3 }; // Good
+                if (value < 18) return { color: 'var(--grad-info)', level: 1 };
+                if (value > 28) return { color: 'var(--grad-danger)', level: 4 };
+                return { color: 'var(--grad-success)', level: 3 };
             }
             if (type === 'humidity') {
-                if (value < 40) return { color: 'var(--warning-color)', level: 1 }; // Dry
-                if (value > 70) return { color: 'var(--danger-color)', level: 4 }; // Wet
-                return { color: 'var(--success-color)', level: 3 }; // Good
+                if (value < 40) return { color: 'var(--grad-warning)', level: 1 };
+                if (value > 70) return { color: 'var(--grad-danger)', level: 4 };
+                return { color: 'var(--grad-success)', level: 3 };
             }
             if (type === 'light') {
                 return value === 'on'
-                    ? { color: 'var(--warning-color)', level: 3 } // On (Yellow/Orange)
-                    : { color: '#9e9e9e', level: 0 }; // Off (dimmed)
+                    ? { color: 'var(--grad-warning)', level: 3 }
+                    : { color: 'var(--grad-inactive)', level: 0 };
             }
             if (type === 'fan') {
                 return value === 'on'
-                    ? { color: 'var(--success-color)', level: 3 }
-                    : { color: '#9e9e9e', level: 0 };
+                    ? { color: 'var(--grad-success)', level: 3 }
+                    : { color: 'var(--grad-inactive)', level: 0 };
             }
-            return { color: 'var(--primary-color)', level: 2 };
+            return { color: 'var(--grad-success)', level: 2 };
         };
 
         let cardsHtml = '';
+        const timestamp = new Date().getTime(); // Cache buster for images
 
         if (this._devices && this._devices.length > 0) {
             cardsHtml = this._devices.map((device, index) => {
@@ -486,7 +538,6 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const phaseOptions = (phaseState && phaseState.attributes && phaseState.attributes.options) ? phaseState.attributes.options : defaultPhaseOptions;
                 const currentPhase = phaseState ? phaseState.state : '';
 
-                // Translation Map
                 const phaseTranslations = {
                     'seedling': 'Keimling',
                     'vegetative': 'Wachstum',
@@ -495,53 +546,82 @@ class LocalGrowBoxPanel extends HTMLElement {
                     'curing': 'Veredelung'
                 };
 
-                // Camera handling - Force use of entity_picture for token auth
-                let cameraHtml = `
-                    <div class="card-image">
-                       <div class="card-image-overlay">
-                            <span class="live-badge">Keine Kamera</span>
-                        </div>
-                    </div>
-                `;
+                // Camera/Image logic
+                // Priority: 1. Configured Camera Entity, 2. Uploaded Custom Image, 3. Default Placeholder
+                let imageUrl = '/local/growbox-default.jpg';
+                let isLive = false;
+                let badgeText = 'Keine Kamera';
+
+                // Check for custom upload first (fallback)
+                // We use the timestamp to attempt finding it
+                const customImage = `/local/local_grow_box_images/${device.id}.jpg?t=${timestamp}`;
+
+                // Construct HTML - we accept the image might broken if not exists, 
+                // so we use onerror to fallback to placeholder.
+                // But if Camera Entity exists, we use that.
 
                 if (masterState && masterState.attributes.camera_entity) {
                     const cameraEntity = masterState.attributes.camera_entity;
                     const cameraState = this._hass.states[cameraEntity];
                     if (cameraState) {
-                        // Use entity_picture if available (contains token), else fallback to stream
-                        const camUrl = cameraState.attributes.entity_picture || `/api/camera_proxy_stream/${cameraEntity}`;
-                        cameraHtml = `
-                            <div class="card-image">
-                                <img src="${camUrl}" style="width: 100%; height: 100%; object-fit: cover;" />
-                                <div class="card-image-overlay">
-                                    <span class="live-badge">LIVE</span>
-                                </div>
-                            </div>
-                        `;
+                        imageUrl = cameraState.attributes.entity_picture || `/api/camera_proxy_stream/${cameraEntity}`;
+                        isLive = true;
+                        badgeText = 'LIVE';
                     }
                 }
 
-                // Values for sensors
+                // If NOT live, we try the custom image
+                // Note: We render img tag. If specific custom image doesn't exist, it might show broken icon unless handled.
+                // We'll use a trick: standard src is custom, onerror sets it to default.
+
+                let imgTag = '';
+                if (isLive) {
+                    imgTag = `<img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: cover;" />`;
+                } else {
+                    // Try custom image, fallback to default
+                    imgTag = `<img src="${customImage}" onerror="this.onerror=null;this.src='/local/growbox-default.jpg';" style="width: 100%; height: 100%; object-fit: cover;" />`;
+                }
+
+                // Edit button only shows if NOT a live camera entity (or maybe always?)
+                // Let's allow always in case they want a static cover for a live cam (not imp. yet)
+                // For now, allow upload for everyone.
+
+                const cameraHtml = `
+                    <div class="card-image">
+                        ${imgTag}
+                        <div class="card-image-overlay">
+                            ${!isLive ? `
+                            <div class="edit-image-btn" id="edit-img-${index}" title="Bild hochladen">
+                                ✎
+                            </div>
+                            <input type="file" id="file-${index}" accept="image/*" />
+                            ` : '<div></div>'}
+                            
+                            <span class="live-badge" style="${!isLive ? 'background:#607d8b;' : ''}">
+                                ${badgeText}
+                            </span>
+                        </div>
+                    </div>
+                `;
+
+                // Sensors
                 const tempVal = tempState ? parseFloat(tempState.state) : null;
                 const humVal = humidityState ? parseFloat(humidityState.state) : null;
                 const lightVal = lightState ? lightState.state : null;
                 const fanVal = fanState ? fanState.state : null;
 
-                // Status calculations
                 const tempStatus = getSensorStatus('temp', tempVal);
                 const humStatus = getSensorStatus('humidity', humVal);
                 const lightStatus = getSensorStatus('light', lightVal);
                 const fanStatus = getSensorStatus('fan', fanVal);
 
-                // Grid Item Renderer with Segmented Bars (Single Row Layout)
                 const renderSegmentedItem = (icon, valStr, unit, status) => {
                     const maxSegments = 4;
                     let segmentsHtml = '';
                     for (let i = 1; i <= maxSegments; i++) {
-                        // Active segments get the color, inactive get transparent/faint
                         const isActive = i <= status.level;
-                        const bgColor = isActive ? status.color : 'rgba(0,0,0,0.1)';
-                        segmentsHtml += `<div class="bar-segment" style="background-color: ${bgColor}"></div>`;
+                        const bgStyle = isActive ? `background: ${status.color}; filter: brightness(1.2); box-shadow: 0 0 8px ${status.color};` : '';
+                        segmentsHtml += `<div class="bar-segment" style="${bgStyle}"></div>`;
                     }
 
                     return `
@@ -568,7 +648,6 @@ class LocalGrowBoxPanel extends HTMLElement {
                         </div>
                         ${cameraHtml}
                         <div class="card-content">
-                             <!-- Main Controls -->
                              <div class="sensor-row">
                                 <div class="sensor-icon">🌱</div>
                                 <div class="sensor-data">
@@ -594,7 +673,6 @@ class LocalGrowBoxPanel extends HTMLElement {
                                 </div>
                              </div>
 
-                             <!-- Environment Grid with Segmented Bars -->
                              <div class="sensor-grid">
                                 ${renderSegmentedItem('🌡️', tempDisplay, '°C', tempStatus)}
                                 ${renderSegmentedItem('☁️', humDisplay, '%', humStatus)}
@@ -614,7 +692,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                             </div>
                              <div class="control-btn" id="settings-${index}" data-device="${device.id}">
                                 <div class="control-icon">⚙️</div>
-                                <span>Einstellungen</span>
+                                <span>Einst.</span>
                             </div>
                         </div>
                     </div>
@@ -656,8 +734,6 @@ class LocalGrowBoxPanel extends HTMLElement {
         root.innerHTML = html;
 
         // Bind Events
-
-        // Add Plant Button
         const addBtn = root.getElementById('add-plant-btn');
         if (addBtn) {
             addBtn.addEventListener('click', () => {
@@ -666,7 +742,6 @@ class LocalGrowBoxPanel extends HTMLElement {
             });
         }
 
-        // Modal Actions
         const modalCancel = root.getElementById('modal-cancel');
         if (modalCancel) {
             modalCancel.addEventListener('click', () => {
@@ -684,7 +759,6 @@ class LocalGrowBoxPanel extends HTMLElement {
             });
         }
 
-        // Outside click to close
         const modalBackdrop = root.getElementById('add-modal');
         if (modalBackdrop) {
             modalBackdrop.addEventListener('click', (e) => {
@@ -694,23 +768,17 @@ class LocalGrowBoxPanel extends HTMLElement {
             });
         }
 
-        // Bind Card Events
         if (this._devices) {
             this._devices.forEach((device, index) => {
+                // Basic Events
                 const phaseSelect = root.getElementById(`phase-${index}`);
-                if (phaseSelect) {
-                    phaseSelect.addEventListener('change', (e) => this._setPhase(e.target.dataset.entity, e.target.value));
-                }
+                if (phaseSelect) phaseSelect.addEventListener('change', (e) => this._setPhase(e.target.dataset.entity, e.target.value));
 
                 const masterBtn = root.getElementById(`master-${index}`);
-                if (masterBtn) {
-                    masterBtn.addEventListener('click', (e) => this._toggleEntity(masterBtn.dataset.entity));
-                }
+                if (masterBtn) masterBtn.addEventListener('click', (e) => this._toggleEntity(masterBtn.dataset.entity));
 
                 const pumpBtn = root.getElementById(`pump-${index}`);
-                if (pumpBtn) {
-                    pumpBtn.addEventListener('click', (e) => this._toggleEntity(pumpBtn.dataset.entity));
-                }
+                if (pumpBtn) pumpBtn.addEventListener('click', (e) => this._toggleEntity(pumpBtn.dataset.entity));
 
                 const settingsBtn = root.getElementById(`settings-${index}`);
                 if (settingsBtn) {
@@ -721,6 +789,30 @@ class LocalGrowBoxPanel extends HTMLElement {
                             detail: { entityId: device.entities.master }
                         });
                         this.dispatchEvent(event);
+                    });
+                }
+
+                // Image Upload Events
+                const editBtn = root.getElementById(`edit-img-${index}`);
+                const fileInput = root.getElementById(`file-${index}`);
+
+                if (editBtn && fileInput) {
+                    editBtn.addEventListener('click', () => {
+                        fileInput.click();
+                    });
+
+                    fileInput.addEventListener('change', (e) => {
+                        if (e.target.files && e.target.files[0]) {
+                            const file = e.target.files[0];
+                            const reader = new FileReader();
+
+                            reader.onload = async (e) => {
+                                const base64Img = e.target.result;
+                                await this._uploadImage(device.id, base64Img);
+                            };
+
+                            reader.readAsDataURL(file);
+                        }
                     });
                 }
             });
@@ -741,6 +833,24 @@ class LocalGrowBoxPanel extends HTMLElement {
     _setPhase(entityId, option) {
         if (!this._hass || !entityId) return;
         this._hass.callService("select", "select_option", { entity_id: entityId, option: option });
+    }
+
+    async _uploadImage(deviceId, base64Image) {
+        if (!this._hass) return;
+
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/upload_image',
+                device_id: deviceId,
+                image: base64Image
+            });
+            // Force refresh of specific image or component
+            // Simple way: re-render
+            this._render();
+        } catch (err) {
+            console.error("Image upload failed:", err);
+            alert("Upload fehlgeschlagen: " + err.message);
+        }
     }
 }
 
