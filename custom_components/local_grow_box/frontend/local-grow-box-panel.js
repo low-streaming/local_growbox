@@ -758,6 +758,8 @@ class LocalGrowBoxPanel extends HTMLElement {
 
         // --- Event Listeners ---
 
+        // --- Event Listeners ---
+
         // Tab Navigation
         root.getElementById('tab-overview').addEventListener('click', () => { this._activeTab = 'overview'; this._render(); });
         root.getElementById('tab-settings').addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
@@ -773,15 +775,16 @@ class LocalGrowBoxPanel extends HTMLElement {
 
         if (this._devices) {
             this._devices.forEach((d, i) => {
-                const root = this.shadowRoot;
+                const shadow = this.shadowRoot;
 
+                // Overview Actions
                 if (this._activeTab === 'overview') {
-                    root.getElementById(`master - ${i} `)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.master }));
-                    root.getElementById(`pump - ${i} `)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.pump }));
-                    root.getElementById(`phase - ${i} `)?.addEventListener('change', (e) => this._hass.callWS({ type: 'local_grow_box/update_config', entry_id: d.entryId, config: { current_phase: e.target.value } }));
+                    shadow.getElementById(`master-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.master }));
+                    shadow.getElementById(`pump-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.pump }));
+                    shadow.getElementById(`phase-${i}`)?.addEventListener('change', (e) => this._hass.callWS({ type: 'local_grow_box/update_config', entry_id: d.entryId, config: { current_phase: e.target.value } }));
 
-                    const fileInput = root.getElementById(`file - ${i} `);
-                    root.getElementById(`edit - img - ${i} `)?.addEventListener('click', () => fileInput.click());
+                    const fileInput = shadow.getElementById(`file-${i}`);
+                    shadow.getElementById(`edit-img-${i}`)?.addEventListener('click', () => fileInput.click());
                     fileInput?.addEventListener('change', (e) => {
                         if (e.target.files[0]) {
                             const reader = new FileReader();
@@ -792,73 +795,59 @@ class LocalGrowBoxPanel extends HTMLElement {
                             reader.readAsDataURL(e.target.files[0]);
                         }
                     });
-                    root.getElementById(`settings - nav - ${i} `)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
+                    shadow.getElementById(`settings-nav-${i}`)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
                 }
 
+                // Settings Save
                 if (this._activeTab === 'settings') {
-                    root.getElementById(`save - cfg - ${i} `)?.addEventListener('click', () => {
-                        const lightEntity = root.getElementById(`cfg - light - ${i} `).value;
-                        const fanEntity = root.getElementById(`cfg - fan - ${i} `).value;
-                        const pumpEntity = root.getElementById(`cfg - pump - ${i} `).value;
-                        const cameraEntity = root.getElementById(`cfg - camera - ${i} `).value;
-                        const tempSensor = root.getElementById(`cfg - temp - ${i} `).value;
-                        const humiditySensor = root.getElementById(`cfg - hum - ${i} `).value;
-                        const moisSensor = root.getElementById(`cfg - mois - ${i} `).value;
+                    shadow.getElementById(`save-cfg-${i}`)?.addEventListener('click', () => {
+                        const cfg = {
+                            light_entity: shadow.getElementById(`cfg-light-${i}`).value,
+                            fan_entity: shadow.getElementById(`cfg-fan-${i}`).value,
+                            pump_entity: shadow.getElementById(`cfg-pump-${i}`).value,
+                            camera_entity: shadow.getElementById(`cfg-camera-${i}`).value,
+                            temp_sensor: shadow.getElementById(`cfg-temp-${i}`).value,
+                            humidity_sensor: shadow.getElementById(`cfg-hum-${i}`).value,
+                            moisture_sensor: shadow.getElementById(`cfg-mois-${i}`).value,
 
-                        const targetTemp = parseFloat(root.getElementById(`cfg - target - temp - ${i} `).value);
-                        const targetHum = parseFloat(root.getElementById(`cfg - target - hum - ${i} `).value);
-                        const targetMois = parseFloat(root.getElementById(`cfg - target - mois - ${i} `).value);
-                        const pumpDur = parseFloat(root.getElementById(`cfg - pump - dur - ${i} `).value);
-                        const lightStart = parseFloat(root.getElementById(`cfg - light - start - ${i} `).value);
-                        const phaseStart = root.getElementById(`cfg - phase - start - ${i} `).value;
+                            target_temp: parseFloat(shadow.getElementById(`cfg-target-temp-${i}`).value),
+                            max_humidity: parseFloat(shadow.getElementById(`cfg-target-hum-${i}`).value),
+                            target_moisture: parseFloat(shadow.getElementById(`cfg-target-mois-${i}`).value),
+                            pump_duration: parseFloat(shadow.getElementById(`cfg-pump-dur-${i}`).value),
+                            light_start_hour: parseFloat(shadow.getElementById(`cfg-light-start-${i}`).value),
+                            phase_start_date: shadow.getElementById(`cfg-phase-start-${i}`).value || null,
+                        };
 
-                        this._hass.callWS({
-                            type: 'local_grow_box/update_config',
-                            entry_id: d.entryId,
-                            config: {
-                                light_entity: lightEntity,
-                                fan_entity: fanEntity,
-                                pump_entity: pumpEntity,
-                                camera_entity: cameraEntity,
-                                temp_sensor: tempSensor,
-                                humidity_sensor: humiditySensor,
-                                moisture_sensor: moisSensor,
-                                target_temp: targetTemp,
-                                max_humidity: targetHum,
-                                target_moisture: targetMois,
-                                pump_duration: pumpDur,
-                                light_start_hour: lightStart,
-                                phase_start_date: phaseStart || null,
-                            }
-                        });
+                        this._saveConfig(d.entryId, cfg);
                     });
                 }
 
+                // Phases Save
                 if (this._activeTab === 'phases') {
-                    root.getElementById(`save - phases - ${i} `)?.addEventListener('click', () => {
-                        const cfg = {
-                            phase_seedling_hours: parseInt(root.getElementById(`ph - seedling - ${i} `).value),
-                            phase_vegetative_hours: parseInt(root.getElementById(`ph - vegetative - ${i} `).value),
-                            phase_flowering_hours: parseInt(root.getElementById(`ph - flowering - ${i} `).value),
-                            phase_drying_hours: parseInt(root.getElementById(`ph - drying - ${i} `).value),
-                            phase_curing_hours: parseInt(root.getElementById(`ph - curing - ${i} `).value),
-
-                            custom1_phase_name: root.getElementById(`ph - c1 - name - ${i} `).value,
-                            custom1_phase_hours: parseInt(root.getElementById(`ph - c1 - hours - ${i} `).value),
-                            custom2_phase_name: root.getElementById(`ph - c2 - name - ${i} `).value,
-                            custom2_phase_hours: parseInt(root.getElementById(`ph - c2 - hours - ${i} `).value),
-                            custom3_phase_name: root.getElementById(`ph - c3 - name - ${i} `).value,
-                            custom3_phase_hours: parseInt(root.getElementById(`ph - c3 - hours - ${i} `).value),
+                    shadow.getElementById(`save-phases-${i}`)?.addEventListener('click', () => {
+                        const val = (id) => {
+                            const el = shadow.getElementById(id);
+                            return el ? (el.type === 'number' ? parseInt(el.value) : el.value) : null;
                         };
-                        this._hass.callWS({
-                            type: 'local_grow_box/update_config',
-                            entry_id: d.entryId,
-                            config: cfg
-                        });
+
+                        const cfg = {
+                            phase_seedling_hours: val(`ph-seedling-${i}`),
+                            phase_vegetative_hours: val(`ph-vegetative-${i}`),
+                            phase_flowering_hours: val(`ph-flowering-${i}`),
+                            phase_drying_hours: val(`ph-drying-${i}`),
+                            phase_curing_hours: val(`ph-curing-${i}`),
+
+                            custom1_phase_name: val(`ph-c1-name-${i}`),
+                            custom1_phase_hours: val(`ph-c1-hours-${i}`),
+                            custom2_phase_name: val(`ph-c2-name-${i}`),
+                            custom2_phase_hours: val(`ph-c2-hours-${i}`),
+                            custom3_phase_name: val(`ph-c3-name-${i}`),
+                            custom3_phase_hours: val(`ph-c3-hours-${i}`),
+                        };
+                        this._saveConfig(d.entryId, cfg);
                     });
                 }
             });
-
         }
     }
 
