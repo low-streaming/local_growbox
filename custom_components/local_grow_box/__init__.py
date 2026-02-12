@@ -221,8 +221,13 @@ class GrowBoxManager:
         humid_entity = self.config[CONF_HUMIDITY_SENSOR]
         fan_entity = self.config[CONF_FAN_ENTITY]
 
-        target_temp = self.config.get(CONF_TARGET_TEMP, DEFAULT_TARGET_TEMP)
-        max_humidity = self.config.get(CONF_MAX_HUMIDITY, DEFAULT_MAX_HUMIDITY)
+        target_temp = self.config.get(CONF_TARGET_TEMP)
+        if target_temp is None:
+            target_temp = DEFAULT_TARGET_TEMP
+            
+        max_humidity = self.config.get(CONF_MAX_HUMIDITY)
+        if max_humidity is None:
+            max_humidity = DEFAULT_MAX_HUMIDITY
 
         temp_state = self.hass.states.get(temp_entity)
         humid_state = self.hass.states.get(humid_entity)
@@ -307,7 +312,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         hass,
         webcomponent_name="local-grow-box-panel",
         frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.6",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.7",
         sidebar_title="Grow Room",
         sidebar_icon="mdi:sprout",
         require_admin=False,

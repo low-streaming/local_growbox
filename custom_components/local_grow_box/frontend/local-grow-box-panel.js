@@ -68,7 +68,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         phase: findEntity('_phase'),
                         master: findEntity('_master_switch'),
                         vpd: findEntity('_vpd'),
-                        pump: findEntity('_water_pump'),
+                        pump: findEntity('_water_pump') || ((entry && entry.options) ? entry.options.pump_entity : null),
                         days: findEntity('_days_in_phase'),
                     }
                 };
