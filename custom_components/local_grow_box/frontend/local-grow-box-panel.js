@@ -544,6 +544,8 @@ class LocalGrowBoxPanel extends HTMLElement {
         };
 
         const renderSettings = () => {
+            if (!this._hass || !this._devices) return '';
+
             const allEntities = Object.keys(this._hass.states).sort();
             const filterDomain = (d) => allEntities.filter(e => e.startsWith(d));
             const switches = [...filterDomain('switch.'), ...filterDomain('light.')];
@@ -551,20 +553,33 @@ class LocalGrowBoxPanel extends HTMLElement {
             const cameras = filterDomain('camera.');
             const sensors = filterDomain('sensor.');
 
-            const renderSelect = (label, id, value, options) => `
-                <div class="setting-row">
+            const renderSelect = (label, id, value, options) => {
+                const optsHtml = options.map(o => {
+                    const stateObj = this._hass.states[o];
+                    const friendly = stateObj ? (stateObj.attributes.friendly_name || o) : o;
+                    const selected = o === value ? 'selected' : '';
+                    return `<option value="${o}" ${selected}>${friendly}</option>`;
+                }).join('');
+
+                return `
+                <div class="setting-item">
                     <label class="setting-label">${label}</label>
                     <select id="${id}">
                          <option value="">-- Wählen --</option>
-                         ${options.map(o => `<option value="${o}" ${o === value ? 'selected' : ''}>${this._hass.states[o].attributes.friendly_name || o}</option>`).join('')}
+                         ${optsHtml}
                     </select>
                 </div>
-             `;
+                `;
+            };
 
             return this._devices.map((device, index) => {
                 const masterState = this._hass.states[device.entities.master];
                 const attrs = masterState?.attributes || {};
                 const phaseStartDate = attrs.phase_start_date ? new Date(attrs.phase_start_date).toISOString().split('T')[0] : '';
+
+                // Safe unique IDs for template literals
+                const camId = `cfg-camera-${index}`;
+                const pumpId = `cfg-pump-${index}`;
 
                 return `
                     <div class="settings-card">
@@ -596,7 +611,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <div class="settings-group" style="margin-top:16px;">
                             <h4 class="settings-group-title">💧 Bewässerung</h4>
                             <div class="settings-grid">
-                                ${renderSelect('Pumpe', `cfg-pump-${index}`, attrs.pump_entity, filterDomain('switch.'))}
+                                ${renderSelect('Pumpe', pumpId, attrs.pump_entity, filterDomain('switch.'))}
                                 ${renderSelect('Boden-Sensor', `cfg-mois-${index}`, attrs.moisture_sensor, sensors)}
                                 
                                 <div class="setting-item">
@@ -630,7 +645,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <div class="settings-group" style="margin-top:16px;">
                             <h4 class="settings-group-title">📷 Sonstiges</h4>
                             <div class="settings-grid">
-                                ${renderSelect('Kamera', `cfg-camera-${index}`, attrs.camera_entity, cameras)}
+                                ${renderSelect('Kamera', camId, attrs.camera_entity, cameras)}
                             </div>
                         </div>
 
