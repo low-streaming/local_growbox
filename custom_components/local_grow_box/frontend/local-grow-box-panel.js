@@ -580,6 +580,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 // Safe unique IDs for template literals
                 const camId = `cfg-camera-${index}`;
                 const pumpId = `cfg-pump-${index}`;
+                const lightId = `cfg-light-${index}`;
 
                 return `
                     <div class="settings-card">
@@ -629,7 +630,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <div class="settings-group" style="margin-top:16px;">
                             <h4 class="settings-group-title">💡 Licht & Phase</h4>
                             <div class="settings-grid">
-                                ${renderSelect('Licht-Quelle', `cfg-light-${index}`, attrs.light_entity, switches)}
+                                ${renderSelect('Licht-Quelle', lightId, attrs.light_entity, switches)}
                                 <div class="setting-item">
                                     <label>Tagesbeginn (Licht an)</label>
                                     <input type="number" id="cfg-light-start-${index}" value="${attrs.light_start_hour || 6}" min="0" max="23">
@@ -659,12 +660,15 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const opts = device.options;
 
                 // Helper for inputs
-                const renderPhaseInput = (label, key, defaultVal) => `
+                const renderPhaseInput = (label, key, defaultVal) => {
+                    const val = opts[`phase_${key}_hours`] || defaultVal;
+                    return `
                     <div class="setting-item">
                         <label>${label} (Std)</label>
-                        <input type="number" id="ph-${key}-${index}" value="${opts[`phase_${key}_hours`] || defaultVal}" placeholder="${defaultVal}">
+                        <input type="number" id="ph-${key}-${index}" value="${val}" placeholder="${defaultVal}">
                     </div>
                 `;
+                };
 
                 return `
                     <div class="settings-card">
@@ -686,29 +690,29 @@ class LocalGrowBoxPanel extends HTMLElement {
                             <div class="settings-grid">
                                 <div class="setting-item">
                                     <label>Phase 1 Name</label>
-                                    <input type="text" id="ph-c1-name-${index}" value="${opts[`custom1_phase_name`] || ''}">
+                                    <input type="text" id="ph-c1-name-${index}" value="${opts['custom1_phase_name'] || ''}">
                                 </div>
                                 <div class="setting-item">
                                     <label>Std.</label>
-                                    <input type="number" id="ph-c1-hours-${index}" value="${opts[`custom1_phase_hours`] || 0}">
+                                    <input type="number" id="ph-c1-hours-${index}" value="${opts['custom1_phase_hours'] || 0}">
                                 </div>
                                 
                                 <div class="setting-item">
                                     <label>Phase 2 Name</label>
-                                    <input type="text" id="ph-c2-name-${index}" value="${opts[`custom2_phase_name`] || ''}">
+                                    <input type="text" id="ph-c2-name-${index}" value="${opts['custom2_phase_name'] || ''}">
                                 </div>
                                 <div class="setting-item">
                                     <label>Std.</label>
-                                    <input type="number" id="ph-c2-hours-${index}" value="${opts[`custom2_phase_hours`] || 0}">
+                                    <input type="number" id="ph-c2-hours-${index}" value="${opts['custom2_phase_hours'] || 0}">
                                 </div>
 
                                 <div class="setting-item">
                                     <label>Phase 3 Name</label>
-                                    <input type="text" id="ph-c3-name-${index}" value="${opts[`custom3_phase_name`] || ''}">
+                                    <input type="text" id="ph-c3-name-${index}" value="${opts['custom3_phase_name'] || ''}">
                                 </div>
                                 <div class="setting-item">
                                     <label>Std.</label>
-                                    <input type="number" id="ph-c3-hours-${index}" value="${opts[`custom3_phase_hours`] || 0}">
+                                    <input type="number" id="ph-c3-hours-${index}" value="${opts['custom3_phase_hours'] || 0}">
                                 </div>
                             </div>
                         </div>
