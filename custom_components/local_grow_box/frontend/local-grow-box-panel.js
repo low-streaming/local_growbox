@@ -220,10 +220,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                     margin-bottom: 20px;
                 }
                 
+                /* Layout similar to user request */
                 .sensor-grid {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: 16px 24px;
+                    gap: 12px 24px;
                     margin-top: auto;
                     padding-top: 20px;
                     border-top: 1px solid rgba(0,0,0,0.05);
@@ -232,7 +233,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .sensor-item {
                     display: flex;
                     align-items: center;
-                    gap: 12px;
+                    justify-content: space-between;
+                    gap: 10px;
                 }
                 
                 .sensor-icon-small {
@@ -241,41 +243,22 @@ class LocalGrowBoxPanel extends HTMLElement {
                     text-align: center;
                     color: var(--primary-text);
                     opacity: 0.8;
+                    flex-shrink: 0;
                 }
 
-                .sensor-info {
-                    flex: 1;
-                    overflow: hidden;
+                .sensor-data-row {
+                     flex: 1;
+                     display: flex;
+                     align-items: center;
+                     gap: 12px;
                 }
 
-                .sensor-status-row {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: baseline;
-                    font-size: 14px;
-                    margin-bottom: 6px;
-                }
-                
-                .sensor-val-main {
-                    font-weight: 700;
-                    font-size: 15px;
-                }
-                
-                .sensor-unit {
-                    font-size: 0.8em;
-                    opacity: 0.7;
-                    font-weight: normal;
-                }
-
-                /* Segmented Bar */
                 .sensor-bar-segmented {
                     display: flex;
-                    gap: 2px;
+                    gap: 3px;
                     height: 8px;
-                    width: 100%;
-                    background: rgba(0,0,0,0.05);
-                    border-radius: 2px;
-                    padding: 1px;
+                    flex: 1; 
+                    min-width: 50px;
                 }
                 
                 .bar-segment {
@@ -283,12 +266,20 @@ class LocalGrowBoxPanel extends HTMLElement {
                     height: 100%;
                     background: rgba(0,0,0,0.1);
                     border-radius: 1px;
-                    opacity: 0.2;
-                    transition: all 0.3s;
+                }
+
+                .sensor-val-main {
+                    font-weight: 700;
+                    font-size: 14px;
+                    white-space: nowrap;
+                    text-align: right;
+                    min-width: 60px;
                 }
                 
-                .bar-segment.active {
-                    opacity: 1;
+                .sensor-unit {
+                    font-size: 0.8em;
+                    opacity: 0.7;
+                    font-weight: normal;
                 }
 
                 .sensor-icon {
@@ -438,7 +429,7 @@ class LocalGrowBoxPanel extends HTMLElement {
 
         // Helper to determine color based on value and type
         const getSensorStatus = (type, value) => {
-            if (value === null || value === undefined) return { color: '#ccc', level: 0 };
+            if (value === null || value === undefined) return { color: 'rgba(0,0,0,0.1)', level: 0 }; // inactive gray
 
             // Value is numeric or string "on"/"off"
             if (type === 'temp') {
@@ -454,12 +445,12 @@ class LocalGrowBoxPanel extends HTMLElement {
             if (type === 'light') {
                 return value === 'on'
                     ? { color: 'var(--warning-color)', level: 3 } // On (Yellow/Orange)
-                    : { color: '#9e9e9e', level: 1 }; // Off
+                    : { color: '#9e9e9e', level: 0 }; // Off (dimmed)
             }
             if (type === 'fan') {
                 return value === 'on'
                     ? { color: 'var(--success-color)', level: 3 }
-                    : { color: '#9e9e9e', level: 1 };
+                    : { color: '#9e9e9e', level: 0 };
             }
             return { color: 'var(--primary-color)', level: 2 };
         };
@@ -504,7 +495,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     'curing': 'Veredelung'
                 };
 
-                // Camera handling
+                // Camera handling - Force use of entity_picture for token auth
                 let cameraHtml = `
                     <div class="card-image">
                        <div class="card-image-overlay">
@@ -517,6 +508,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     const cameraEntity = masterState.attributes.camera_entity;
                     const cameraState = this._hass.states[cameraEntity];
                     if (cameraState) {
+                        // Use entity_picture if available (contains token), else fallback to stream
                         const camUrl = cameraState.attributes.entity_picture || `/api/camera_proxy_stream/${cameraEntity}`;
                         cameraHtml = `
                             <div class="card-image">
@@ -541,29 +533,25 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const lightStatus = getSensorStatus('light', lightVal);
                 const fanStatus = getSensorStatus('fan', fanVal);
 
-                // Grid Item Renderer with Segmented Bars
+                // Grid Item Renderer with Segmented Bars (Single Row Layout)
                 const renderSegmentedItem = (icon, valStr, unit, status) => {
                     const maxSegments = 4;
                     let segmentsHtml = '';
                     for (let i = 1; i <= maxSegments; i++) {
+                        // Active segments get the color, inactive get transparent/faint
                         const isActive = i <= status.level;
-                        // For inactive segments, keep them transparent/default but inside the container
-                        const color = isActive ? status.color : 'transparent';
-                        // Toggle opacity handled by CSS class .active, here we set color inline for active ones
-                        const style = isActive ? `background-color: ${status.color}; opacity: 1;` : '';
-                        segmentsHtml += `<div class="bar-segment" style="${style}"></div>`;
+                        const bgColor = isActive ? status.color : 'rgba(0,0,0,0.1)';
+                        segmentsHtml += `<div class="bar-segment" style="background-color: ${bgColor}"></div>`;
                     }
 
                     return `
                     <div class="sensor-item">
                         <div class="sensor-icon-small">${icon}</div>
-                        <div class="sensor-info">
-                            <div class="sensor-status-row">
-                                <span class="sensor-val-main">${valStr} <span class="sensor-unit">${unit}</span></span>
-                            </div>
-                            <div class="sensor-bar-segmented">
+                        <div class="sensor-data-row">
+                             <div class="sensor-bar-segmented">
                                 ${segmentsHtml}
-                            </div>
+                             </div>
+                             <span class="sensor-val-main">${valStr} <span class="sensor-unit">${unit}</span></span>
                         </div>
                     </div>
                     `;
