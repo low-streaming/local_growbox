@@ -561,11 +561,12 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
              `;
 
-            const masterState = this._hass.states[device.entities.master];
-            const attrs = masterState?.attributes || {};
-            const phaseStartDate = attrs.phase_start_date ? new Date(attrs.phase_start_date).toISOString().split('T')[0] : '';
+            return this._devices.map((device, index) => {
+                const masterState = this._hass.states[device.entities.master];
+                const attrs = masterState?.attributes || {};
+                const phaseStartDate = attrs.phase_start_date ? new Date(attrs.phase_start_date).toISOString().split('T')[0] : '';
 
-            return `
+                return `
                     <div class="settings-card">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                             <h3 style="margin:0;">${device.name} - Konfiguration</h3>
@@ -635,22 +636,22 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                     </div>
                   `;
-        }).join('');
-    };
+            }).join('');
+        };
 
-    const renderPhases = () => {
-        return this._devices.map((device, index) => {
-            const opts = device.options;
+        const renderPhases = () => {
+            return this._devices.map((device, index) => {
+                const opts = device.options;
 
-            // Helper for inputs
-            const renderPhaseInput = (label, key, defaultVal) => `
+                // Helper for inputs
+                const renderPhaseInput = (label, key, defaultVal) => `
                     <div class="setting-item">
                         <label>${label} (Std)</label>
                         <input type="number" id="ph-${key}-${index}" value="${opts[`phase_${key}_hours`] || defaultVal}" placeholder="${defaultVal}">
                     </div>
                 `;
 
-            return `
+                return `
                     <div class="settings-card">
                          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
                             <h3>${device.name} - Phasen Zeiten</h3>
@@ -698,33 +699,12 @@ class LocalGrowBoxPanel extends HTMLElement {
                         </div>
                     </div>
                 `;
-            <div class="settings-card">
-                <h3>${device.name} - Phasen</h3>
-                <p style="font-size:13px; color:gray; margin-bottom:16px;">Definieren Sie hier, wie viele Stunden das Licht in welcher Phase an sein soll (0-24).</p>
-
-                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
-                    ${renderPhaseInput('Keimling', 'seedling', 18)}
-                    ${renderPhaseInput('Wachstum', 'vegetative', 18)}
-                    ${renderPhaseInput('Blüte', 'flowering', 12)}
-                </div>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                    ${renderPhaseInput('Trocknen', 'drying', 0)}
-                    ${renderPhaseInput('Veredelung', 'curing', 0)}
-                </div>
-
-                ${renderCustomPhase(1)}
-                ${renderCustomPhase(2)}
-                ${renderCustomPhase(3)}
-
-                <button class="save-btn" id="save-phases-${index}">Speichern</button>
-            </div>
-            `;
             }).join('');
         };
 
         // --- View HTML ---
         root.innerHTML = `
-            ${ style }
+            ${style}
             <div class="header">
                 <div class="toolbar">
                     <h1>Mein Anbauraum</h1>
@@ -759,7 +739,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     </div>
                 </div>
             </div>
-            `;
+                `;
 
         // --- Event Listeners ---
 
@@ -781,12 +761,12 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const root = this.shadowRoot;
 
                 if (this._activeTab === 'overview') {
-                    root.getElementById(`master - ${ i } `)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.master }));
-                    root.getElementById(`pump - ${ i } `)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.pump }));
-                    root.getElementById(`phase - ${ i } `)?.addEventListener('change', (e) => this._hass.callWS({ type: 'local_grow_box/update_config', entry_id: d.entryId, config: { current_phase: e.target.value } }));
+                    root.getElementById(`master - ${i} `)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.master }));
+                    root.getElementById(`pump - ${i} `)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.pump }));
+                    root.getElementById(`phase - ${i} `)?.addEventListener('change', (e) => this._hass.callWS({ type: 'local_grow_box/update_config', entry_id: d.entryId, config: { current_phase: e.target.value } }));
 
-                    const fileInput = root.getElementById(`file - ${ i } `);
-                    root.getElementById(`edit - img - ${ i } `)?.addEventListener('click', () => fileInput.click());
+                    const fileInput = root.getElementById(`file - ${i} `);
+                    root.getElementById(`edit - img - ${i} `)?.addEventListener('click', () => fileInput.click());
                     fileInput?.addEventListener('change', (e) => {
                         if (e.target.files[0]) {
                             const reader = new FileReader();
@@ -797,25 +777,25 @@ class LocalGrowBoxPanel extends HTMLElement {
                             reader.readAsDataURL(e.target.files[0]);
                         }
                     });
-                    root.getElementById(`settings - nav - ${ i } `)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
+                    root.getElementById(`settings - nav - ${i} `)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
                 }
 
                 if (this._activeTab === 'settings') {
-                    root.getElementById(`save - cfg - ${ i } `)?.addEventListener('click', () => {
-                        const lightEntity = root.getElementById(`cfg - light - ${ i } `).value;
-                        const fanEntity = root.getElementById(`cfg - fan - ${ i } `).value;
-                        const pumpEntity = root.getElementById(`cfg - pump - ${ i } `).value;
-                        const cameraEntity = root.getElementById(`cfg - camera - ${ i } `).value;
-                        const tempSensor = root.getElementById(`cfg - temp - ${ i } `).value;
-                        const humiditySensor = root.getElementById(`cfg - hum - ${ i } `).value;
-                        const moisSensor = root.getElementById(`cfg - mois - ${ i } `).value;
+                    root.getElementById(`save - cfg - ${i} `)?.addEventListener('click', () => {
+                        const lightEntity = root.getElementById(`cfg - light - ${i} `).value;
+                        const fanEntity = root.getElementById(`cfg - fan - ${i} `).value;
+                        const pumpEntity = root.getElementById(`cfg - pump - ${i} `).value;
+                        const cameraEntity = root.getElementById(`cfg - camera - ${i} `).value;
+                        const tempSensor = root.getElementById(`cfg - temp - ${i} `).value;
+                        const humiditySensor = root.getElementById(`cfg - hum - ${i} `).value;
+                        const moisSensor = root.getElementById(`cfg - mois - ${i} `).value;
 
-                        const targetTemp = parseFloat(root.getElementById(`cfg - target - temp - ${ i } `).value);
-                        const targetHum = parseFloat(root.getElementById(`cfg - target - hum - ${ i } `).value);
-                        const targetMois = parseFloat(root.getElementById(`cfg - target - mois - ${ i } `).value);
-                        const pumpDur = parseFloat(root.getElementById(`cfg - pump - dur - ${ i } `).value);
-                        const lightStart = parseFloat(root.getElementById(`cfg - light - start - ${ i } `).value);
-                        const phaseStart = root.getElementById(`cfg - phase - start - ${ i } `).value;
+                        const targetTemp = parseFloat(root.getElementById(`cfg - target - temp - ${i} `).value);
+                        const targetHum = parseFloat(root.getElementById(`cfg - target - hum - ${i} `).value);
+                        const targetMois = parseFloat(root.getElementById(`cfg - target - mois - ${i} `).value);
+                        const pumpDur = parseFloat(root.getElementById(`cfg - pump - dur - ${i} `).value);
+                        const lightStart = parseFloat(root.getElementById(`cfg - light - start - ${i} `).value);
+                        const phaseStart = root.getElementById(`cfg - phase - start - ${i} `).value;
 
                         this._hass.callWS({
                             type: 'local_grow_box/update_config',
@@ -840,20 +820,20 @@ class LocalGrowBoxPanel extends HTMLElement {
                 }
 
                 if (this._activeTab === 'phases') {
-                    root.getElementById(`save - phases - ${ i } `)?.addEventListener('click', () => {
+                    root.getElementById(`save - phases - ${i} `)?.addEventListener('click', () => {
                         const cfg = {
-                            phase_seedling_hours: parseInt(root.getElementById(`ph - seedling - ${ i } `).value),
-                            phase_vegetative_hours: parseInt(root.getElementById(`ph - vegetative - ${ i } `).value),
-                            phase_flowering_hours: parseInt(root.getElementById(`ph - flowering - ${ i } `).value),
-                            phase_drying_hours: parseInt(root.getElementById(`ph - drying - ${ i } `).value),
-                            phase_curing_hours: parseInt(root.getElementById(`ph - curing - ${ i } `).value),
+                            phase_seedling_hours: parseInt(root.getElementById(`ph - seedling - ${i} `).value),
+                            phase_vegetative_hours: parseInt(root.getElementById(`ph - vegetative - ${i} `).value),
+                            phase_flowering_hours: parseInt(root.getElementById(`ph - flowering - ${i} `).value),
+                            phase_drying_hours: parseInt(root.getElementById(`ph - drying - ${i} `).value),
+                            phase_curing_hours: parseInt(root.getElementById(`ph - curing - ${i} `).value),
 
-                            custom1_phase_name: root.getElementById(`ph - c1 - name - ${ i } `).value,
-                            custom1_phase_hours: parseInt(root.getElementById(`ph - c1 - hours - ${ i } `).value),
-                            custom2_phase_name: root.getElementById(`ph - c2 - name - ${ i } `).value,
-                            custom2_phase_hours: parseInt(root.getElementById(`ph - c2 - hours - ${ i } `).value),
-                            custom3_phase_name: root.getElementById(`ph - c3 - name - ${ i } `).value,
-                            custom3_phase_hours: parseInt(root.getElementById(`ph - c3 - hours - ${ i } `).value),
+                            custom1_phase_name: root.getElementById(`ph - c1 - name - ${i} `).value,
+                            custom1_phase_hours: parseInt(root.getElementById(`ph - c1 - hours - ${i} `).value),
+                            custom2_phase_name: root.getElementById(`ph - c2 - name - ${i} `).value,
+                            custom2_phase_hours: parseInt(root.getElementById(`ph - c2 - hours - ${i} `).value),
+                            custom3_phase_name: root.getElementById(`ph - c3 - name - ${i} `).value,
+                            custom3_phase_hours: parseInt(root.getElementById(`ph - c3 - hours - ${i} `).value),
                         };
                         this._hass.callWS({
                             type: 'local_grow_box/update_config',
@@ -863,19 +843,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     });
                 }
             });
-                            phase_curing_hours: parseInt(root.getElementById(`ph - curing - ${ i } `).value),
 
-                            custom1_phase_name: root.getElementById(`ph - c1 - name - ${ i } `).value,
-                            custom1_phase_hours: parseInt(root.getElementById(`ph - c1 - hours - ${ i } `).value),
-                            custom2_phase_name: root.getElementById(`ph - c2 - name - ${ i } `).value,
-                            custom2_phase_hours: parseInt(root.getElementById(`ph - c2 - hours - ${ i } `).value),
-                            custom3_phase_name: root.getElementById(`ph - c3 - name - ${ i } `).value,
-                            custom3_phase_hours: parseInt(root.getElementById(`ph - c3 - hours - ${ i } `).value),
-                        };
-                        this._saveConfig(d.entryId, cfg);
-                    });
-                }
-            });
         }
     }
 
