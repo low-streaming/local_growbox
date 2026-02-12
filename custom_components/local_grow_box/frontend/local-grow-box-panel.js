@@ -647,7 +647,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <div class="settings-group" style="margin-top:16px;">
                             <h4 class="settings-group-title">📷 Sonstiges</h4>
                             <div class="settings-grid">
-                                ${renderSelect('Kamera', camId, attrs.camera_entity, cameras)}
+                                ${renderSelect('Kamera', camId, options.camera_entity, cameras)}
                             </div>
                         </div>
 
