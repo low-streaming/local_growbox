@@ -3,6 +3,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         super();
         this.attachShadow({ mode: 'open' });
         this._initialized = false;
+        this._activeTab = 'overview'; // 'overview' or 'settings'
     }
 
     set hass(hass) {
@@ -41,6 +42,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         try {
             const devices = await this._hass.callWS({ type: 'config/device_registry/list' });
             const entities = await this._hass.callWS({ type: 'config/entity_registry/list' });
+            const entries = await this._hass.callWS({ type: 'config_entries/get', domain: 'local_grow_box' });
 
             // Filter: Look for devices with identifiers matching our domain
             const myDevices = devices.filter(d =>
@@ -49,6 +51,8 @@ class LocalGrowBoxPanel extends HTMLElement {
 
             this._devices = myDevices.map(device => {
                 const deviceEntities = entities.filter(e => e.device_id === device.id);
+                // Find config entry for this device (to get Entry ID for updates)
+                const entry = entries.find(e => e.entry_id === device.primary_config_entry);
 
                 const findEntity = (uniqueIdSuffix) => {
                     const ent = deviceEntities.find(e => e.unique_id.endsWith(uniqueIdSuffix));
@@ -58,6 +62,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 return {
                     name: device.name_by_user || device.name,
                     id: device.id,
+                    entryId: entry ? entry.entry_id : null,
                     entities: {
                         phase: findEntity('_phase'),
                         master: findEntity('_master_switch'),
@@ -76,14 +81,14 @@ class LocalGrowBoxPanel extends HTMLElement {
 
     _render() {
         const root = this.shadowRoot;
-
+        // Basic CSS
         const style = `
             <style>
                 :host {
                     --primary-color: #03a9f4;
                     --accent-color: #009688;
                     --text-primary-color: #ffffff;
-                    --card-bg: #1c1c1e; /* Darker, sleek background */
+                    --card-bg: #1c1c1e;
                     --primary-text: #ffffff;
                     --secondary-text: #b0b0b0;
                     --success-color: #4caf50;
@@ -91,7 +96,6 @@ class LocalGrowBoxPanel extends HTMLElement {
                     --danger-color: #f44336;
                     --info-color: #2196f3;
                     
-                    /* Gradients for bars */
                     --grad-success: linear-gradient(90deg, #66bb6a, #43a047);
                     --grad-warning: linear-gradient(90deg, #ffa726, #fb8c00);
                     --grad-danger: linear-gradient(90deg, #ef5350, #e53935);
@@ -99,7 +103,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     --grad-inactive: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
 
                     display: block;
-                    background-color: #121212; /* Deep dark bg */
+                    background-color: #121212;
                     min-height: 100vh;
                     font-family: 'Roboto', 'Segoe UI', sans-serif;
                     color: var(--primary-text);
@@ -108,19 +112,48 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .header {
                     background: linear-gradient(135deg, #0288d1, #00796b);
                     color: var(--text-primary-color);
-                    padding: 24px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
+                    padding: 0; /* Padding handled by toolbar */
                     box-shadow: 0 4px 20px rgba(0,0,0,0.4);
                     margin-bottom: 24px;
                 }
-                .header h1 {
+                .toolbar {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    padding: 24px;
+                }
+                .toolbar h1 {
                     margin: 0;
                     font-size: 28px;
                     font-weight: 300;
                     letter-spacing: 0.5px;
                 }
+                .tabs {
+                    display: flex;
+                    background: rgba(0,0,0,0.2);
+                }
+                .tab {
+                    flex: 1;
+                    padding: 16px;
+                    text-align: center;
+                    cursor: pointer;
+                    text-transform: uppercase;
+                    font-weight: 500;
+                    letter-spacing: 1px;
+                    transition: background 0.3s;
+                    border-bottom: 3px solid transparent;
+                    color: rgba(255,255,255,0.7);
+                }
+                .tab:hover {
+                    background: rgba(255,255,255,0.1);
+                    color: white;
+                }
+                .tab.active {
+                    border-bottom-color: var(--accent-color);
+                    color: white;
+                    background: rgba(255,255,255,0.05);
+                }
+
                 .add-btn {
                     background: rgba(255,255,255,0.15);
                     color: white;
@@ -140,12 +173,27 @@ class LocalGrowBoxPanel extends HTMLElement {
                     background: rgba(255,255,255,0.3);
                     transform: scale(1.1);
                 }
+
+                /* Content Areas */
                 .content {
                     padding: 0 24px;
+                    display: none; /* Hidden by default */
+                }
+                .content.active {
                     display: grid;
+                }
+                .grid-view {
                     grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
                     gap: 24px;
                 }
+                .list-view {
+                    grid-template-columns: 1fr;
+                    gap: 16px;
+                    max-width: 800px;
+                    margin: 0 auto;
+                }
+
+                /* Cards (Overview) */
                 .card {
                     background-color: var(--card-bg);
                     border-radius: 20px;
@@ -154,7 +202,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     display: flex;
                     flex-direction: column;
                     transition: transform 0.3s, box-shadow 0.3s;
-                    border: 1px solid rgba(255,255,255,0.08); /* Subtle highlight */
+                    border: 1px solid rgba(255,255,255,0.08); 
                     height: 100%;
                 }
                 .card:hover {
@@ -173,240 +221,98 @@ class LocalGrowBoxPanel extends HTMLElement {
                     align-items: center;
                     border-bottom: 1px solid rgba(255,255,255,0.05);
                 }
-                .card-header span:last-child {
-                   font-size: 0.75em;
-                   background: var(--info-color);
-                   color: white;
-                   padding: 4px 10px;
-                   border-radius: 20px;
-                   font-weight: 600;
-                   box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
-                }
                 .card-image {
                     height: 220px;
                     background-color: #2c2c2e;
-                    background-image: url('/local/growbox-default.jpg');
                     background-size: cover;
                     background-position: center;
                     position: relative;
                 }
                 .card-image-overlay {
                     position: absolute;
-                    bottom: 0;
-                    left: 0;
-                    right: 0;
+                    bottom: 0; left: 0; right: 0;
                     padding: 12px;
                     background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
                     color: white;
                     display: flex;
-                    justify-content: space-between; /* Changed for edit btn */
+                    justify-content: space-between;
                     align-items: center;
-                }
-                .edit-image-btn {
-                    background: rgba(0,0,0,0.6);
-                    color: white;
-                    border: 1px solid rgba(255,255,255,0.3);
-                    border-radius: 50%;
-                    width: 32px;
-                    height: 32px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    font-size: 16px;
-                    transition: all 0.2s;
-                    opacity: 0; /* Hidden by default */
-                }
-                .card-image:hover .edit-image-btn {
-                    opacity: 1;
-                }
-                .edit-image-btn:hover {
-                    background: rgba(255,255,255,0.2);
-                    transform: scale(1.1);
                 }
                 .live-badge {
                     background: rgba(244, 67, 54, 0.85);
-                    padding: 4px 8px;
-                    border-radius: 6px;
-                    font-size: 11px;
-                    font-weight: bold;
-                    text-transform: uppercase;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                    padding: 4px 8px; border-radius: 6px; font-size: 11px;
+                    font-weight: bold; text-transform: uppercase;
+                    display: flex; align-items: center; gap: 6px;
                 }
                 .live-badge::before {
-                    content: '';
-                    display: block;
-                    width: 6px;
-                    height: 6px;
-                    background: white;
-                    border-radius: 50%;
-                    box-shadow: 0 0 4px rgba(255,255,255,0.8);
+                    content: ''; display: block; width: 6px; height: 6px;
+                    background: white; border-radius: 50%;
                 }
                 .card-content {
-                    padding: 24px;
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
+                    padding: 24px; flex: 1; display: flex; flex-direction: column;
                 }
                 .sensor-row {
-                    display: flex;
-                    align-items: center;
-                    margin-bottom: 24px;
+                    display: flex; align-items: center; margin-bottom: 24px;
                 }
-                
-                /* Refined Grid Layout */
-                .sensor-grid {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 20px 32px; /* Increased gap */
-                    margin-top: auto;
-                    padding-top: 24px;
-                    border-top: 1px solid rgba(255,255,255,0.08); /* Subtle separator */
-                }
-
-                .sensor-item {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: 16px;
-                }
-                
-                .sensor-icon-small {
-                    font-size: 22px;
-                    width: 28px;
-                    text-align: center;
-                    color: var(--secondary-text);
-                    opacity: 1;
-                    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
-                    flex-shrink: 0;
-                }
-
-                .sensor-data-row {
-                     flex: 1;
-                     display: flex;
-                     align-items: center;
-                     gap: 16px;
-                }
-
-                .sensor-bar-segmented {
-                    display: flex;
-                    gap: 4px;
-                    height: 8px;
-                    flex: 1; 
-                    min-width: 50px;
-                }
-                
-                .bar-segment {
-                    flex: 1;
-                    height: 100%;
-                    background: rgba(255,255,255,0.1);
-                    border-radius: 2px;
-                    transition: background 0.3s;
-                }
-
-                .sensor-val-main {
-                    font-weight: 500;
-                    font-size: 15px;
-                    white-space: nowrap;
-                    text-align: right;
-                    min-width: 60px;
-                    color: #fff;
-                }
-                
-                .sensor-unit {
-                    font-size: 0.85em;
-                    opacity: 0.6;
-                    font-weight: normal;
-                }
-
                 .sensor-icon {
-                    width: 40px;
-                    height: 40px;
-                    margin-right: 20px;
-                    font-size: 24px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    background: rgba(255,255,255,0.05);
-                    border-radius: 50%;
-                    box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
-                    flex-shrink: 0;
+                    width: 40px; height: 40px; margin-right: 20px;
+                    font-size: 24px; display: flex; align-items: center; justify-content: center;
+                    background: rgba(255,255,255,0.05); border-radius: 50%;
                     border: 1px solid rgba(255,255,255,0.1);
                 }
-                .sensor-data {
-                    flex: 1;
+                .sensor-data { flex: 1; }
+                .sensor-label { font-size: 11px; text-transform: uppercase; opacity: 0.6; }
+                .sensor-value { font-size: 18px; font-weight: 600; float: right; }
+                .sensor-bar-container { background: rgba(255,255,255,0.08); height: 10px; border-radius: 5px; margin-top: 10px; overflow:hidden;}
+                .sensor-bar-fill { height: 100%; border-radius: 5px; }
+                .grad-vpd { background: linear-gradient(90deg, #29b6f6, #66bb6a, #ef5350); }
+
+                /* Sensor Grid */
+                .sensor-grid {
+                    display: grid; grid-template-columns: 1fr 1fr; gap: 20px 32px;
+                    margin-top: auto; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08);
                 }
-                .sensor-bar-container {
-                    background-color: rgba(255,255,255,0.08);
-                    height: 10px;
-                    border-radius: 5px;
-                    overflow: hidden;
-                    margin-top: 10px;
+                .sensor-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+                .sensor-icon-small { font-size: 22px; width: 28px; text-align: center; color: var(--secondary-text); }
+                .sensor-data-row { flex: 1; display: flex; align-items: center; gap: 16px; }
+                .sensor-bar-segmented { display: flex; gap: 4px; height: 8px; flex: 1; min-width: 50px; }
+                .bar-segment {
+                    flex: 1; height: 100%; background: rgba(255,255,255,0.1); border-radius: 2px;
                 }
-                .sensor-bar-fill {
-                    height: 100%;
-                    border-radius: 5px;
-                    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-                }
-                .sensor-value {
-                    font-size: 18px;
-                    font-weight: 600;
-                    float: right;
-                }
-                .sensor-label {
-                    font-size: 11px;
-                    text-transform: uppercase;
-                    letter-spacing: 1.2px;
-                    opacity: 0.6;
-                    color: var(--secondary-text);
-                }
+                .sensor-val-main { font-weight: 500; font-size: 15px; white-space: nowrap; text-align: right; min-width: 60px; color: #fff; }
+                .sensor-unit { font-size: 0.85em; opacity: 0.6; font-weight: normal; }
+
+                /* Controls */
                 .controls {
-                    display: grid;
-                    grid-template-columns: repeat(3, 1fr);
-                    gap: 16px;
-                    padding: 24px;
-                    background: rgba(0,0,0,0.1); /* Darker footer */
+                    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 24px; background: rgba(0,0,0,0.1);
                 }
                 .control-btn {
-                    cursor: pointer;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 16px;
-                    border-radius: 16px;
-                    transition: all 0.2s;
-                    background: rgba(255,255,255,0.05); /* Slight glassy */
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+                    cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                    padding: 16px; border-radius: 16px; transition: all 0.2s; background: rgba(255,255,255,0.05);
                     border: 1px solid rgba(255,255,255,0.05);
                 }
-                .control-btn:hover {
-                    box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-                    transform: translateY(-2px);
-                    background: rgba(255,255,255,0.1);
-                }
+                .control-btn:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
                 .control-btn.active {
-                    background: var(--primary-color);
                     background: linear-gradient(135deg, var(--primary-color), var(--info-color));
-                    color: white;
-                    box-shadow: 0 4px 15px rgba(3, 169, 244, 0.4);
-                    border: none;
+                    color: white; border: none;
                 }
-                .control-btn.active .control-icon {
-                    color: white;
+                .control-icon { font-size: 32px; margin-bottom: 8px; color: #757575; }
+                .control-btn.active .control-icon { color: white; }
+
+                /* Settings Cards */
+                .settings-card {
+                     background-color: var(--card-bg);
+                     border-radius: 16px;
+                     padding: 24px;
+                     border: 1px solid rgba(255,255,255,0.1);
                 }
-                .control-icon {
-                    font-size: 32px;
-                    margin-bottom: 8px;
-                    color: #757575;
-                    transition: color 0.2s;
-                    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
-                }
+                .settings-card h3 { margin-top: 0; font-weight: 400; color: var(--primary-color); border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; }
+                
+                .setting-row { margin-bottom: 16px; }
+                .setting-label { display: block; font-size: 12px; text-transform: uppercase; color: var(--secondary-text); margin-bottom: 6px; letter-spacing: 0.5px; }
+                
                 select {
-                    padding: 10px 14px;
+                    padding: 12px 14px;
                     border-radius: 8px;
                     border: 1px solid rgba(255,255,255,0.1);
                     background: #2c2c2e;
@@ -414,444 +320,315 @@ class LocalGrowBoxPanel extends HTMLElement {
                     font-size: 14px;
                     width: 100%;
                     outline: none;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                 }
-                /* Gradients */
-                .grad-vpd { background: linear-gradient(90deg, #29b6f6, #66bb6a, #ef5350); }
+                select:focus { border-color: var(--primary-color); }
                 
-                /* Modal refinement */
+                .save-btn {
+                    width: 100%;
+                    padding: 14px;
+                    background: var(--primary-color);
+                    border: none; border-radius: 8px;
+                    color: white; font-weight: 600; font-size: 14px;
+                    cursor: pointer; margin-top: 10px;
+                    transition: filter 0.2s;
+                }
+                .save-btn:hover { filter: brightness(1.1); }
+
+                /* Modals & Inputs from before */
                 .modal-backdrop {
-                    background: rgba(0, 0, 0, 0.8);
-                    backdrop-filter: blur(8px);
-                    position: fixed;
-                    top: 0; left: 0; width: 100%; height: 100%;
-                    display: none;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 100;
+                    background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    display: none; justify-content: center; align-items: center; z-index: 100;
                 }
-                .modal-backdrop.open {
-                    display: flex;
-                }
+                .modal-backdrop.open { display: flex; }
                 .modal {
-                    background: #2c2c2e;
-                    color: white;
-                    padding: 32px;
-                    width: 90%;
-                    max-width: 480px;
-                    border-radius: 24px;
-                    box-shadow: 0 25px 60px rgba(0,0,0,0.6);
-                    border: 1px solid rgba(255,255,255,0.1);
+                    background: #2c2c2e; padding: 32px; width: 90%; max-width: 480px;
+                    border-radius: 24px; border: 1px solid rgba(255,255,255,0.1);
                 }
-                .modal h2 { margin-top: 0; margin-bottom: 20px; color: var(--primary-color); }
-                .modal-actions {
-                    margin-top: 32px;
-                    display: flex;
-                    justify-content: flex-end;
-                    gap: 16px;
+                .modal-actions { display: flex; justify-content: flex-end; gap: 16px; margin-top: 32px; }
+                .modal-btn { padding: 12px 24px; border-radius: 12px; border:none; cursor: pointer; font-weight: 600; }
+                .modal-btn.confirm { background: var(--primary-color); color: white; }
+                .modal-btn.cancel { background: rgba(255,255,255,0.1); color: white; }
+                input[type="file"] { display: none; }
+                .edit-image-btn { 
+                    width: 28px; height: 28px; border-radius: 50%; background:rgba(0,0,0,0.6); 
+                    display:flex; align-items:center; justify-content:center; cursor:pointer; 
+                    border: 1px solid white; transition: transform 0.2s;
                 }
-                .modal-btn {
-                    padding: 12px 24px;
-                    font-size: 14px;
-                    border: none;
-                    border-radius: 12px;
-                    cursor: pointer;
-                    font-weight: 600;
-                    letter-spacing: 0.5px;
-                }
-                .modal-btn.cancel {
-                    background: rgba(255,255,255,0.1);
-                    color: white;
-                }
-                .modal-btn.confirm {
-                    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
-                    color: white;
-                    box-shadow: 0 4px 15px rgba(0,150,136, 0.4);
-                }
-                input[type="file"] {
-                    display: none;
-                }
+                .edit-image-btn:hover{ transform: scale(1.1); }
             </style>
         `;
 
-        const getEntityState = (entityId) => {
-            if (!entityId) return null;
-            return this._hass.states[entityId];
-        };
+        if (!this._devices) return; // Wait for data
 
-        // Helper to determine color based on value and type - Returns GRADIENT string
-        const getSensorStatus = (type, value) => {
-            if (value === null || value === undefined) return { color: 'var(--grad-inactive)', level: 0 };
+        // --- Render Helpers ---
 
-            if (type === 'temp') {
-                if (value < 18) return { color: 'var(--grad-info)', level: 1 };
-                if (value > 28) return { color: 'var(--grad-danger)', level: 4 };
-                return { color: 'var(--grad-success)', level: 3 };
-            }
-            if (type === 'humidity') {
-                if (value < 40) return { color: 'var(--grad-warning)', level: 1 };
-                if (value > 70) return { color: 'var(--grad-danger)', level: 4 };
-                return { color: 'var(--grad-success)', level: 3 };
-            }
-            if (type === 'light') {
-                return value === 'on'
-                    ? { color: 'var(--grad-warning)', level: 3 }
-                    : { color: 'var(--grad-inactive)', level: 0 };
-            }
-            if (type === 'fan') {
-                return value === 'on'
-                    ? { color: 'var(--grad-success)', level: 3 }
-                    : { color: 'var(--grad-inactive)', level: 0 };
-            }
-            return { color: 'var(--grad-success)', level: 2 };
-        };
-
-        let cardsHtml = '';
-        const timestamp = new Date().getTime(); // Cache buster for images
-
-        if (this._devices && this._devices.length > 0) {
-            cardsHtml = this._devices.map((device, index) => {
+        const renderOverview = () => {
+            // ... [Logic from previous step for cards] ...
+            // Reusing logic but generating HTML
+            return this._devices.map((device, index) => {
+                // Fetch States & Attrs
                 const masterState = this._hass.states[device.entities.master];
-                const pumpState = this._hass.states[device.entities.pump];
-                const vpdState = this._hass.states[device.entities.vpd];
+                // ... [Safe access to attrs] ...
+                const tempEntity = masterState?.attributes?.temp_sensor;
+                const humidityEntity = masterState?.attributes?.humidity_sensor;
+                const lightEntity = masterState?.attributes?.light_entity;
+                const fanEntity = masterState?.attributes?.fan_entity;
+
                 const daysState = this._hass.states[device.entities.days];
                 const phaseState = this._hass.states[device.entities.phase];
+                const vpdState = this._hass.states[device.entities.vpd];
+                const pumpState = this._hass.states[device.entities.pump];
 
-                // Additional Sensors from Attributes
-                const tempEntity = masterState ? masterState.attributes.temp_sensor : null;
-                const humidityEntity = masterState ? masterState.attributes.humidity_sensor : null;
-                const lightEntity = masterState ? masterState.attributes.light_entity : null;
-                const fanEntity = masterState ? masterState.attributes.fan_entity : null;
+                // Values
+                const tempVal = this._hass.states[tempEntity]?.state;
+                const humVal = this._hass.states[humidityEntity]?.state;
+                const lightVal = this._hass.states[lightEntity]?.state;
+                const fanVal = this._hass.states[fanEntity]?.state;
+                const currentPhase = phaseState?.state || 'vegetative';
 
-                const tempState = getEntityState(tempEntity);
-                const humidityState = getEntityState(humidityEntity);
-                const lightState = getEntityState(lightEntity);
-                const fanState = getEntityState(fanEntity);
-
-                const isMasterOn = masterState && masterState.state === 'on';
-                const isPumpOn = pumpState && pumpState.state === 'on';
-
-                const vpdVal = vpdState ? parseFloat(vpdState.state) : 0;
-                const vpdPercent = Math.min(100, Math.max(0, (vpdVal / 3.0) * 100));
-
-                const defaultPhaseOptions = ['seedling', 'vegetative', 'flowering', 'drying', 'curing'];
-                const phaseOptions = (phaseState && phaseState.attributes && phaseState.attributes.options) ? phaseState.attributes.options : defaultPhaseOptions;
-                const currentPhase = phaseState ? phaseState.state : '';
-
+                // Phase Options
+                const phaseOptions = phaseState?.attributes?.options || ['seedling', 'vegetative', 'flowering', 'drying', 'curing'];
                 const phaseTranslations = {
-                    'seedling': 'Keimling',
-                    'vegetative': 'Wachstum',
-                    'flowering': 'Blüte',
-                    'drying': 'Trocknen',
-                    'curing': 'Veredelung'
+                    'seedling': 'Keimling', 'vegetative': 'Wachstum', 'flowering': 'Blüte', 'drying': 'Trocknen', 'curing': 'Veredelung'
                 };
 
-                // Camera/Image logic
-                // Priority: 1. Configured Camera Entity, 2. Uploaded Custom Image, 3. Default Placeholder
-                let imageUrl = '/local/growbox-default.jpg';
+                // Image
+                const timestamp = new Date().getTime();
+                let imageUrl = `/local/local_grow_box_images/${device.id}.jpg?t=${timestamp}`;
                 let isLive = false;
-                let badgeText = 'Keine Kamera';
-
-                // Check for custom upload first (fallback)
-                // We use the timestamp to attempt finding it
-                const customImage = `/local/local_grow_box_images/${device.id}.jpg?t=${timestamp}`;
-
-                // Construct HTML - we accept the image might broken if not exists, 
-                // so we use onerror to fallback to placeholder.
-                // But if Camera Entity exists, we use that.
-
-                if (masterState && masterState.attributes.camera_entity) {
-                    const cameraEntity = masterState.attributes.camera_entity;
-                    const cameraState = this._hass.states[cameraEntity];
-                    if (cameraState) {
-                        imageUrl = cameraState.attributes.entity_picture || `/api/camera_proxy_stream/${cameraEntity}`;
+                if (masterState?.attributes?.camera_entity) {
+                    const camState = this._hass.states[masterState.attributes.camera_entity];
+                    if (camState) {
+                        imageUrl = camState.attributes.entity_picture || `/api/camera_proxy_stream/${masterState.attributes.camera_entity}`;
                         isLive = true;
-                        badgeText = 'LIVE';
                     }
                 }
 
-                // If NOT live, we try the custom image
-                // Note: We render img tag. If specific custom image doesn't exist, it might show broken icon unless handled.
-                // We'll use a trick: standard src is custom, onerror sets it to default.
-
-                let imgTag = '';
-                if (isLive) {
-                    imgTag = `<img src="${imageUrl}" style="width: 100%; height: 100%; object-fit: cover;" />`;
-                } else {
-                    // Try custom image, fallback to default
-                    imgTag = `<img src="${customImage}" onerror="this.onerror=null;this.src='/local/growbox-default.jpg';" style="width: 100%; height: 100%; object-fit: cover;" />`;
-                }
-
-                // Edit button only shows if NOT a live camera entity (or maybe always?)
-                // Let's allow always in case they want a static cover for a live cam (not imp. yet)
-                // For now, allow upload for everyone.
-
-                const cameraHtml = `
-                    <div class="card-image">
-                        ${imgTag}
-                        <div class="card-image-overlay">
-                            ${!isLive ? `
-                            <div class="edit-image-btn" id="edit-img-${index}" title="Bild hochladen">
-                                ✎
-                            </div>
-                            <input type="file" id="file-${index}" accept="image/*" />
-                            ` : '<div></div>'}
-                            
-                            <span class="live-badge" style="${!isLive ? 'background:#607d8b;' : ''}">
-                                ${badgeText}
-                            </span>
-                        </div>
-                    </div>
-                `;
-
-                // Sensors
-                const tempVal = tempState ? parseFloat(tempState.state) : null;
-                const humVal = humidityState ? parseFloat(humidityState.state) : null;
-                const lightVal = lightState ? lightState.state : null;
-                const fanVal = fanState ? fanState.state : null;
-
-                const tempStatus = getSensorStatus('temp', tempVal);
-                const humStatus = getSensorStatus('humidity', humVal);
-                const lightStatus = getSensorStatus('light', lightVal);
-                const fanStatus = getSensorStatus('fan', fanVal);
-
-                const renderSegmentedItem = (icon, valStr, unit, status) => {
-                    const maxSegments = 4;
-                    let segmentsHtml = '';
-                    for (let i = 1; i <= maxSegments; i++) {
-                        const isActive = i <= status.level;
-                        const bgStyle = isActive ? `background: ${status.color}; filter: brightness(1.2); box-shadow: 0 0 8px ${status.color};` : '';
-                        segmentsHtml += `<div class="bar-segment" style="${bgStyle}"></div>`;
+                // Helpers for Status Bars
+                const getStatus = (t, v) => {
+                    // ... [Reuse logic from before] ...
+                    if (!v || v === 'unavailable') return { color: 'var(--grad-inactive)', level: 0 };
+                    v = parseFloat(v);
+                    if (t === 'temp') {
+                        if (v < 18) return { color: 'var(--grad-info)', level: 1 };
+                        if (v > 28) return { color: 'var(--grad-danger)', level: 4 };
+                        return { color: 'var(--grad-success)', level: 3 };
                     }
-
-                    return `
-                    <div class="sensor-item">
-                        <div class="sensor-icon-small">${icon}</div>
-                        <div class="sensor-data-row">
-                             <div class="sensor-bar-segmented">
-                                ${segmentsHtml}
-                             </div>
-                             <span class="sensor-val-main">${valStr} <span class="sensor-unit">${unit}</span></span>
-                        </div>
-                    </div>
-                    `;
+                    if (t === 'hum') {
+                        if (v < 40) return { color: 'var(--grad-warning)', level: 1 };
+                        if (v > 70) return { color: 'var(--grad-danger)', level: 4 };
+                        return { color: 'var(--grad-success)', level: 3 };
+                    }
+                    return { color: 'var(--grad-success)', level: 2 };
                 };
 
-                const tempDisplay = tempState ? tempState.state : '--';
-                const humDisplay = humidityState ? humidityState.state : '--';
+                const renderBar = (icon, val, unit, status) => {
+                    let segs = '';
+                    for (let i = 1; i <= 4; i++) {
+                        segs += `<div class="bar-segment" style="${i <= status.level ? `background:${status.color}; box-shadow:0 0 6px ${status.color};` : ''}"></div>`;
+                    }
+                    return `<div class="sensor-item"><div class="sensor-icon-small">${icon}</div><div class="sensor-data-row"><div class="sensor-bar-segmented">${segs}</div><span class="sensor-val-main">${val || '--'} <span class="sensor-unit">${unit}</span></span></div></div>`;
+                };
 
                 return `
                     <div class="card">
                         <div class="card-header">
                             <span>${device.name}</span>
-                            <span>${daysState ? daysState.state + ' Tage' : '0 Tage'}</span>
+                            <span>${daysState?.state || '0'} Tage</span>
                         </div>
-                        ${cameraHtml}
+                        <div class="card-image">
+                            <img src="${imageUrl}" onerror="this.onerror=null;this.src='/local/growbox-default.jpg';" style="width:100%;height:100%;object-fit:cover;">
+                            <div class="card-image-overlay">
+                                ${!isLive ? `<div class="edit-image-btn" id="edit-img-${index}">✎</div><input type="file" id="file-${index}" accept="image/*">` : '<div></div>'}
+                                <span class="live-badge" style="${!isLive ? 'background:#607d8b;' : ''}">${isLive ? 'LIVE' : 'BILD'}</span>
+                            </div>
+                        </div>
                         <div class="card-content">
-                             <div class="sensor-row">
+                            <div class="sensor-row">
                                 <div class="sensor-icon">🌱</div>
                                 <div class="sensor-data">
-                                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                                        <span class="sensor-label">Phase</span>
-                                    </div>
-                                    <select id="phase-${index}" data-entity="${device.entities.phase}">
-                                        ${phaseOptions.map(opt => `<option value="${opt}" ${opt === currentPhase ? 'selected' : ''}>${phaseTranslations[opt] || opt}</option>`).join('')}
+                                    <span class="sensor-label">Phase</span>
+                                    <select id="phase-${index}" data-entity="${device.entities.phase}" style="margin-top:4px;">
+                                        ${phaseOptions.map(o => `<option value="${o}" ${o === currentPhase ? 'selected' : ''}>${phaseTranslations[o] || o}</option>`).join('')}
                                     </select>
                                 </div>
-                             </div>
-                             
-                             <div class="sensor-row">
+                            </div>
+                            <!-- VPD Bar -->
+                            <div class="sensor-row">
                                 <div class="sensor-icon">💧</div>
                                 <div class="sensor-data">
-                                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                                       <span class="sensor-label">VPD (Dampfdruckdefizit)</span>
-                                       <span class="sensor-value">${vpdState ? vpdVal + ' <small>kPa</small>' : '--'}</span>
-                                    </div>
-                                    <div class="sensor-bar-container">
-                                        <div class="sensor-bar-fill grad-vpd" style="width: ${vpdPercent}%;"></div>
-                                    </div>
+                                   <div style="display:flex;justify-content:space-between;"><span class="sensor-label">VPD</span><span class="sensor-value">${vpdState?.state || '--'} <small>kPa</small></span></div>
+                                   <div class="sensor-bar-container"><div class="sensor-bar-fill grad-vpd" style="width:${Math.min(100, Math.max(0, (parseFloat(vpdState?.state) || 0) / 3 * 100))}%"></div></div>
                                 </div>
-                             </div>
-
-                             <div class="sensor-grid">
-                                ${renderSegmentedItem('🌡️', tempDisplay, '°C', tempStatus)}
-                                ${renderSegmentedItem('☁️', humDisplay, '%', humStatus)}
-                                ${renderSegmentedItem('💡', lightVal === 'on' ? 'AN' : 'AUS', '', lightStatus)}
-                                ${renderSegmentedItem('💨', fanVal === 'on' ? 'AN' : 'AUS', '', fanStatus)}
-                             </div>
-
+                            </div>
+                            <div class="sensor-grid">
+                                ${renderBar('🌡️', tempVal, '°C', getStatus('temp', tempVal))}
+                                ${renderBar('☁️', humVal, '%', getStatus('hum', humVal))}
+                                ${renderBar('💡', lightVal === 'on' ? 'AN' : 'AUS', '', { level: lightVal === 'on' ? 3 : 0, color: 'var(--grad-warning)' })}
+                                ${renderBar('💨', fanVal === 'on' ? 'AN' : 'AUS', '', { level: fanVal === 'on' ? 3 : 0, color: 'var(--grad-success)' })}
+                            </div>
                         </div>
                         <div class="controls">
-                            <div class="control-btn ${isMasterOn ? 'active' : ''}" id="master-${index}" data-entity="${device.entities.master}">
-                                <div class="control-icon">🔌</div>
-                                <span>Master</span>
-                            </div>
-                            <div class="control-btn ${isPumpOn ? 'active' : ''}" id="pump-${index}" data-entity="${device.entities.pump}" style="${!device.entities.pump ? 'opacity:0.2; pointer-events:none;' : ''}">
-                                <div class="control-icon">🚿</div>
-                                <span>Pumpe</span>
-                            </div>
-                             <div class="control-btn" id="settings-${index}" data-device="${device.id}">
-                                <div class="control-icon">⚙️</div>
-                                <span>Einst.</span>
-                            </div>
+                             <div class="control-btn ${masterState?.state === 'on' ? 'active' : ''}" id="master-${index}" data-entity="${device.entities.master}"><div class="control-icon">🔌</div><span>Master</span></div>
+                             <div class="control-btn ${pumpState?.state === 'on' ? 'active' : ''}" id="pump-${index}" data-entity="${device.entities.pump}"><div class="control-icon">🚿</div><span>Pumpe</span></div>
+                             <div class="control-btn" id="settings-nav-${index}"><div class="control-icon">⚙️</div><span>Einst.</span></div>
                         </div>
                     </div>
-                `;
+                 `;
             }).join('');
-        } else {
-            cardsHtml = `
-                <div style="grid-column: 1 / -1; text-align: center; padding: 60px; color: var(--secondary-text-color);">
-                    <div style="font-size: 60px; margin-bottom: 20px; opacity: 0.5;">🌱</div>
-                    <h2 style="font-weight: 300;">Keine Grow-Boxen gefunden</h2>
-                    <p>Beginnen Sie Ihre Reise, indem Sie eine "Local Grow Box"-Integration in den Einstellungen hinzufügen.</p>
-                </div>
-            `;
-        }
+        };
 
-        const html = `
+        const renderSettings = () => {
+            // Generate dropdowns for each device
+
+            // Get all entities for dropdowns
+            const allEntities = Object.keys(this._hass.states).sort();
+            const filterDomain = (d) => allEntities.filter(e => e.startsWith(d));
+            const switches = [...filterDomain('switch.'), ...filterDomain('light.')];
+            const fans = [...filterDomain('switch.'), ...filterDomain('fan.')];
+            const cameras = filterDomain('camera.');
+            const sensors = filterDomain('sensor.');
+
+            const renderSelect = (label, id, value, options) => `
+                <div class="setting-row">
+                    <label class="setting-label">${label}</label>
+                    <select id="${id}">
+                         <option value="">-- Wählen --</option>
+                         ${options.map(o => `<option value="${o}" ${o === value ? 'selected' : ''}>${this._hass.states[o].attributes.friendly_name || o}</option>`).join('')}
+                    </select>
+                </div>
+             `;
+
+            return this._devices.map((device, index) => {
+                const masterState = this._hass.states[device.entities.master];
+                const attrs = masterState?.attributes || {};
+
+                return `
+                    <div class="settings-card">
+                        <h3>${device.name}</h3>
+                        ${renderSelect('Licht-Steuerung', `cfg-light-${index}`, attrs.light_entity, switches)}
+                        ${renderSelect('Abluft-Ventilator', `cfg-fan-${index}`, attrs.fan_entity, fans)}
+                        ${renderSelect('Wasserpumpe', `cfg-pump-${index}`, attrs.pump_entity, filterDomain('switch.'))}
+                        ${renderSelect('Kamera', `cfg-camera-${index}`, attrs.camera_entity, cameras)}
+                        ${renderSelect('Temperatur Sensor', `cfg-temp-${index}`, attrs.temp_sensor, sensors)}
+                        ${renderSelect('Luftfeuchtigkeit Sensor', `cfg-hum-${index}`, attrs.humidity_sensor, sensors)}
+                        
+                        <div class="setting-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
+                             <div>
+                                <label class="setting-label">Ziel-Temp (°C)</label>
+                                <input type="number" id="cfg-target-temp-${index}" value="${attrs.target_temp || 24}" style="width:100%; padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#2c2c2e; color:white;">
+                             </div>
+                             <div>
+                                <label class="setting-label">Max. Feuchte (%)</label>
+                                <input type="number" id="cfg-target-hum-${index}" value="${attrs.max_humidity || 60}" style="width:100%; padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#2c2c2e; color:white;">
+                             </div>
+                        </div>
+
+                        <button class="save-btn" id="save-cfg-${index}" data-entry="${device.entryId}">Speichern</button>
+                    </div>
+                  `;
+            }).join('');
+        };
+
+        // --- View HTML ---
+        root.innerHTML = `
             ${style}
             <div class="header">
-                <h1>Mein Anbauraum</h1>
-                <div class="add-btn" id="add-plant-btn">+</div>
+                <div class="toolbar">
+                    <h1>Mein Anbauraum</h1>
+                    <div class="add-btn" id="add-plant-nav">+</div>
+                </div>
+                <div class="tabs">
+                    <div class="tab ${this._activeTab === 'overview' ? 'active' : ''}" id="tab-overview">Übersicht</div>
+                    <div class="tab ${this._activeTab === 'settings' ? 'active' : ''}" id="tab-settings">Einstellungen</div>
+                </div>
             </div>
-            <div class="content">
-                ${cardsHtml}
+            
+            <div class="content ${this._activeTab === 'overview' ? 'active' : ''} grid-view" id="view-overview">
+                ${this._devices && this._devices.length ? renderOverview() : '<p style="color:gray;text-align:center;width:100%;">Keine Boxen gefunden.</p>'}
             </div>
 
-            <!-- Modal -->
+            <div class="content ${this._activeTab === 'settings' ? 'active' : ''} list-view" id="view-settings">
+                 ${this._devices ? renderSettings() : ''}
+            </div>
+
             <div class="modal-backdrop" id="add-modal">
                 <div class="modal">
-                    <h2>Neue Pflanze hinzufügen</h2>
-                    <p>Um eine neue Grow-Box hinzuzufügen, müssen Sie einen neuen Integrationseintrag in den Home Assistant-Einstellungen konfigurieren.</p>
+                    <h2>Neue Pflanze</h2>
+                    <p>Neue Box in den Einstellungen anlegen?</p>
                     <div class="modal-actions">
                         <button class="modal-btn cancel" id="modal-cancel">Abbrechen</button>
-                        <button class="modal-btn confirm" id="modal-confirm">Zu den Einstellungen</button>
+                        <button class="modal-btn confirm" id="modal-confirm">Ja, anlegen</button>
                     </div>
                 </div>
             </div>
         `;
 
-        root.innerHTML = html;
+        // --- Event Listeners ---
 
-        // Bind Events
-        const addBtn = root.getElementById('add-plant-btn');
-        if (addBtn) {
-            addBtn.addEventListener('click', () => {
-                const modal = root.getElementById('add-modal');
-                modal.classList.add('open');
+        // Tab Navigation
+        root.getElementById('tab-overview').addEventListener('click', () => { this._activeTab = 'overview'; this._render(); });
+        root.getElementById('tab-settings').addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
+
+        // Add Modal
+        root.getElementById('add-plant-nav').addEventListener('click', () => root.getElementById('add-modal').classList.add('open'));
+        root.getElementById('modal-cancel').addEventListener('click', () => root.getElementById('add-modal').classList.remove('open'));
+        root.getElementById('modal-confirm').addEventListener('click', () => {
+            history.pushState(null, "", "/config/integrations/dashboard");
+            this.dispatchEvent(new Event("location-changed", { bubbles: true, composed: true }));
+        });
+
+        if (this._activeTab === 'overview' && this._devices) {
+            this._devices.forEach((d, i) => {
+                // Bind overview events: toggle switches, change phase, upload image
+                root.getElementById(`master-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.master }));
+                root.getElementById(`pump-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.pump }));
+                root.getElementById(`phase-${i}`)?.addEventListener('change', (e) => this._hass.callService("select", "select_option", { entity_id: d.entities.phase, option: e.target.value }));
+
+                // Image Upload
+                const fileInput = root.getElementById(`file-${i}`);
+                root.getElementById(`edit-img-${i}`)?.addEventListener('click', () => fileInput.click());
+                fileInput?.addEventListener('change', (e) => {
+                    if (e.target.files[0]) {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                            this._hass.callWS({ type: 'local_grow_box/upload_image', device_id: d.id, image: ev.target.result })
+                                .then(() => setTimeout(() => this._render(), 1000));
+                        };
+                        reader.readAsDataURL(e.target.files[0]);
+                    }
+                });
+
+                // Settings Nav Shortcut
+                root.getElementById(`settings-nav-${i}`)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
             });
         }
 
-        const modalCancel = root.getElementById('modal-cancel');
-        if (modalCancel) {
-            modalCancel.addEventListener('click', () => {
-                const modal = root.getElementById('add-modal');
-                modal.classList.remove('open');
+        if (this._activeTab === 'settings' && this._devices) {
+            this._devices.forEach((d, i) => {
+                root.getElementById(`save-cfg-${i}`)?.addEventListener('click', () => {
+                    const cfg = {
+                        light_entity: root.getElementById(`cfg-light-${i}`).value,
+                        fan_entity: root.getElementById(`cfg-fan-${i}`).value,
+                        pump_entity: root.getElementById(`cfg-pump-${i}`).value,
+                        camera_entity: root.getElementById(`cfg-camera-${i}`).value,
+                        temp_sensor: root.getElementById(`cfg-temp-${i}`).value,
+                        humidity_sensor: root.getElementById(`cfg-hum-${i}`).value,
+                        target_temp: parseFloat(root.getElementById(`cfg-target-temp-${i}`).value),
+                        max_humidity: parseFloat(root.getElementById(`cfg-target-hum-${i}`).value),
+                    };
+
+                    this._hass.callWS({
+                        type: 'local_grow_box/update_config',
+                        entry_id: d.entryId,
+                        config: cfg
+                    }).then(() => {
+                        alert('Gespeichert!');
+                    }).catch(err => alert('Fehler: ' + err.message));
+                });
             });
-        }
-
-        const modalConfirm = root.getElementById('modal-confirm');
-        if (modalConfirm) {
-            modalConfirm.addEventListener('click', () => {
-                const modal = root.getElementById('add-modal');
-                modal.classList.remove('open');
-                this._navigateToAddIntegration();
-            });
-        }
-
-        const modalBackdrop = root.getElementById('add-modal');
-        if (modalBackdrop) {
-            modalBackdrop.addEventListener('click', (e) => {
-                if (e.target === modalBackdrop) {
-                    modalBackdrop.classList.remove('open');
-                }
-            });
-        }
-
-        if (this._devices) {
-            this._devices.forEach((device, index) => {
-                // Basic Events
-                const phaseSelect = root.getElementById(`phase-${index}`);
-                if (phaseSelect) phaseSelect.addEventListener('change', (e) => this._setPhase(e.target.dataset.entity, e.target.value));
-
-                const masterBtn = root.getElementById(`master-${index}`);
-                if (masterBtn) masterBtn.addEventListener('click', (e) => this._toggleEntity(masterBtn.dataset.entity));
-
-                const pumpBtn = root.getElementById(`pump-${index}`);
-                if (pumpBtn) pumpBtn.addEventListener('click', (e) => this._toggleEntity(pumpBtn.dataset.entity));
-
-                const settingsBtn = root.getElementById(`settings-${index}`);
-                if (settingsBtn) {
-                    settingsBtn.addEventListener('click', () => {
-                        const event = new CustomEvent("hass-more-info", {
-                            bubbles: true,
-                            composed: true,
-                            detail: { entityId: device.entities.master }
-                        });
-                        this.dispatchEvent(event);
-                    });
-                }
-
-                // Image Upload Events
-                const editBtn = root.getElementById(`edit-img-${index}`);
-                const fileInput = root.getElementById(`file-${index}`);
-
-                if (editBtn && fileInput) {
-                    editBtn.addEventListener('click', () => {
-                        fileInput.click();
-                    });
-
-                    fileInput.addEventListener('change', (e) => {
-                        if (e.target.files && e.target.files[0]) {
-                            const file = e.target.files[0];
-                            const reader = new FileReader();
-
-                            reader.onload = async (e) => {
-                                const base64Img = e.target.result;
-                                await this._uploadImage(device.id, base64Img);
-                            };
-
-                            reader.readAsDataURL(file);
-                        }
-                    });
-                }
-            });
-        }
-    }
-
-    _navigateToAddIntegration() {
-        history.pushState(null, "", "/config/integrations/dashboard");
-        const event = new Event("location-changed", { bubbles: true, composed: true });
-        this.dispatchEvent(event);
-    }
-
-    _toggleEntity(entityId) {
-        if (!this._hass || !entityId) return;
-        this._hass.callService("homeassistant", "toggle", { entity_id: entityId });
-    }
-
-    _setPhase(entityId, option) {
-        if (!this._hass || !entityId) return;
-        this._hass.callService("select", "select_option", { entity_id: entityId, option: option });
-    }
-
-    async _uploadImage(deviceId, base64Image) {
-        if (!this._hass) return;
-
-        try {
-            await this._hass.callWS({
-                type: 'local_grow_box/upload_image',
-                device_id: deviceId,
-                image: base64Image
-            });
-            // Force refresh of specific image or component
-            // Simple way: re-render
-            this._render();
-        } catch (err) {
-            console.error("Image upload failed:", err);
-            alert("Upload fehlgeschlagen: " + err.message);
         }
     }
 }
-
 customElements.define('local-grow-box-panel', LocalGrowBoxPanel);

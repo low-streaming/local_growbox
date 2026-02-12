@@ -205,14 +205,15 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         hass,
         webcomponent_name="local-grow-box-panel",
         frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.2",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.3",
         sidebar_title="Grow Room",
         sidebar_icon="mdi:sprout",
         require_admin=False,
     )
 
-    # Register Websocket API for image upload
+    # Register Websocket API for image upload and config update
     websocket_api.async_register_command(hass, ws_upload_image)
+    websocket_api.async_register_command(hass, ws_update_config)
     
     return True
 
@@ -230,6 +231,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     return True
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/update_config",
+    vol.Required("entry_id"): str,
+    vol.Required("config"): dict,
+})
+@websocket_api.async_response
+async def ws_update_config(hass, connection, msg):
+    """Handle config update."""
+    entry_id = msg["entry_id"]
+    new_config = msg["config"]
+    
+    entry = hass.config_entries.async_get_entry(entry_id)
+    if not entry:
+        connection.send_error(msg["id"], "not_found", "Entry not found")
+        return
+
+    # Update options
+    hass.config_entries.async_update_entry(entry, options={**entry.options, **new_config})
+    # Reload entry to apply changes
+    await hass.config_entries.async_reload(entry_id)
+    
+    connection.send_result(msg["id"])
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
