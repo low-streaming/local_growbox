@@ -95,55 +95,52 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         # Get current config (options prefer over data)
         config = {**self.config_entry.data, **self.config_entry.options}
 
-        options_schema = vol.Schema(
-            {
-                vol.Required(
-                    CONF_LIGHT_ENTITY, 
-                    default=config.get(CONF_LIGHT_ENTITY)
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain=["switch", "light"])
-                ),
-                vol.Required(
-                    CONF_FAN_ENTITY,
-                    default=config.get(CONF_FAN_ENTITY)
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain=["switch", "fan"])
-                ),
-                vol.Optional(
-                    CONF_PUMP_ENTITY,
-                    default=config.get(CONF_PUMP_ENTITY)
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain=["switch"])
-                ),
-                vol.Optional(
-                    CONF_CAMERA_ENTITY,
-                    default=config.get(CONF_CAMERA_ENTITY)
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain=["camera"])
-                ),
-                vol.Required(
-                    CONF_TEMP_SENSOR,
-                    default=config.get(CONF_TEMP_SENSOR)
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", device_class="temperature")
-                ),
-                vol.Required(
-                    CONF_HUMIDITY_SENSOR,
-                    default=config.get(CONF_HUMIDITY_SENSOR)
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor", device_class="humidity")
-                ),
-                vol.Optional(
-                    CONF_TARGET_TEMP, 
-                    default=config.get(CONF_TARGET_TEMP, 24.0)
-                ): vol.Coerce(float),
-                vol.Optional(
-                    CONF_MAX_HUMIDITY, 
-                    default=config.get(CONF_MAX_HUMIDITY, 60.0)
-                ): vol.Coerce(float),
-            }
-        )
+        # Helper to create selector with optional default
+        def _get_selector(key, domain, required=False, device_class=None):
+            val = config.get(key)
+            
+            selector_config = selector.EntitySelectorConfig(domain=domain)
+            if device_class:
+                selector_config = selector.EntitySelectorConfig(domain=domain, device_class=device_class)
+                
+            args = {}
+            # Only set default if value is not None/Empty
+            if val is not None:
+                args['default'] = val
+
+            schema_key = vol.Required(key, **args) if required else vol.Optional(key, **args)
+            return schema_key, selector.EntitySelector(selector_config)
+
+        schema_dict = {}
+
+        # Light (Required in options to prevent removing it?)
+        # Let's make it Optional in options flow but with default, so users can change it. 
+        # Actually, standard is to use the same requirement as setup if it's mandatory.
+        k, s = _get_selector(CONF_LIGHT_ENTITY, ["switch", "light"], required=True)
+        schema_dict[k] = s
+        
+        k, s = _get_selector(CONF_FAN_ENTITY, ["switch", "fan"], required=True)
+        schema_dict[k] = s
+
+        k, s = _get_selector(CONF_PUMP_ENTITY, ["switch"], required=False)
+        schema_dict[k] = s
+
+        k, s = _get_selector(CONF_CAMERA_ENTITY, ["camera"], required=False)
+        schema_dict[k] = s
+
+        k, s = _get_selector(CONF_TEMP_SENSOR, "sensor", required=True, device_class="temperature")
+        schema_dict[k] = s
+
+        k, s = _get_selector(CONF_HUMIDITY_SENSOR, "sensor", required=True, device_class="humidity")
+        schema_dict[k] = s
+
+        # numeric defaults
+        target_temp_default = config.get(CONF_TARGET_TEMP, 24.0)
+        max_humidity_default = config.get(CONF_MAX_HUMIDITY, 60.0)
+
+        schema_dict[vol.Optional(CONF_TARGET_TEMP, default=target_temp_default)] = vol.Coerce(float)
+        schema_dict[vol.Optional(CONF_MAX_HUMIDITY, default=max_humidity_default)] = vol.Coerce(float)
 
         return self.async_show_form(
-            step_id="init", data_schema=options_schema
+            step_id="init", data_schema=vol.Schema(schema_dict)
         )
