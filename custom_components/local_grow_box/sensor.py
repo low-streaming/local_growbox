@@ -57,7 +57,7 @@ class GrowBoxVPDSensor(SensorEntity):
         """Return the device info."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry_id)},
-            name=self.manager.config.get("name", "Local Grow Box"),
+            name=self.manager.entry.title,
             manufacturer="Local Grow Box",
             model="Grow Box Controller",
             entry_type=None,
@@ -96,7 +96,7 @@ class GrowBoxDaysInPhaseSensor(SensorEntity):
         """Return the device info."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry_id)},
-            name=self.manager.config.get("name", "Local Grow Box"),
+            name=self.manager.entry.title,
             manufacturer="Local Grow Box",
             model="Grow Box Controller",
         )
@@ -106,10 +106,7 @@ class GrowBoxDaysInPhaseSensor(SensorEntity):
         """Return the value of the sensor."""
         return self.manager.days_in_phase
 
-    @property
-    def native_value(self) -> int:
-        """Return the value of the sensor."""
-        return self.manager.days_in_phase
+
 
 
 

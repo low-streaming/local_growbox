@@ -68,7 +68,7 @@ class GrowBoxMasterSwitch(SwitchEntity, RestoreEntity):
         """Return the device info."""
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry_id)},
-            name=self.manager.config.get("name", "Local Grow Box"),
+            name=self.manager.entry.title,
             manufacturer="Local Grow Box",
             model="Grow Box Controller",
         )
@@ -136,6 +136,16 @@ class GrowBoxPumpSwitch(SwitchEntity, RestoreEntity):
         self._attr_unique_id = f"{entry_id}_water_pump"
         self._pump_entity = manager.config[CONF_PUMP_ENTITY]
         self._is_on = False
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name=self.manager.entry.title,
+            manufacturer="Local Grow Box",
+            model="Grow Box Controller",
+        )
 
     @property
     def is_on(self) -> bool:
