@@ -29,6 +29,14 @@ from .const import (
     DEFAULT_MAX_HUMIDITY,
     PHASE_LIGHT_HOURS,
     PHASE_VEGETATIVE,
+    CONF_PHASE_SEEDLING_HOURS,
+    CONF_PHASE_VEGETATIVE_HOURS,
+    CONF_PHASE_FLOWERING_HOURS,
+    CONF_PHASE_DRYING_HOURS,
+    CONF_PHASE_CURING_HOURS,
+    CONF_CUSTOM1_NAME, CONF_CUSTOM1_HOURS,
+    CONF_CUSTOM2_NAME, CONF_CUSTOM2_HOURS,
+    CONF_CUSTOM3_NAME, CONF_CUSTOM3_HOURS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -80,7 +88,34 @@ class GrowBoxManager:
     async def _async_update_light_logic(self, now: datetime.datetime):
         """Handle Light Schedule."""
         light_entity = self.config[CONF_LIGHT_ENTITY]
-        light_hours = PHASE_LIGHT_HOURS.get(self.current_phase, 18)
+        
+        # Determine light hours based on current phase (Standard or Custom)
+        light_hours = 0
+        phase = self.current_phase
+
+        # Standard Phases
+        if phase == PHASE_SEEDLING:
+            light_hours = self.config.get(CONF_PHASE_SEEDLING_HOURS, 18)
+        elif phase == PHASE_VEGETATIVE:
+            light_hours = self.config.get(CONF_PHASE_VEGETATIVE_HOURS, 18)
+        elif phase == PHASE_FLOWERING:
+            light_hours = self.config.get(CONF_PHASE_FLOWERING_HOURS, 12)
+        elif phase == PHASE_DRYING:
+            light_hours = self.config.get(CONF_PHASE_DRYING_HOURS, 0)
+        elif phase == PHASE_CURING:
+            light_hours = self.config.get(CONF_PHASE_CURING_HOURS, 0)
+        
+        # Custom Phases (Check by Name)
+        elif phase == self.config.get(CONF_CUSTOM1_NAME):
+            light_hours = self.config.get(CONF_CUSTOM1_HOURS, 0)
+        elif phase == self.config.get(CONF_CUSTOM2_NAME):
+            light_hours = self.config.get(CONF_CUSTOM2_HOURS, 0)
+        elif phase == self.config.get(CONF_CUSTOM3_NAME):
+            light_hours = self.config.get(CONF_CUSTOM3_HOURS, 0)
+        
+        # Fallback to hardcoded defaults if not found (shouldn't happen for standard phases)
+        else:
+             light_hours = PHASE_LIGHT_HOURS.get(phase, 12)
 
         # Calculate schedule - Simple 06:00 Start
         now_local = dt_util.now()
@@ -91,7 +126,7 @@ class GrowBoxManager:
              start_time = start_time - timedelta(days=1)
 
         elapsed = (now_local - start_time).total_seconds()
-        duration = light_hours * 3600
+        duration = float(light_hours) * 3600
 
         is_light_time = 0 <= elapsed < duration
 
@@ -205,7 +240,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         hass,
         webcomponent_name="local-grow-box-panel",
         frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.3",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.4",
         sidebar_title="Grow Room",
         sidebar_icon="mdi:sprout",
         require_admin=False,

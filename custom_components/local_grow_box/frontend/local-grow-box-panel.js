@@ -3,7 +3,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         super();
         this.attachShadow({ mode: 'open' });
         this._initialized = false;
-        this._activeTab = 'overview'; // 'overview' or 'settings'
+        this._activeTab = 'overview'; // 'overview', 'settings', 'phases'
     }
 
     set hass(hass) {
@@ -63,6 +63,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     name: device.name_by_user || device.name,
                     id: device.id,
                     entryId: entry ? entry.entry_id : null,
+                    options: entry ? entry.options : {}, // Get current options
                     entities: {
                         phase: findEntity('_phase'),
                         master: findEntity('_master_switch'),
@@ -311,7 +312,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .setting-row { margin-bottom: 16px; }
                 .setting-label { display: block; font-size: 12px; text-transform: uppercase; color: var(--secondary-text); margin-bottom: 6px; letter-spacing: 0.5px; }
                 
-                select {
+                select, input {
                     padding: 12px 14px;
                     border-radius: 8px;
                     border: 1px solid rgba(255,255,255,0.1);
@@ -320,8 +321,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                     font-size: 14px;
                     width: 100%;
                     outline: none;
+                    box-sizing: border-box;
                 }
-                select:focus { border-color: var(--primary-color); }
+                select:focus, input:focus { border-color: var(--primary-color); }
                 
                 .save-btn {
                     width: 100%;
@@ -333,6 +335,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                     transition: filter 0.2s;
                 }
                 .save-btn:hover { filter: brightness(1.1); }
+
+                .input-group { display: flex; gap: 12px; align-items: flex-end; }
+                .input-group > div { flex: 1; }
 
                 /* Modals & Inputs from before */
                 .modal-backdrop {
@@ -364,31 +369,34 @@ class LocalGrowBoxPanel extends HTMLElement {
         // --- Render Helpers ---
 
         const renderOverview = () => {
-            // ... [Logic from previous step for cards] ...
-            // Reusing logic but generating HTML
             return this._devices.map((device, index) => {
                 // Fetch States & Attrs
                 const masterState = this._hass.states[device.entities.master];
-                // ... [Safe access to attrs] ...
-                const tempEntity = masterState?.attributes?.temp_sensor;
-                const humidityEntity = masterState?.attributes?.humidity_sensor;
-                const lightEntity = masterState?.attributes?.light_entity;
-                const fanEntity = masterState?.attributes?.fan_entity;
-
                 const daysState = this._hass.states[device.entities.days];
                 const phaseState = this._hass.states[device.entities.phase];
                 const vpdState = this._hass.states[device.entities.vpd];
                 const pumpState = this._hass.states[device.entities.pump];
 
                 // Values
+                const tempEntity = masterState?.attributes?.temp_sensor;
+                const humidityEntity = masterState?.attributes?.humidity_sensor;
+                const lightEntity = masterState?.attributes?.light_entity;
+                const fanEntity = masterState?.attributes?.fan_entity;
+
                 const tempVal = this._hass.states[tempEntity]?.state;
                 const humVal = this._hass.states[humidityEntity]?.state;
                 const lightVal = this._hass.states[lightEntity]?.state;
                 const fanVal = this._hass.states[fanEntity]?.state;
                 const currentPhase = phaseState?.state || 'vegetative';
 
-                // Phase Options
-                const phaseOptions = phaseState?.attributes?.options || ['seedling', 'vegetative', 'flowering', 'drying', 'curing'];
+                // Phase Options - Mix standard and custom
+                const phases = ['seedling', 'vegetative', 'flowering', 'drying', 'curing'];
+                // Add custom phases if defined in options
+                ['custom1', 'custom2', 'custom3'].forEach(c => {
+                    const name = device.options[`${c}_phase_name`];
+                    if (name) phases.push(name);
+                });
+
                 const phaseTranslations = {
                     'seedling': 'Keimling', 'vegetative': 'Wachstum', 'flowering': 'Blüte', 'drying': 'Trocknen', 'curing': 'Veredelung'
                 };
@@ -407,7 +415,6 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 // Helpers for Status Bars
                 const getStatus = (t, v) => {
-                    // ... [Reuse logic from before] ...
                     if (!v || v === 'unavailable') return { color: 'var(--grad-inactive)', level: 0 };
                     v = parseFloat(v);
                     if (t === 'temp') {
@@ -450,7 +457,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                                 <div class="sensor-data">
                                     <span class="sensor-label">Phase</span>
                                     <select id="phase-${index}" data-entity="${device.entities.phase}" style="margin-top:4px;">
-                                        ${phaseOptions.map(o => `<option value="${o}" ${o === currentPhase ? 'selected' : ''}>${phaseTranslations[o] || o}</option>`).join('')}
+                                        ${phases.map(o => `<option value="${o}" ${o === currentPhase ? 'selected' : ''}>${phaseTranslations[o] || o}</option>`).join('')}
                                     </select>
                                 </div>
                             </div>
@@ -480,9 +487,6 @@ class LocalGrowBoxPanel extends HTMLElement {
         };
 
         const renderSettings = () => {
-            // Generate dropdowns for each device
-
-            // Get all entities for dropdowns
             const allEntities = Object.keys(this._hass.states).sort();
             const filterDomain = (d) => allEntities.filter(e => e.startsWith(d));
             const switches = [...filterDomain('switch.'), ...filterDomain('light.')];
@@ -506,7 +510,7 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 return `
                     <div class="settings-card">
-                        <h3>${device.name}</h3>
+                        <h3>${device.name} - Geräte</h3>
                         ${renderSelect('Licht-Steuerung', `cfg-light-${index}`, attrs.light_entity, switches)}
                         ${renderSelect('Abluft-Ventilator', `cfg-fan-${index}`, attrs.fan_entity, fans)}
                         ${renderSelect('Wasserpumpe', `cfg-pump-${index}`, attrs.pump_entity, filterDomain('switch.'))}
@@ -517,17 +521,67 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <div class="setting-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
                              <div>
                                 <label class="setting-label">Ziel-Temp (°C)</label>
-                                <input type="number" id="cfg-target-temp-${index}" value="${attrs.target_temp || 24}" style="width:100%; padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#2c2c2e; color:white;">
+                                <input type="number" id="cfg-target-temp-${index}" value="${attrs.target_temp || 24}" style="width:100%;">
                              </div>
                              <div>
                                 <label class="setting-label">Max. Feuchte (%)</label>
-                                <input type="number" id="cfg-target-hum-${index}" value="${attrs.max_humidity || 60}" style="width:100%; padding:12px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); background:#2c2c2e; color:white;">
+                                <input type="number" id="cfg-target-hum-${index}" value="${attrs.max_humidity || 60}" style="width:100%;">
                              </div>
                         </div>
 
                         <button class="save-btn" id="save-cfg-${index}" data-entry="${device.entryId}">Speichern</button>
                     </div>
                   `;
+            }).join('');
+        };
+
+        const renderPhases = () => {
+            return this._devices.map((device, index) => {
+                const opts = device.options;
+
+                const renderPhaseInput = (label, key, defaultVal) => `
+                    <div class="setting-row">
+                        <label class="setting-label">${label} (Licht-Std.)</label>
+                        <input type="number" id="ph-${key}-${index}" value="${opts[`phase_${key}_hours`] || defaultVal}" placeholder="${defaultVal}">
+                    </div>
+                `;
+
+                const renderCustomPhase = (num) => `
+                    <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.05); padding-top:12px;">
+                        <label class="setting-label">Benutzerdefinierte Phase ${num}</label>
+                        <div class="input-group">
+                            <div>
+                                <input type="text" id="ph-c${num}-name-${index}" value="${opts[`custom${num}_phase_name`] || ''}" placeholder="Name (z.B. Late Bloom)">
+                            </div>
+                            <div style="flex:0.5;">
+                                <input type="number" id="ph-c${num}-hours-${index}" value="${opts[`custom${num}_phase_hours`] || 0}" placeholder="Std.">
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                return `
+                    <div class="settings-card">
+                        <h3>${device.name} - Phasen</h3>
+                        <p style="font-size:13px; color:gray; margin-bottom:16px;">Definieren Sie hier, wie viele Stunden das Licht in welcher Phase an sein soll (0-24).</p>
+                        
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
+                            ${renderPhaseInput('Keimling', 'seedling', 18)}
+                            ${renderPhaseInput('Wachstum', 'vegetative', 18)}
+                            ${renderPhaseInput('Blüte', 'flowering', 12)}
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                            ${renderPhaseInput('Trocknen', 'drying', 0)}
+                            ${renderPhaseInput('Veredelung', 'curing', 0)}
+                        </div>
+
+                        ${renderCustomPhase(1)}
+                        ${renderCustomPhase(2)}
+                        ${renderCustomPhase(3)}
+
+                        <button class="save-btn" id="save-phases-${index}">Speichern</button>
+                    </div>
+                `;
             }).join('');
         };
 
@@ -541,7 +595,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 <div class="tabs">
                     <div class="tab ${this._activeTab === 'overview' ? 'active' : ''}" id="tab-overview">Übersicht</div>
-                    <div class="tab ${this._activeTab === 'settings' ? 'active' : ''}" id="tab-settings">Einstellungen</div>
+                    <div class="tab ${this._activeTab === 'settings' ? 'active' : ''}" id="tab-settings">Geräte</div>
+                    <div class="tab ${this._activeTab === 'phases' ? 'active' : ''}" id="tab-phases">Phasen</div>
                 </div>
             </div>
             
@@ -551,6 +606,10 @@ class LocalGrowBoxPanel extends HTMLElement {
 
             <div class="content ${this._activeTab === 'settings' ? 'active' : ''} list-view" id="view-settings">
                  ${this._devices ? renderSettings() : ''}
+            </div>
+
+            <div class="content ${this._activeTab === 'phases' ? 'active' : ''} list-view" id="view-phases">
+                 ${this._devices ? renderPhases() : ''}
             </div>
 
             <div class="modal-backdrop" id="add-modal">
@@ -570,6 +629,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         // Tab Navigation
         root.getElementById('tab-overview').addEventListener('click', () => { this._activeTab = 'overview'; this._render(); });
         root.getElementById('tab-settings').addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
+        root.getElementById('tab-phases').addEventListener('click', () => { this._activeTab = 'phases'; this._render(); });
 
         // Add Modal
         root.getElementById('add-plant-nav').addEventListener('click', () => root.getElementById('add-modal').classList.add('open'));
@@ -579,55 +639,79 @@ class LocalGrowBoxPanel extends HTMLElement {
             this.dispatchEvent(new Event("location-changed", { bubbles: true, composed: true }));
         });
 
-        if (this._activeTab === 'overview' && this._devices) {
+        if (this._devices) {
             this._devices.forEach((d, i) => {
-                // Bind overview events: toggle switches, change phase, upload image
-                root.getElementById(`master-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.master }));
-                root.getElementById(`pump-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.pump }));
-                root.getElementById(`phase-${i}`)?.addEventListener('change', (e) => this._hass.callService("select", "select_option", { entity_id: d.entities.phase, option: e.target.value }));
+                if (this._activeTab === 'overview') {
+                    root.getElementById(`master-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.master }));
+                    root.getElementById(`pump-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.pump }));
+                    root.getElementById(`phase-${i}`)?.addEventListener('change', (e) => this._hass.callService("select", "select_option", { entity_id: d.entities.phase, option: e.target.value }));
 
-                // Image Upload
-                const fileInput = root.getElementById(`file-${i}`);
-                root.getElementById(`edit-img-${i}`)?.addEventListener('click', () => fileInput.click());
-                fileInput?.addEventListener('change', (e) => {
-                    if (e.target.files[0]) {
-                        const reader = new FileReader();
-                        reader.onload = (ev) => {
-                            this._hass.callWS({ type: 'local_grow_box/upload_image', device_id: d.id, image: ev.target.result })
-                                .then(() => setTimeout(() => this._render(), 1000));
+                    const fileInput = root.getElementById(`file-${i}`);
+                    root.getElementById(`edit-img-${i}`)?.addEventListener('click', () => fileInput.click());
+                    fileInput?.addEventListener('change', (e) => {
+                        if (e.target.files[0]) {
+                            const reader = new FileReader();
+                            reader.onload = (ev) => {
+                                this._hass.callWS({ type: 'local_grow_box/upload_image', device_id: d.id, image: ev.target.result })
+                                    .then(() => setTimeout(() => this._render(), 1000));
+                            };
+                            reader.readAsDataURL(e.target.files[0]);
+                        }
+                    });
+                    root.getElementById(`settings-nav-${i}`)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
+                }
+
+                if (this._activeTab === 'settings') {
+                    root.getElementById(`save-cfg-${i}`)?.addEventListener('click', () => {
+                        const cfg = {
+                            light_entity: root.getElementById(`cfg-light-${i}`).value,
+                            fan_entity: root.getElementById(`cfg-fan-${i}`).value,
+                            pump_entity: root.getElementById(`cfg-pump-${i}`).value,
+                            camera_entity: root.getElementById(`cfg-camera-${i}`).value,
+                            temp_sensor: root.getElementById(`cfg-temp-${i}`).value,
+                            humidity_sensor: root.getElementById(`cfg-hum-${i}`).value,
+                            target_temp: parseFloat(root.getElementById(`cfg-target-temp-${i}`).value),
+                            max_humidity: parseFloat(root.getElementById(`cfg-target-hum-${i}`).value),
                         };
-                        reader.readAsDataURL(e.target.files[0]);
-                    }
-                });
+                        this._saveConfig(d.entryId, cfg);
+                    });
+                }
 
-                // Settings Nav Shortcut
-                root.getElementById(`settings-nav-${i}`)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
+                if (this._activeTab === 'phases') {
+                    root.getElementById(`save-phases-${i}`)?.addEventListener('click', () => {
+                        const cfg = {
+                            phase_seedling_hours: parseInt(root.getElementById(`ph-seedling-${i}`).value),
+                            phase_vegetative_hours: parseInt(root.getElementById(`ph-vegetative-${i}`).value),
+                            phase_flowering_hours: parseInt(root.getElementById(`ph-flowering-${i}`).value),
+                            phase_drying_hours: parseInt(root.getElementById(`ph-drying-${i}`).value),
+                            phase_curing_hours: parseInt(root.getElementById(`ph-curing-${i}`).value),
+
+                            custom1_phase_name: root.getElementById(`ph-c1-name-${i}`).value,
+                            custom1_phase_hours: parseInt(root.getElementById(`ph-c1-hours-${i}`).value),
+                            custom2_phase_name: root.getElementById(`ph-c2-name-${i}`).value,
+                            custom2_phase_hours: parseInt(root.getElementById(`ph-c2-hours-${i}`).value),
+                            custom3_phase_name: root.getElementById(`ph-c3-name-${i}`).value,
+                            custom3_phase_hours: parseInt(root.getElementById(`ph-c3-hours-${i}`).value),
+                        };
+                        this._saveConfig(d.entryId, cfg);
+                    });
+                }
             });
         }
+    }
 
-        if (this._activeTab === 'settings' && this._devices) {
-            this._devices.forEach((d, i) => {
-                root.getElementById(`save-cfg-${i}`)?.addEventListener('click', () => {
-                    const cfg = {
-                        light_entity: root.getElementById(`cfg-light-${i}`).value,
-                        fan_entity: root.getElementById(`cfg-fan-${i}`).value,
-                        pump_entity: root.getElementById(`cfg-pump-${i}`).value,
-                        camera_entity: root.getElementById(`cfg-camera-${i}`).value,
-                        temp_sensor: root.getElementById(`cfg-temp-${i}`).value,
-                        humidity_sensor: root.getElementById(`cfg-hum-${i}`).value,
-                        target_temp: parseFloat(root.getElementById(`cfg-target-temp-${i}`).value),
-                        max_humidity: parseFloat(root.getElementById(`cfg-target-hum-${i}`).value),
-                    };
-
-                    this._hass.callWS({
-                        type: 'local_grow_box/update_config',
-                        entry_id: d.entryId,
-                        config: cfg
-                    }).then(() => {
-                        alert('Gespeichert!');
-                    }).catch(err => alert('Fehler: ' + err.message));
-                });
+    async _saveConfig(entryId, config) {
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/update_config',
+                entry_id: entryId,
+                config: config
             });
+            alert('Gespeichert!');
+            // Refresh logic to show new phases in dropdown immediately
+            this._fetchDevices();
+        } catch (err) {
+            alert('Fehler: ' + err.message);
         }
     }
 }

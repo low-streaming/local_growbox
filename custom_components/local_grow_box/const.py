@@ -30,10 +30,25 @@ GROW_PHASES = [
 DEFAULT_TARGET_TEMP = 24.0
 DEFAULT_MAX_HUMIDITY = 60.0
 
-# Phase Defaults (Hours of Light) - can be made configurable later
+# Phase Keys
+CONF_PHASE_SEEDLING_HOURS = "phase_seedling_hours"
+CONF_PHASE_VEGETATIVE_HOURS = "phase_vegetative_hours"
+CONF_PHASE_FLOWERING_HOURS = "phase_flowering_hours"
+CONF_PHASE_DRYING_HOURS = "phase_drying_hours"
+CONF_PHASE_CURING_HOURS = "phase_curing_hours"
+
+CONF_CUSTOM1_NAME = "custom1_phase_name"
+CONF_CUSTOM1_HOURS = "custom1_phase_hours"
+CONF_CUSTOM2_NAME = "custom2_phase_name"
+CONF_CUSTOM2_HOURS = "custom2_phase_hours"
+CONF_CUSTOM3_NAME = "custom3_phase_name"
+CONF_CUSTOM3_HOURS = "custom3_phase_hours"
+
+# Phase Defaults (Hours of Light)
 PHASE_LIGHT_HOURS = {
     PHASE_SEEDLING: 18,
     PHASE_VEGETATIVE: 18,
     PHASE_FLOWERING: 12,
     PHASE_DRYING: 0,
+    PHASE_CURING: 0,
 }
