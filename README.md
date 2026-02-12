@@ -5,6 +5,8 @@
 
 [English Version below](#local-grow-box-for-home-assistant)
 
+<a href="https://www.buymeacoffee.com/lowstreaming"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=lowstreaming&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" /></a>
+
 **Eine datenschutzfreundliche, lokale Integration zur Verwaltung von Indoor-Grow-Umgebungen mit eigenem Dashboard.**
 
 Verwandeln Sie Ihre vorhandenen Sensoren und intelligenten Steckdosen in einen vollautomatischen Grow-Box-Controller mit professionellem Dashboard. Jetzt mit **deutscher Benutzeroberfläche** und **einfacher Konfiguration**.
