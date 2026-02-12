@@ -31,7 +31,8 @@ class LocalGrowBoxPanel extends HTMLElement {
         }
 
         // Re-render if we have devices to show status updates
-        if (this._devices) {
+        // Re-render if we have devices to show status updates
+        if (this._devices && (!this._activeTab || this._activeTab === 'overview')) {
             this._render();
         }
     }
@@ -81,6 +82,7 @@ class LocalGrowBoxPanel extends HTMLElement {
     }
 
     _render() {
+        if (!this.shadowRoot) return;
         const root = this.shadowRoot;
         // Basic CSS
         const style = `
@@ -855,13 +857,20 @@ class LocalGrowBoxPanel extends HTMLElement {
     }
 
     async _saveConfig(entryId, config) {
+        // Optimistically update local state to prevent UI flicker/reset
+        const device = this._devices.find(d => d.entryId === entryId);
+        if (device) {
+            device.options = { ...device.options, ...config };
+            // Force render to lock in values
+            this._render();
+        }
+
         try {
             await this._hass.callWS({
                 type: 'local_grow_box/update_config',
                 entry_id: entryId,
                 config: config
             });
-            alert('Gespeichert!');
             // Refresh logic to show new phases in dropdown immediately
             this._fetchDevices();
         } catch (err) {
