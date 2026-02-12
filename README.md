@@ -1,5 +1,4 @@
 # Local Grow Box für Home Assistant
-buymeacoffee.com/lowstreaming
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![github_release](https://img.shields.io/github/v/release/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/releases)
 [![github_license](https://img.shields.io/github/license/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/blob/master/LICENSE)
