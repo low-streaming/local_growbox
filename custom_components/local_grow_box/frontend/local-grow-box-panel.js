@@ -573,9 +573,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             };
 
             return this._devices.map((device, index) => {
-                const masterState = this._hass.states[device.entities.master];
-                const attrs = masterState?.attributes || {};
-                const phaseStartDate = attrs.phase_start_date ? new Date(attrs.phase_start_date).toISOString().split('T')[0] : '';
+                const options = device.options || {};
+                const phaseStartDate = options.phase_start_date ? new Date(options.phase_start_date).toISOString().split('T')[0] : '';
 
                 // Safe unique IDs for template literals
                 const camId = `cfg-camera-${index}`;
@@ -593,17 +592,17 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <div class="settings-group">
                             <h4 class="settings-group-title">🌡️ Klimatisierung</h4>
                             <div class="settings-grid">
-                                ${renderSelect('Temp. Sensor', `cfg-temp-${index}`, attrs.temp_sensor, sensors)}
-                                ${renderSelect('Luftfeuchte Sensor', `cfg-hum-${index}`, attrs.humidity_sensor, sensors)}
-                                ${renderSelect('Abluft-Ventilator', `cfg-fan-${index}`, attrs.fan_entity, fans)}
+                                ${renderSelect('Temp. Sensor', `cfg-temp-${index}`, options.temp_sensor, sensors)}
+                                ${renderSelect('Luftfeuchte Sensor', `cfg-hum-${index}`, options.humidity_sensor, sensors)}
+                                ${renderSelect('Abluft-Ventilator', `cfg-fan-${index}`, options.fan_entity, fans)}
                                 
                                 <div class="setting-item">
                                     <label>Ziel-Temp (°C)</label>
-                                    <input type="number" id="cfg-target-temp-${index}" value="${attrs.target_temp || 24}">
+                                    <input type="number" id="cfg-target-temp-${index}" value="${options.target_temp || 24}">
                                 </div>
                                 <div class="setting-item">
                                     <label>Max. Feuchte (%)</label>
-                                    <input type="number" id="cfg-target-hum-${index}" value="${attrs.max_humidity || 60}">
+                                    <input type="number" id="cfg-target-hum-${index}" value="${options.max_humidity || 60}">
                                 </div>
                             </div>
                         </div>
@@ -612,16 +611,16 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <div class="settings-group" style="margin-top:16px;">
                             <h4 class="settings-group-title">💧 Bewässerung</h4>
                             <div class="settings-grid">
-                                ${renderSelect('Pumpe', pumpId, attrs.pump_entity, filterDomain('switch.'))}
-                                ${renderSelect('Boden-Sensor', `cfg-mois-${index}`, attrs.moisture_sensor, sensors)}
+                                ${renderSelect('Pumpe', pumpId, options.pump_entity, filterDomain('switch.'))}
+                                ${renderSelect('Boden-Sensor', `cfg-mois-${index}`, options.moisture_sensor, sensors)}
                                 
                                 <div class="setting-item">
                                     <label>Ziel-Bodenfeuchte (%)</label>
-                                    <input type="number" id="cfg-target-mois-${index}" value="${attrs.target_moisture || 40}">
+                                    <input type="number" id="cfg-target-mois-${index}" value="${options.target_moisture || 40}">
                                 </div>
                                 <div class="setting-item">
                                     <label>Pumpen-Laufzeit (s)</label>
-                                    <input type="number" id="cfg-pump-dur-${index}" value="${attrs.pump_duration || 30}">
+                                    <input type="number" id="cfg-pump-dur-${index}" value="${options.pump_duration || 30}">
                                 </div>
                             </div>
                         </div>
@@ -630,10 +629,10 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <div class="settings-group" style="margin-top:16px;">
                             <h4 class="settings-group-title">💡 Licht & Phase</h4>
                             <div class="settings-grid">
-                                ${renderSelect('Licht-Quelle', lightId, attrs.light_entity, switches)}
+                                ${renderSelect('Licht-Quelle', lightId, options.light_entity, switches)}
                                 <div class="setting-item">
                                     <label>Tagesbeginn (Licht an)</label>
-                                    <input type="number" id="cfg-light-start-${index}" value="${attrs.light_start_hour || 6}" min="0" max="23">
+                                    <input type="number" id="cfg-light-start-${index}" value="${options.light_start_hour || 6}" min="0" max="23">
                                 </div>
                                 <div class="setting-item">
                                     <label>Phasen-Startdatum</label>
