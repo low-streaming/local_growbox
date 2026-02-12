@@ -1,10 +1,11 @@
 # Local Grow Box für Home Assistant
-
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![github_release](https://img.shields.io/github/v/release/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/releases)
 [![github_license](https://img.shields.io/github/license/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/blob/master/LICENSE)
 
 [English Version below](#local-grow-box-for-home-assistant)
+
+<a href="https://www.buymeacoffee.com/lowstreaming"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=☕&slug=lowstreaming&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" /></a>
 
 **Eine datenschutzfreundliche, lokale Integration zur Verwaltung von Indoor-Grow-Umgebungen mit eigenem Dashboard.**
 
