@@ -45,7 +45,8 @@ class GrowBoxManager:
         """Initialize the manager."""
         self.hass = hass
         self.entry = entry
-        self.config = entry.data
+        # Merge data and options, options take precedence
+        self.config = {**entry.data, **entry.options}
         self._remove_update_listener = None
 
         # State
@@ -204,7 +205,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         hass,
         webcomponent_name="local-grow-box-panel",
         frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.0",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.1",
         sidebar_title="Grow Room",
         sidebar_icon="mdi:sprout",
         require_admin=False,
@@ -226,6 +227,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
+    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
+
     return True
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -234,6 +237,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     manager.async_unload()
 
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
+async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload config entry."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 @websocket_api.websocket_command({
