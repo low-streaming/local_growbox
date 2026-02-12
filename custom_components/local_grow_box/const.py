@@ -44,6 +44,19 @@ CONF_CUSTOM2_HOURS = "custom2_phase_hours"
 CONF_CUSTOM3_NAME = "custom3_phase_name"
 CONF_CUSTOM3_HOURS = "custom3_phase_hours"
 
+# Advanced Features
+CONF_PUMP_DURATION = "pump_duration" # In seconds
+CONF_MOISTURE_SENSOR = "moisture_sensor"
+CONF_TARGET_MOISTURE = "target_moisture" # In %
+CONF_LIGHT_START_HOUR = "light_start_hour"
+
+# Defaults
+DEFAULT_TARGET_TEMP = 24.0
+DEFAULT_MAX_HUMIDITY = 60.0
+DEFAULT_PUMP_DURATION = 30
+DEFAULT_TARGET_MOISTURE = 40.0
+DEFAULT_LIGHT_START_HOUR = 6
+
 # Phase Defaults (Hours of Light)
 PHASE_LIGHT_HOURS = {
     PHASE_SEEDLING: 18,

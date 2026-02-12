@@ -475,8 +475,26 @@ class LocalGrowBoxPanel extends HTMLElement {
                             <div class="sensor-grid">
                                 ${renderBar('🌡️', tempVal, '°C', getStatus('temp', tempVal))}
                                 ${renderBar('☁️', humVal, '%', getStatus('hum', humVal))}
-                                ${renderBar('💡', lightVal === 'on' ? 'AN' : 'AUS', '', { level: lightVal === 'on' ? 3 : 0, color: 'var(--grad-warning)' })}
-                                ${renderBar('💨', fanVal === 'on' ? 'AN' : 'AUS', '', { level: fanVal === 'on' ? 3 : 0, color: 'var(--grad-success)' })}
+                            </div>
+                            <!-- Extra Sensors Row 2 -->
+                            <div class="sensor-grid" style="border-top:none; padding-top:0; margin-top:20px;">
+                                ${(() => {
+                        const moistVal = this._hass.states[device.options.moisture_sensor]?.state;
+                        return renderBar('💧', moistVal, '%', getStatus('hum', moistVal)); // Reuse hum status logic for now
+                    })()}
+                                
+                                <div class="sensor-item">
+                                    <div class="sensor-icon-small">💡</div>
+                                    <div style="flex:1;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                                             <span style="font-weight:500; font-size:15px; color:${lightVal === 'on' ? 'var(--warning-color)' : '#fff'}">${lightVal === 'on' ? 'AN' : 'AUS'}</span>
+                                             <span style="font-size:11px; opacity:0.6;">Start: ${device.options.light_start_hour || 6}:00</span>
+                                        </div>
+                                        <div class="sensor-bar-segmented" style="height:4px; margin-top:6px; opacity:0.5;">
+                                            <div class="bar-segment" style="background:${lightVal === 'on' ? 'var(--warning-color)' : 'rgba(255,255,255,0.2)'}"></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="controls">
@@ -520,6 +538,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         ${renderSelect('Kamera', `cfg-camera-${index}`, attrs.camera_entity, cameras)}
                         ${renderSelect('Temperatur Sensor', `cfg-temp-${index}`, attrs.temp_sensor, sensors)}
                         ${renderSelect('Luftfeuchtigkeit Sensor', `cfg-hum-${index}`, attrs.humidity_sensor, sensors)}
+                        ${renderSelect('Bodenfeuchte Sensor', `cfg-mois-${index}`, device.options.moisture_sensor, sensors)}
                         
                         <div class="setting-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
                              <div>
@@ -529,6 +548,21 @@ class LocalGrowBoxPanel extends HTMLElement {
                              <div>
                                 <label class="setting-label">Max. Feuchte (%)</label>
                                 <input type="number" id="cfg-target-hum-${index}" value="${attrs.max_humidity || 60}" style="width:100%;">
+                             </div>
+                        </div>
+
+                        <div class="setting-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px;">
+                             <div>
+                                <label class="setting-label">Ziel-Boden (%)</label>
+                                <input type="number" id="cfg-target-mois-${index}" value="${device.options.target_moisture || 40}" style="width:100%;">
+                             </div>
+                             <div>
+                                <label class="setting-label">Pumpen-Laufzeit (s)</label>
+                                <input type="number" id="cfg-pump-dur-${index}" value="${device.options.pump_duration || 30}" style="width:100%;">
+                             </div>
+                             <div>
+                                <label class="setting-label">Licht-Start (Std)</label>
+                                <input type="number" id="cfg-light-start-${index}" value="${device.options.light_start_hour || 6}" style="width:100%;">
                              </div>
                         </div>
 
@@ -675,6 +709,10 @@ class LocalGrowBoxPanel extends HTMLElement {
                             humidity_sensor: root.getElementById(`cfg-hum-${i}`).value,
                             target_temp: parseFloat(root.getElementById(`cfg-target-temp-${i}`).value),
                             max_humidity: parseFloat(root.getElementById(`cfg-target-hum-${i}`).value),
+                            moisture_sensor: root.getElementById(`cfg-mois-${i}`).value,
+                            target_moisture: parseFloat(root.getElementById(`cfg-target-mois-${i}`).value),
+                            pump_duration: parseInt(root.getElementById(`cfg-pump-dur-${i}`).value),
+                            light_start_hour: parseInt(root.getElementById(`cfg-light-start-${i}`).value),
                         };
                         this._saveConfig(d.entryId, cfg);
                     });

@@ -41,6 +41,13 @@ from .const import (
     PHASE_FLOWERING,
     PHASE_DRYING,
     PHASE_CURING,
+    CONF_PUMP_DURATION,
+    CONF_MOISTURE_SENSOR,
+    CONF_TARGET_MOISTURE,
+    CONF_LIGHT_START_HOUR,
+    DEFAULT_PUMP_DURATION,
+    DEFAULT_TARGET_MOISTURE,
+    DEFAULT_LIGHT_START_HOUR,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -66,6 +73,7 @@ class GrowBoxManager:
         self.current_phase = PHASE_VEGETATIVE
         self.vpd = 0.0
         self.days_in_phase = 0 # TODO: Track this persistently
+        self.pump_start_time: datetime.datetime | None = None
 
     async def async_setup(self):
         """Setup background tasks."""
@@ -88,6 +96,7 @@ class GrowBoxManager:
 
         await self._async_update_light_logic(now)
         await self._async_update_climate_logic(now)
+        await self._async_update_water_logic(now)
 
     async def _async_update_light_logic(self, now: datetime.datetime):
         """Handle Light Schedule."""
@@ -121,12 +130,13 @@ class GrowBoxManager:
         else:
              light_hours = PHASE_LIGHT_HOURS.get(phase, 12)
 
-        # Calculate schedule - Simple 06:00 Start
+        # Calculate schedule
+        start_hour = self.config.get(CONF_LIGHT_START_HOUR) or DEFAULT_LIGHT_START_HOUR
         now_local = dt_util.now()
-        start_time = now_local.replace(hour=LIGHT_START_HOUR, minute=0, second=0, microsecond=0)
+        start_time = now_local.replace(hour=int(start_hour), minute=0, second=0, microsecond=0)
 
         # Handle wrap around if current time is before start time (e.g. 01:00 AM)
-        if now_local.hour < LIGHT_START_HOUR:
+        if now_local.hour < int(start_hour):
              start_time = start_time - timedelta(days=1)
 
         elapsed = (now_local - start_time).total_seconds()
@@ -151,6 +161,59 @@ class GrowBoxManager:
             await self.hass.services.async_call(
                 "homeassistant", "turn_off", {"entity_id": light_entity}
             )
+
+    async def _async_update_water_logic(self, now: datetime.datetime):
+        """Handle Water Pump Logic."""
+        pump_entity = self.config.get("water_pump_entity") # Using literal temporarily as const might be missing locally
+        if not pump_entity:
+            # Try to find it from standard config if not found
+            # Actually we likely defined it in const as CONF_PUMP_ENTITY but user might not have migrated
+            # Let's check typical key
+            pump_entity = self.config.get("pump_entity")
+
+        if not pump_entity:
+            return
+
+        pump_state = self.hass.states.get(pump_entity)
+        if not pump_state:
+            return
+
+        is_on = pump_state.state == "on"
+        duration = self.config.get(CONF_PUMP_DURATION, DEFAULT_PUMP_DURATION)
+        
+        # 1. Handle Auto-Off (Duration Limit)
+        if is_on:
+            if self.pump_start_time is None:
+                self.pump_start_time = now # Start tracking now if we missed the start event
+            
+            elapsed = (now - self.pump_start_time).total_seconds()
+            if elapsed > duration:
+                 _LOGGER.info("Pump run time exceeded (%s sec). Turning OFF.", elapsed)
+                 await self.hass.services.async_call(
+                    "homeassistant", "turn_off", {"entity_id": pump_entity}
+                 )
+                 self.pump_start_time = None
+        else:
+            self.pump_start_time = None
+
+        # 2. Handle Auto-On (Soil Moisture)
+        if not is_on:
+            moisture_entity = self.config.get(CONF_MOISTURE_SENSOR)
+            target = self.config.get(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE)
+            
+            if moisture_entity:
+                state = self.hass.states.get(moisture_entity)
+                if state and state.state not in ["unknown", "unavailable"]:
+                    try:
+                        val = float(state.state)
+                        if val < target:
+                            _LOGGER.info("Soil moisture low (%.1f < %.1f). Turning Pump ON.", val, target)
+                            await self.hass.services.async_call(
+                                "homeassistant", "turn_on", {"entity_id": pump_entity}
+                            )
+                            self.pump_start_time = now
+                    except ValueError:
+                        pass
 
     async def _async_update_climate_logic(self, now: datetime.datetime):
         """Handle Fan and VPD."""
@@ -244,7 +307,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         hass,
         webcomponent_name="local-grow-box-panel",
         frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.5",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.6",
         sidebar_title="Grow Room",
         sidebar_icon="mdi:sprout",
         require_admin=False,
