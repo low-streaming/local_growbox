@@ -194,6 +194,42 @@ class LocalGrowBoxPanel extends HTMLElement {
                     margin: 0 auto;
                 }
 
+                /* Settings Layout */
+                .settings-group {
+                    background: rgba(255,255,255,0.03);
+                    padding: 16px;
+                    border-radius: 12px;
+                    border: 1px solid rgba(255,255,255,0.05);
+                }
+                .settings-group-title {
+                    margin-top: 0;
+                    margin-bottom: 16px;
+                    color: var(--accent-color);
+                    border-bottom: 1px solid rgba(255,255,255,0.1);
+                    padding-bottom: 8px;
+                }
+                .settings-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                    gap: 16px;
+                }
+                .setting-item {
+                    display: flex;
+                    flex-direction: column;
+                }
+                .setting-item label {
+                    font-size: 12px;
+                    color: rgba(255,255,255,0.6);
+                    margin-bottom: 4px;
+                }
+                .setting-item input, .setting-item select {
+                    background: rgba(0,0,0,0.3);
+                    border: 1px solid rgba(255,255,255,0.1);
+                    color: white;
+                    padding: 8px;
+                    border-radius: 4px;
+                }
+
                 /* Cards (Overview) */
                 .card {
                     background-color: var(--card-bg);
@@ -525,106 +561,170 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
              `;
 
-            return this._devices.map((device, index) => {
-                const masterState = this._hass.states[device.entities.master];
-                const attrs = masterState?.attributes || {};
+            const masterState = this._hass.states[device.entities.master];
+            const attrs = masterState?.attributes || {};
+            const phaseStartDate = attrs.phase_start_date ? new Date(attrs.phase_start_date).toISOString().split('T')[0] : '';
 
-                return `
+            return `
                     <div class="settings-card">
-                        <h3>${device.name} - Geräte</h3>
-                        ${renderSelect('Licht-Steuerung', `cfg-light-${index}`, attrs.light_entity, switches)}
-                        ${renderSelect('Abluft-Ventilator', `cfg-fan-${index}`, attrs.fan_entity, fans)}
-                        ${renderSelect('Wasserpumpe', `cfg-pump-${index}`, attrs.pump_entity, filterDomain('switch.'))}
-                        ${renderSelect('Kamera', `cfg-camera-${index}`, attrs.camera_entity, cameras)}
-                        ${renderSelect('Temperatur Sensor', `cfg-temp-${index}`, attrs.temp_sensor, sensors)}
-                        ${renderSelect('Luftfeuchtigkeit Sensor', `cfg-hum-${index}`, attrs.humidity_sensor, sensors)}
-                        ${renderSelect('Bodenfeuchte Sensor', `cfg-mois-${index}`, device.options.moisture_sensor, sensors)}
-                        
-                        <div class="setting-row" style="display:grid; grid-template-columns: 1fr 1fr; gap:16px;">
-                             <div>
-                                <label class="setting-label">Ziel-Temp (°C)</label>
-                                <input type="number" id="cfg-target-temp-${index}" value="${attrs.target_temp || 24}" style="width:100%;">
-                             </div>
-                             <div>
-                                <label class="setting-label">Max. Feuchte (%)</label>
-                                <input type="number" id="cfg-target-hum-${index}" value="${attrs.max_humidity || 60}" style="width:100%;">
-                             </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <h3 style="margin:0;">${device.name} - Konfiguration</h3>
+                            <button class="save-btn" id="save-cfg-${index}" data-entry="${device.entryId}">Speichern</button>
                         </div>
 
-                        <div class="setting-row" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px;">
-                             <div>
-                                <label class="setting-label">Ziel-Boden (%)</label>
-                                <input type="number" id="cfg-target-mois-${index}" value="${device.options.target_moisture || 40}" style="width:100%;">
-                             </div>
-                             <div>
-                                <label class="setting-label">Pumpen-Laufzeit (s)</label>
-                                <input type="number" id="cfg-pump-dur-${index}" value="${device.options.pump_duration || 30}" style="width:100%;">
-                             </div>
-                             <div>
-                                <label class="setting-label">Licht-Start (Std)</label>
-                                <input type="number" id="cfg-light-start-${index}" value="${device.options.light_start_hour || 6}" style="width:100%;">
-                             </div>
+                        <!-- 1. Klimatisierung -->
+                        <div class="settings-group">
+                            <h4 class="settings-group-title">🌡️ Klimatisierung</h4>
+                            <div class="settings-grid">
+                                ${renderSelect('Temp. Sensor', `cfg-temp-${index}`, attrs.temp_sensor, sensors)}
+                                ${renderSelect('Luftfeuchte Sensor', `cfg-hum-${index}`, attrs.humidity_sensor, sensors)}
+                                ${renderSelect('Abluft-Ventilator', `cfg-fan-${index}`, attrs.fan_entity, fans)}
+                                
+                                <div class="setting-item">
+                                    <label>Ziel-Temp (°C)</label>
+                                    <input type="number" id="cfg-target-temp-${index}" value="${attrs.target_temp || 24}">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Max. Feuchte (%)</label>
+                                    <input type="number" id="cfg-target-hum-${index}" value="${attrs.max_humidity || 60}">
+                                </div>
+                            </div>
                         </div>
 
-                        <button class="save-btn" id="save-cfg-${index}" data-entry="${device.entryId}">Speichern</button>
+                        <!-- 2. Bewässerung -->
+                        <div class="settings-group" style="margin-top:16px;">
+                            <h4 class="settings-group-title">💧 Bewässerung</h4>
+                            <div class="settings-grid">
+                                ${renderSelect('Pumpe', `cfg-pump-${index}`, attrs.pump_entity, filterDomain('switch.'))}
+                                ${renderSelect('Boden-Sensor', `cfg-mois-${index}`, attrs.moisture_sensor, sensors)}
+                                
+                                <div class="setting-item">
+                                    <label>Ziel-Bodenfeuchte (%)</label>
+                                    <input type="number" id="cfg-target-mois-${index}" value="${attrs.target_moisture || 40}">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Pumpen-Laufzeit (s)</label>
+                                    <input type="number" id="cfg-pump-dur-${index}" value="${attrs.pump_duration || 30}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. Beleuchtung & Phasen -->
+                        <div class="settings-group" style="margin-top:16px;">
+                            <h4 class="settings-group-title">💡 Licht & Phase</h4>
+                            <div class="settings-grid">
+                                ${renderSelect('Licht-Quelle', `cfg-light-${index}`, attrs.light_entity, switches)}
+                                <div class="setting-item">
+                                    <label>Tagesbeginn (Licht an)</label>
+                                    <input type="number" id="cfg-light-start-${index}" value="${attrs.light_start_hour || 6}" min="0" max="23">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Phasen-Startdatum</label>
+                                    <input type="date" id="cfg-phase-start-${index}" value="${phaseStartDate}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Sonstiges -->
+                        <div class="settings-group" style="margin-top:16px;">
+                            <h4 class="settings-group-title">📷 Sonstiges</h4>
+                            <div class="settings-grid">
+                                ${renderSelect('Kamera', `cfg-camera-${index}`, attrs.camera_entity, cameras)}
+                            </div>
+                        </div>
+
                     </div>
                   `;
-            }).join('');
-        };
+        }).join('');
+    };
 
-        const renderPhases = () => {
-            return this._devices.map((device, index) => {
-                const opts = device.options;
+    const renderPhases = () => {
+        return this._devices.map((device, index) => {
+            const opts = device.options;
 
-                const renderPhaseInput = (label, key, defaultVal) => `
-                    <div class="setting-row">
-                        <label class="setting-label">${label} (Licht-Std.)</label>
+            // Helper for inputs
+            const renderPhaseInput = (label, key, defaultVal) => `
+                    <div class="setting-item">
+                        <label>${label} (Std)</label>
                         <input type="number" id="ph-${key}-${index}" value="${opts[`phase_${key}_hours`] || defaultVal}" placeholder="${defaultVal}">
                     </div>
                 `;
 
-                const renderCustomPhase = (num) => `
-                    <div class="setting-row" style="border-top:1px solid rgba(255,255,255,0.05); padding-top:12px;">
-                        <label class="setting-label">Benutzerdefinierte Phase ${num}</label>
-                        <div class="input-group">
-                            <div>
-                                <input type="text" id="ph-c${num}-name-${index}" value="${opts[`custom${num}_phase_name`] || ''}" placeholder="Name (z.B. Late Bloom)">
-                            </div>
-                            <div style="flex:0.5;">
-                                <input type="number" id="ph-c${num}-hours-${index}" value="${opts[`custom${num}_phase_hours`] || 0}" placeholder="Std.">
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                return `
+            return `
                     <div class="settings-card">
-                        <h3>${device.name} - Phasen</h3>
-                        <p style="font-size:13px; color:gray; margin-bottom:16px;">Definieren Sie hier, wie viele Stunden das Licht in welcher Phase an sein soll (0-24).</p>
+                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                            <h3>${device.name} - Phasen Zeiten</h3>
+                            <button class="save-btn" id="save-phases-${index}" data-entry="${device.entryId}">Speichern</button>
+                        </div>
                         
-                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
-                            ${renderPhaseInput('Keimling', 'seedling', 18)}
-                            ${renderPhaseInput('Wachstum', 'vegetative', 18)}
-                            ${renderPhaseInput('Blüte', 'flowering', 12)}
-                        </div>
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                            ${renderPhaseInput('Trocknen', 'drying', 0)}
-                            ${renderPhaseInput('Veredelung', 'curing', 0)}
+                        <div class="settings-grid">
+                             ${renderPhaseInput('🌱 Keimling', 'seedling', 18)}
+                             ${renderPhaseInput('🌿 Wachstum', 'vegetative', 18)}
+                             ${renderPhaseInput('🌸 Blüte', 'flowering', 12)}
+                             ${renderPhaseInput('🍂 Trocknen', 'drying', 0)}
+                             ${renderPhaseInput('🏺 Aushärten', 'curing', 0)}
                         </div>
 
-                        ${renderCustomPhase(1)}
-                        ${renderCustomPhase(2)}
-                        ${renderCustomPhase(3)}
+                        <div style="margin-top:20px; border-top:1px solid #444; padding-top:10px;">
+                            <h4>Benutzerdefinierte Phasen</h4>
+                            <div class="settings-grid">
+                                <div class="setting-item">
+                                    <label>Phase 1 Name</label>
+                                    <input type="text" id="ph-c1-name-${index}" value="${opts[`custom1_phase_name`] || ''}">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Std.</label>
+                                    <input type="number" id="ph-c1-hours-${index}" value="${opts[`custom1_phase_hours`] || 0}">
+                                </div>
+                                
+                                <div class="setting-item">
+                                    <label>Phase 2 Name</label>
+                                    <input type="text" id="ph-c2-name-${index}" value="${opts[`custom2_phase_name`] || ''}">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Std.</label>
+                                    <input type="number" id="ph-c2-hours-${index}" value="${opts[`custom2_phase_hours`] || 0}">
+                                </div>
 
-                        <button class="save-btn" id="save-phases-${index}">Speichern</button>
+                                <div class="setting-item">
+                                    <label>Phase 3 Name</label>
+                                    <input type="text" id="ph-c3-name-${index}" value="${opts[`custom3_phase_name`] || ''}">
+                                </div>
+                                <div class="setting-item">
+                                    <label>Std.</label>
+                                    <input type="number" id="ph-c3-hours-${index}" value="${opts[`custom3_phase_hours`] || 0}">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 `;
+            <div class="settings-card">
+                <h3>${device.name} - Phasen</h3>
+                <p style="font-size:13px; color:gray; margin-bottom:16px;">Definieren Sie hier, wie viele Stunden das Licht in welcher Phase an sein soll (0-24).</p>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
+                    ${renderPhaseInput('Keimling', 'seedling', 18)}
+                    ${renderPhaseInput('Wachstum', 'vegetative', 18)}
+                    ${renderPhaseInput('Blüte', 'flowering', 12)}
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                    ${renderPhaseInput('Trocknen', 'drying', 0)}
+                    ${renderPhaseInput('Veredelung', 'curing', 0)}
+                </div>
+
+                ${renderCustomPhase(1)}
+                ${renderCustomPhase(2)}
+                ${renderCustomPhase(3)}
+
+                <button class="save-btn" id="save-phases-${index}">Speichern</button>
+            </div>
+            `;
             }).join('');
         };
 
         // --- View HTML ---
         root.innerHTML = `
-            ${style}
+            ${ style }
             <div class="header">
                 <div class="toolbar">
                     <h1>Mein Anbauraum</h1>
@@ -659,7 +759,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     </div>
                 </div>
             </div>
-        `;
+            `;
 
         // --- Event Listeners ---
 
@@ -678,13 +778,15 @@ class LocalGrowBoxPanel extends HTMLElement {
 
         if (this._devices) {
             this._devices.forEach((d, i) => {
-                if (this._activeTab === 'overview') {
-                    root.getElementById(`master-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.master }));
-                    root.getElementById(`pump-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.pump }));
-                    root.getElementById(`phase-${i}`)?.addEventListener('change', (e) => this._hass.callService("select", "select_option", { entity_id: d.entities.phase, option: e.target.value }));
+                const root = this.shadowRoot;
 
-                    const fileInput = root.getElementById(`file-${i}`);
-                    root.getElementById(`edit-img-${i}`)?.addEventListener('click', () => fileInput.click());
+                if (this._activeTab === 'overview') {
+                    root.getElementById(`master - ${ i } `)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.master }));
+                    root.getElementById(`pump - ${ i } `)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.pump }));
+                    root.getElementById(`phase - ${ i } `)?.addEventListener('change', (e) => this._hass.callWS({ type: 'local_grow_box/update_config', entry_id: d.entryId, config: { current_phase: e.target.value } }));
+
+                    const fileInput = root.getElementById(`file - ${ i } `);
+                    root.getElementById(`edit - img - ${ i } `)?.addEventListener('click', () => fileInput.click());
                     fileInput?.addEventListener('change', (e) => {
                         if (e.target.files[0]) {
                             const reader = new FileReader();
@@ -695,44 +797,80 @@ class LocalGrowBoxPanel extends HTMLElement {
                             reader.readAsDataURL(e.target.files[0]);
                         }
                     });
-                    root.getElementById(`settings-nav-${i}`)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
+                    root.getElementById(`settings - nav - ${ i } `)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
                 }
 
                 if (this._activeTab === 'settings') {
-                    root.getElementById(`save-cfg-${i}`)?.addEventListener('click', () => {
-                        const cfg = {
-                            light_entity: root.getElementById(`cfg-light-${i}`).value,
-                            fan_entity: root.getElementById(`cfg-fan-${i}`).value,
-                            pump_entity: root.getElementById(`cfg-pump-${i}`).value,
-                            camera_entity: root.getElementById(`cfg-camera-${i}`).value,
-                            temp_sensor: root.getElementById(`cfg-temp-${i}`).value,
-                            humidity_sensor: root.getElementById(`cfg-hum-${i}`).value,
-                            target_temp: parseFloat(root.getElementById(`cfg-target-temp-${i}`).value),
-                            max_humidity: parseFloat(root.getElementById(`cfg-target-hum-${i}`).value),
-                            moisture_sensor: root.getElementById(`cfg-mois-${i}`).value,
-                            target_moisture: parseFloat(root.getElementById(`cfg-target-mois-${i}`).value),
-                            pump_duration: parseInt(root.getElementById(`cfg-pump-dur-${i}`).value),
-                            light_start_hour: parseInt(root.getElementById(`cfg-light-start-${i}`).value),
-                        };
-                        this._saveConfig(d.entryId, cfg);
+                    root.getElementById(`save - cfg - ${ i } `)?.addEventListener('click', () => {
+                        const lightEntity = root.getElementById(`cfg - light - ${ i } `).value;
+                        const fanEntity = root.getElementById(`cfg - fan - ${ i } `).value;
+                        const pumpEntity = root.getElementById(`cfg - pump - ${ i } `).value;
+                        const cameraEntity = root.getElementById(`cfg - camera - ${ i } `).value;
+                        const tempSensor = root.getElementById(`cfg - temp - ${ i } `).value;
+                        const humiditySensor = root.getElementById(`cfg - hum - ${ i } `).value;
+                        const moisSensor = root.getElementById(`cfg - mois - ${ i } `).value;
+
+                        const targetTemp = parseFloat(root.getElementById(`cfg - target - temp - ${ i } `).value);
+                        const targetHum = parseFloat(root.getElementById(`cfg - target - hum - ${ i } `).value);
+                        const targetMois = parseFloat(root.getElementById(`cfg - target - mois - ${ i } `).value);
+                        const pumpDur = parseFloat(root.getElementById(`cfg - pump - dur - ${ i } `).value);
+                        const lightStart = parseFloat(root.getElementById(`cfg - light - start - ${ i } `).value);
+                        const phaseStart = root.getElementById(`cfg - phase - start - ${ i } `).value;
+
+                        this._hass.callWS({
+                            type: 'local_grow_box/update_config',
+                            entry_id: d.entryId,
+                            config: {
+                                light_entity: lightEntity,
+                                fan_entity: fanEntity,
+                                pump_entity: pumpEntity,
+                                camera_entity: cameraEntity,
+                                temp_sensor: tempSensor,
+                                humidity_sensor: humiditySensor,
+                                moisture_sensor: moisSensor,
+                                target_temp: targetTemp,
+                                max_humidity: targetHum,
+                                target_moisture: targetMois,
+                                pump_duration: pumpDur,
+                                light_start_hour: lightStart,
+                                phase_start_date: phaseStart || null,
+                            }
+                        });
                     });
                 }
 
                 if (this._activeTab === 'phases') {
-                    root.getElementById(`save-phases-${i}`)?.addEventListener('click', () => {
+                    root.getElementById(`save - phases - ${ i } `)?.addEventListener('click', () => {
                         const cfg = {
-                            phase_seedling_hours: parseInt(root.getElementById(`ph-seedling-${i}`).value),
-                            phase_vegetative_hours: parseInt(root.getElementById(`ph-vegetative-${i}`).value),
-                            phase_flowering_hours: parseInt(root.getElementById(`ph-flowering-${i}`).value),
-                            phase_drying_hours: parseInt(root.getElementById(`ph-drying-${i}`).value),
-                            phase_curing_hours: parseInt(root.getElementById(`ph-curing-${i}`).value),
+                            phase_seedling_hours: parseInt(root.getElementById(`ph - seedling - ${ i } `).value),
+                            phase_vegetative_hours: parseInt(root.getElementById(`ph - vegetative - ${ i } `).value),
+                            phase_flowering_hours: parseInt(root.getElementById(`ph - flowering - ${ i } `).value),
+                            phase_drying_hours: parseInt(root.getElementById(`ph - drying - ${ i } `).value),
+                            phase_curing_hours: parseInt(root.getElementById(`ph - curing - ${ i } `).value),
 
-                            custom1_phase_name: root.getElementById(`ph-c1-name-${i}`).value,
-                            custom1_phase_hours: parseInt(root.getElementById(`ph-c1-hours-${i}`).value),
-                            custom2_phase_name: root.getElementById(`ph-c2-name-${i}`).value,
-                            custom2_phase_hours: parseInt(root.getElementById(`ph-c2-hours-${i}`).value),
-                            custom3_phase_name: root.getElementById(`ph-c3-name-${i}`).value,
-                            custom3_phase_hours: parseInt(root.getElementById(`ph-c3-hours-${i}`).value),
+                            custom1_phase_name: root.getElementById(`ph - c1 - name - ${ i } `).value,
+                            custom1_phase_hours: parseInt(root.getElementById(`ph - c1 - hours - ${ i } `).value),
+                            custom2_phase_name: root.getElementById(`ph - c2 - name - ${ i } `).value,
+                            custom2_phase_hours: parseInt(root.getElementById(`ph - c2 - hours - ${ i } `).value),
+                            custom3_phase_name: root.getElementById(`ph - c3 - name - ${ i } `).value,
+                            custom3_phase_hours: parseInt(root.getElementById(`ph - c3 - hours - ${ i } `).value),
+                        };
+                        this._hass.callWS({
+                            type: 'local_grow_box/update_config',
+                            entry_id: d.entryId,
+                            config: cfg
+                        });
+                    });
+                }
+            });
+                            phase_curing_hours: parseInt(root.getElementById(`ph - curing - ${ i } `).value),
+
+                            custom1_phase_name: root.getElementById(`ph - c1 - name - ${ i } `).value,
+                            custom1_phase_hours: parseInt(root.getElementById(`ph - c1 - hours - ${ i } `).value),
+                            custom2_phase_name: root.getElementById(`ph - c2 - name - ${ i } `).value,
+                            custom2_phase_hours: parseInt(root.getElementById(`ph - c2 - hours - ${ i } `).value),
+                            custom3_phase_name: root.getElementById(`ph - c3 - name - ${ i } `).value,
+                            custom3_phase_hours: parseInt(root.getElementById(`ph - c3 - hours - ${ i } `).value),
                         };
                         this._saveConfig(d.entryId, cfg);
                     });

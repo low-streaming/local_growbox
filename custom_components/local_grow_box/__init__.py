@@ -44,7 +44,9 @@ from .const import (
     CONF_PUMP_DURATION,
     CONF_MOISTURE_SENSOR,
     CONF_TARGET_MOISTURE,
+    CONF_TARGET_MOISTURE,
     CONF_LIGHT_START_HOUR,
+    CONF_PHASE_START_DATE,
     DEFAULT_PUMP_DURATION,
     DEFAULT_TARGET_MOISTURE,
     DEFAULT_LIGHT_START_HOUR,
@@ -65,14 +67,31 @@ class GrowBoxManager:
         self.hass = hass
         self.entry = entry
         # Merge data and options, options take precedence
-        self.config = {**entry.data, **entry.options}
+        # The user's instruction implies that `entry.options` should be the primary source for `self.config`
+        # and that `entry.data` is not merged in this new structure.
+        self.config = entry.options
         self._remove_update_listener = None
 
         # State
         self.master_switch_on = True
-        self.current_phase = PHASE_VEGETATIVE
+
+        # Load Phase & Start Date
+        self.current_phase = self.config.get("current_phase", PHASE_VEGETATIVE)
+        
+        self.phase_start_date = None
+        start_date_str = self.config.get(CONF_PHASE_START_DATE)
+        if start_date_str:
+            try:
+                self.phase_start_date = datetime.datetime.fromisoformat(start_date_str)
+            except ValueError:
+                pass
+        
+        if self.phase_start_date is None:
+             self.phase_start_date = dt_util.now()
+
+        # Calculated properties
         self.vpd = 0.0
-        self.days_in_phase = 0 # TODO: Track this persistently
+        
         self.pump_start_time: datetime.datetime | None = None
 
     async def async_setup(self):
@@ -88,6 +107,14 @@ class GrowBoxManager:
         """Unload and clean up."""
         if self._remove_update_listener:
             self._remove_update_listener()
+
+    @property
+    def days_in_phase(self) -> int:
+        """Return number of days in current phase."""
+        if not self.phase_start_date:
+            return 0
+        delta = dt_util.now() - self.phase_start_date
+        return max(0, delta.days)
 
     async def _async_update_logic(self, now: datetime.datetime):
         """Main automation logic."""
@@ -312,7 +339,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         hass,
         webcomponent_name="local-grow-box-panel",
         frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.7",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=1.1.9",
         sidebar_title="Grow Room",
         sidebar_icon="mdi:sprout",
         require_admin=False,
@@ -355,8 +382,23 @@ async def ws_update_config(hass, connection, msg):
         connection.send_error(msg["id"], "not_found", "Entry not found")
         return
 
+    # Handle Phase Change Logic
+    # If phase is changing, reset start date (unless start date is also being manually set)
+    current_options = entry.options
+    
+    updates = {**new_config}
+    
+    # Check if phase changed
+    if "current_phase" in new_config:
+        old_phase = current_options.get("current_phase")
+        new_phase = new_config.get("current_phase")
+        
+        if old_phase != new_phase and CONF_PHASE_START_DATE not in new_config:
+            # Phase changed, and user didn't manually set a date -> Reset to Now
+            updates[CONF_PHASE_START_DATE] = dt_util.now().isoformat()
+            
     # Update options
-    hass.config_entries.async_update_entry(entry, options={**entry.options, **new_config})
+    hass.config_entries.async_update_entry(entry, options={**current_options, **updates})
     # Reload entry to apply changes
     await hass.config_entries.async_reload(entry_id)
     

@@ -17,7 +17,18 @@ from .const import (
     CONF_TEMP_SENSOR,
     CONF_HUMIDITY_SENSOR,
     CONF_LIGHT_ENTITY,
-    CONF_FAN_ENTITY
+    CONF_FAN_ENTITY,
+    CONF_PUMP_DURATION,
+    CONF_MOISTURE_SENSOR,
+    CONF_TARGET_MOISTURE,
+    CONF_LIGHT_START_HOUR,
+    CONF_TARGET_TEMP,
+    CONF_MAX_HUMIDITY,
+    DEFAULT_PUMP_DURATION,
+    DEFAULT_TARGET_MOISTURE,
+    DEFAULT_LIGHT_START_HOUR,
+    DEFAULT_TARGET_TEMP,
+    DEFAULT_MAX_HUMIDITY,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -71,6 +82,15 @@ class GrowBoxMasterSwitch(SwitchEntity, RestoreEntity):
             "humidity_sensor": self.manager.config.get(CONF_HUMIDITY_SENSOR),
             "light_entity": self.manager.config.get(CONF_LIGHT_ENTITY),
             "fan_entity": self.manager.config.get(CONF_FAN_ENTITY),
+            "pump_entity": self.manager.config.get(CONF_PUMP_ENTITY),
+            "moisture_sensor": self.manager.config.get(CONF_MOISTURE_SENSOR),
+            "target_moisture": self.manager.config.get(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE),
+            "pump_duration": self.manager.config.get(CONF_PUMP_DURATION, DEFAULT_PUMP_DURATION),
+            "light_start_hour": self.manager.config.get(CONF_LIGHT_START_HOUR, DEFAULT_LIGHT_START_HOUR),
+            "target_temp": self.manager.config.get(CONF_TARGET_TEMP, DEFAULT_TARGET_TEMP),
+            "max_humidity": self.manager.config.get(CONF_MAX_HUMIDITY, DEFAULT_MAX_HUMIDITY),
+            "phase_start_date": self.manager.phase_start_date.isoformat() if self.manager.phase_start_date else None,
+            "days_in_phase": self.manager.days_in_phase,
         }
 
     @property
