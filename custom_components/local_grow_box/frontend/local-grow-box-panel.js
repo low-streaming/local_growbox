@@ -63,7 +63,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     name: device.name_by_user || device.name,
                     id: device.id,
                     entryId: entry ? entry.entry_id : null,
-                    options: entry ? entry.options : {}, // Get current options
+                    options: (entry && entry.options) ? entry.options : {}, // Ensure options is always an object
                     entities: {
                         phase: findEntity('_phase'),
                         master: findEntity('_master_switch'),
@@ -392,10 +392,13 @@ class LocalGrowBoxPanel extends HTMLElement {
                 // Phase Options - Mix standard and custom
                 const phases = ['seedling', 'vegetative', 'flowering', 'drying', 'curing'];
                 // Add custom phases if defined in options
-                ['custom1', 'custom2', 'custom3'].forEach(c => {
-                    const name = device.options[`${c}_phase_name`];
-                    if (name) phases.push(name);
-                });
+                // Add custom phases if defined in options
+                if (device.options) {
+                    ['custom1', 'custom2', 'custom3'].forEach(c => {
+                        const name = device.options[`${c}_phase_name`];
+                        if (name) phases.push(name);
+                    });
+                }
 
                 const phaseTranslations = {
                     'seedling': 'Keimling', 'vegetative': 'Wachstum', 'flowering': 'Blüte', 'drying': 'Trocknen', 'curing': 'Veredelung'
