@@ -64,7 +64,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     name: device.name_by_user || device.name,
                     id: device.id,
                     entryId: entry ? entry.entry_id : null,
-                    options: (entry && entry.options) ? entry.options : {}, // Ensure options is always an object
+                    options: (entry) ? { ...entry.data, ...entry.options } : {},
                     entities: {
                         phase: findEntity('_phase'),
                         master: findEntity('_master_switch'),

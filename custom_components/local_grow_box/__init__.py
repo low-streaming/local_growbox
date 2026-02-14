@@ -67,9 +67,7 @@ class GrowBoxManager:
         self.hass = hass
         self.entry = entry
         # Merge data and options, options take precedence
-        # The user's instruction implies that `entry.options` should be the primary source for `self.config`
-        # and that `entry.data` is not merged in this new structure.
-        self.config = entry.options
+        self.config = {**entry.data, **entry.options}
         self._remove_update_listener = None
 
         # State
@@ -390,7 +388,9 @@ async def ws_update_config(hass, connection, msg):
     
     # Check if phase changed
     if "current_phase" in new_config:
-        old_phase = current_options.get("current_phase")
+        # Use merged config to get old phase, in case it wasn't in options yet
+        full_config = {**entry.data, **current_options}
+        old_phase = full_config.get("current_phase")
         new_phase = new_config.get("current_phase")
         
         if old_phase != new_phase and CONF_PHASE_START_DATE not in new_config:
