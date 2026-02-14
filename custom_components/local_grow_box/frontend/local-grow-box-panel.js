@@ -865,75 +865,74 @@ class LocalGrowBoxPanel extends HTMLElement {
                     shadow.getElementById(`settings-nav-${i}`)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
                 }
 
-                // Settings Save - Store selections in memory when dropdowns change
+                // Settings Save - Store selections in memory (ZigAlarm Pattern)
                 if (this._activeTab === 'settings') {
                     // Initialize config state if not exists or empty
                     if (!this._configState) this._configState = {};
-                    // Use device.options instead of undefined 'options' variable
-                    const currentOpts = device.options || {};
 
+                    // Only initialize from current options if state is empty/undefined for this device
+                    // This is the key ZigAlarm pattern: Don't overwrite state on re-render if we have pending changes!
                     if (!this._configState[d.entryId]) {
+                        // Use device.options instead of potentially undefined 'options' variable
+                        const currentOpts = device.options || {};
                         this._configState[d.entryId] = { ...currentOpts };
-                    } else {
-                        // Merge in any new options from backend that might have changed
-                        this._configState[d.entryId] = { ...currentOpts, ...this._configState[d.entryId] };
+                        console.log("Initialized state from options:", this._configState[d.entryId]);
                     }
 
-                    // Attach change listeners to all dropdowns/inputs to update in-memory state
-                    const attachListener = (id, key) => {
+                    // Helper to sync UI with State
+                    const syncField = (id, key) => {
                         const el = shadow.getElementById(id);
                         if (el) {
-                            // Initialize input value from state if reachable (double sync)
+                            // 1. Set initial value from state
                             if (this._configState[d.entryId][key] !== undefined) {
                                 el.value = this._configState[d.entryId][key];
                             }
 
-                            el.addEventListener('change', () => {
-                                const val = el.value;
+                            // 2. Update state on change
+                            // Remove old listener if exists to prevent duplicates (though less critical with render)
+                            const newListener = (e) => {
+                                const val = e.target.value;
                                 console.log(`Config updated: ${key} = ${val}`);
                                 this._configState[d.entryId][key] = val;
-                            });
+                            };
+                            el.removeEventListener('change', el._changeListener); // Clean up old ref if stored
+                            el.addEventListener('change', newListener);
+                            el._changeListener = newListener; // Store ref for cleanup
                         }
                     };
 
                     // Entity selectors
-                    attachListener(`cfg-light-${i}`, 'light_entity');
-                    attachListener(`cfg-fan-${i}`, 'fan_entity');
-                    attachListener(`cfg-pump-${i}`, 'pump_entity');
-                    attachListener(`cfg-camera-${i}`, 'camera_entity');
-                    attachListener(`cfg-temp-${i}`, 'temp_sensor');
-                    attachListener(`cfg-hum-${i}`, 'humidity_sensor');
-                    attachListener(`cfg-mois-${i}`, 'moisture_sensor');
+                    syncField(`cfg-light-${i}`, 'light_entity');
+                    syncField(`cfg-fan-${i}`, 'fan_entity');
+                    syncField(`cfg-pump-${i}`, 'pump_entity');
+                    syncField(`cfg-camera-${i}`, 'camera_entity');
+                    syncField(`cfg-temp-${i}`, 'temp_sensor');
+                    syncField(`cfg-hum-${i}`, 'humidity_sensor');
+                    syncField(`cfg-mois-${i}`, 'moisture_sensor');
 
                     // Numeric inputs
-                    attachListener(`cfg-target-temp-${i}`, 'target_temp');
-                    attachListener(`cfg-target-hum-${i}`, 'max_humidity');
-                    attachListener(`cfg-target-mois-${i}`, 'target_moisture');
-                    attachListener(`cfg-pump-duration-${i}`, 'pump_duration');
-                    attachListener(`cfg-light-start-${i}`, 'light_start_hour');
+                    syncField(`cfg-target-temp-${i}`, 'target_temp');
+                    syncField(`cfg-target-hum-${i}`, 'max_humidity');
+                    syncField(`cfg-target-mois-${i}`, 'target_moisture');
+                    syncField(`cfg-pump-dur-${i}`, 'pump_duration'); // Corrected ID from cfg-pump-duration-${i}
+                    syncField(`cfg-light-start-${i}`, 'light_start_hour');
 
-                    // Phase Durations
-                    attachListener(`cfg-phase-seedling-${i}`, 'phase_seedling_hours');
-                    attachListener(`cfg-phase-veg-${i}`, 'phase_vegetative_hours');
-                    attachListener(`cfg-phase-flower-${i}`, 'phase_flowering_hours');
-                    attachListener(`cfg-phase-drying-${i}`, 'phase_drying_hours');
-                    attachListener(`cfg-phase-curing-${i}`, 'phase_curing_hours');
-                    attachListener(`cfg-phase-start-${i}`, 'phase_start_date');
+                    // Phase Durations (Adding missing syncs)
+                    syncField(`cfg-phase-seedling-${i}`, 'phase_seedling_hours');
+                    syncField(`cfg-phase-veg-${i}`, 'phase_vegetative_hours');
+                    syncField(`cfg-phase-flower-${i}`, 'phase_flowering_hours');
+                    syncField(`cfg-phase-drying-${i}`, 'phase_drying_hours');
+                    syncField(`cfg-phase-curing-${i}`, 'phase_curing_hours');
+                    syncField(`cfg-phase-start-${i}`, 'phase_start_date');
 
                     // Save button - save directly from memory
                     shadow.getElementById(`save-cfg-${i}`)?.addEventListener('click', () => {
                         const cfg = this._configState[d.entryId] || {};
 
-                        // Filter out empty strings
+                        // Filter out empty strings/nulls (Frontend side safety)
                         const filteredCfg = {};
                         for (const [key, val] of Object.entries(cfg)) {
-                            if (val === null) {
-                                filteredCfg[key] = val;
-                            } else if (typeof val === 'string' && val !== '') {
-                                filteredCfg[key] = val;
-                            } else if (typeof val === 'number' && !isNaN(val)) {
-                                filteredCfg[key] = val;
-                            }
+                            filteredCfg[key] = val; // Send everything, backend filters empty strings now
                         }
 
                         console.log("Saving from memory:", filteredCfg);
