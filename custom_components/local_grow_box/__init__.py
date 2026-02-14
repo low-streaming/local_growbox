@@ -383,7 +383,6 @@ async def ws_update_config(hass, connection, msg):
     """Handle config update."""
     entry_id = msg["entry_id"]
     new_config = msg["config"]
-    _LOGGER.error("WS_UPDATE_CONFIG Received: %s", new_config)
     
     entry = hass.config_entries.async_get_entry(entry_id)
     if not entry:
@@ -418,13 +417,10 @@ async def ws_update_config(hass, connection, msg):
         if value != '':  # Keep everything except empty strings
             filtered_updates[key] = value
     
-    _LOGGER.error("Filtered updates (removed empty strings): %s", filtered_updates)
-    
     hass.config_entries.async_update_entry(entry, options={**current_options, **filtered_updates})
     # Reload entry to apply changes
     await hass.config_entries.async_reload(entry_id)
     
-    _LOGGER.error("WS_UPDATE_CONFIG Saved Options: %s", entry.options)
     connection.send_result(msg["id"], {"options": dict(entry.options)})
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
