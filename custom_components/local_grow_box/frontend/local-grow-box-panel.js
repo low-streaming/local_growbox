@@ -902,8 +902,16 @@ class LocalGrowBoxPanel extends HTMLElement {
                             phase_start_date: getVal(`cfg-phase-start-${i}`) || null,
                         };
 
-                        console.log("Final config to save:", cfg);
-                        this._saveConfig(d.entryId, cfg);
+                        // Filter out empty strings to avoid overwriting existing values with blanks
+                        const filteredCfg = {};
+                        for (const [key, val] of Object.entries(cfg)) {
+                            if (val !== null && val !== '' && val !== undefined && !isNaN(val)) {
+                                filteredCfg[key] = val;
+                            }
+                        }
+
+                        console.log("Final config to save:", filteredCfg);
+                        this._saveConfig(d.entryId, filteredCfg);
                     });
                 }
 
