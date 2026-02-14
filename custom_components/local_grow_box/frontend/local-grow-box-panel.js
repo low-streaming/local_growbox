@@ -868,21 +868,30 @@ class LocalGrowBoxPanel extends HTMLElement {
                 // Settings Save
                 if (this._activeTab === 'settings') {
                     shadow.getElementById(`save-cfg-${i}`)?.addEventListener('click', () => {
-                        const cfg = {
-                            light_entity: shadow.getElementById(`cfg-light-${i}`).value,
-                            fan_entity: shadow.getElementById(`cfg-fan-${i}`).value,
-                            pump_entity: shadow.getElementById(`cfg-pump-${i}`).value,
-                            camera_entity: shadow.getElementById(`cfg-camera-${i}`).value,
-                            temp_sensor: shadow.getElementById(`cfg-temp-${i}`).value,
-                            humidity_sensor: shadow.getElementById(`cfg-hum-${i}`).value,
-                            moisture_sensor: shadow.getElementById(`cfg-mois-${i}`).value,
+                        const getVal = (id) => {
+                            const el = shadow.getElementById(id);
+                            if (!el) return null;
+                            // For ha-entity-picker and ha-selector, value property is usually correct
+                            // But we log it to be sure
+                            console.log(`Reading ${id}:`, el.tagName, el.value);
+                            return el.value;
+                        };
 
-                            target_temp: parseFloat(shadow.getElementById(`cfg-target-temp-${i}`).value),
-                            max_humidity: parseFloat(shadow.getElementById(`cfg-target-hum-${i}`).value),
-                            target_moisture: parseFloat(shadow.getElementById(`cfg-target-mois-${i}`).value),
-                            pump_duration: parseFloat(shadow.getElementById(`cfg-pump-dur-${i}`).value),
-                            light_start_hour: parseFloat(shadow.getElementById(`cfg-light-start-${i}`).value),
-                            phase_start_date: shadow.getElementById(`cfg-phase-start-${i}`).value || null,
+                        const cfg = {
+                            light_entity: getVal(`cfg-light-${i}`),
+                            fan_entity: getVal(`cfg-fan-${i}`),
+                            pump_entity: getVal(`cfg-pump-${i}`),
+                            camera_entity: getVal(`cfg-camera-${i}`),
+                            temp_sensor: getVal(`cfg-temp-${i}`),
+                            humidity_sensor: getVal(`cfg-hum-${i}`),
+                            moisture_sensor: getVal(`cfg-mois-${i}`),
+
+                            target_temp: parseFloat(getVal(`cfg-target-temp-${i}`)),
+                            max_humidity: parseFloat(getVal(`cfg-target-hum-${i}`)),
+                            target_moisture: parseFloat(getVal(`cfg-target-mois-${i}`)),
+                            pump_duration: parseFloat(getVal(`cfg-pump-dur-${i}`)),
+                            light_start_hour: parseFloat(getVal(`cfg-light-start-${i}`)),
+                            phase_start_date: getVal(`cfg-phase-start-${i}`) || null,
                         };
 
                         this._saveConfig(d.entryId, cfg);
