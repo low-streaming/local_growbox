@@ -867,16 +867,27 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 // Settings Save - Store selections in memory when dropdowns change
                 if (this._activeTab === 'settings') {
-                    // Initialize config state if not exists
+                    // Initialize config state if not exists or empty
                     if (!this._configState) this._configState = {};
+                    // Use device.options instead of undefined 'options' variable
+                    const currentOpts = device.options || {};
+
                     if (!this._configState[d.entryId]) {
-                        this._configState[d.entryId] = { ...options };
+                        this._configState[d.entryId] = { ...currentOpts };
+                    } else {
+                        // Merge in any new options from backend that might have changed
+                        this._configState[d.entryId] = { ...currentOpts, ...this._configState[d.entryId] };
                     }
 
                     // Attach change listeners to all dropdowns/inputs to update in-memory state
                     const attachListener = (id, key) => {
                         const el = shadow.getElementById(id);
                         if (el) {
+                            // Initialize input value from state if reachable (double sync)
+                            if (this._configState[d.entryId][key] !== undefined) {
+                                el.value = this._configState[d.entryId][key];
+                            }
+
                             el.addEventListener('change', () => {
                                 const val = el.value;
                                 console.log(`Config updated: ${key} = ${val}`);
@@ -898,8 +909,15 @@ class LocalGrowBoxPanel extends HTMLElement {
                     attachListener(`cfg-target-temp-${i}`, 'target_temp');
                     attachListener(`cfg-target-hum-${i}`, 'max_humidity');
                     attachListener(`cfg-target-mois-${i}`, 'target_moisture');
-                    attachListener(`cfg-pump-dur-${i}`, 'pump_duration');
+                    attachListener(`cfg-pump-duration-${i}`, 'pump_duration');
                     attachListener(`cfg-light-start-${i}`, 'light_start_hour');
+
+                    // Phase Durations
+                    attachListener(`cfg-phase-seedling-${i}`, 'phase_seedling_hours');
+                    attachListener(`cfg-phase-veg-${i}`, 'phase_vegetative_hours');
+                    attachListener(`cfg-phase-flower-${i}`, 'phase_flowering_hours');
+                    attachListener(`cfg-phase-drying-${i}`, 'phase_drying_hours');
+                    attachListener(`cfg-phase-curing-${i}`, 'phase_curing_hours');
                     attachListener(`cfg-phase-start-${i}`, 'phase_start_date');
 
                     // Save button - save directly from memory
