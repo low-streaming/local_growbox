@@ -111,7 +111,12 @@ class GrowBoxManager:
         """Return number of days in current phase."""
         if not self.phase_start_date:
             return 0
-        delta = dt_util.now() - self.phase_start_date
+        # Ensure both datetimes are timezone-aware
+        now = dt_util.now()
+        start = self.phase_start_date
+        if start and start.tzinfo is None:
+            start = dt_util.as_local(start)
+        delta = now - start
         return max(0, delta.days)
 
     async def _async_update_logic(self, now: datetime.datetime):
@@ -186,12 +191,10 @@ class GrowBoxManager:
         if is_light_time and not is_on:
             _LOGGER.info("Turning light ON for phase %s", self.current_phase)
             await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": light_entity})
-            self.hass.components.persistent_notification.async_create(f"Turning Light ON. {msg}", title="Grow Box Debug")
             
         elif not is_light_time and is_on:
             _LOGGER.info("Turning light OFF for phase %s", self.current_phase)
             await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": light_entity})
-            self.hass.components.persistent_notification.async_create(f"Turning Light OFF. {msg}", title="Grow Box Debug")
 
     async def _async_update_water_logic(self, now: datetime.datetime):
         """Handle Water Pump Logic."""
