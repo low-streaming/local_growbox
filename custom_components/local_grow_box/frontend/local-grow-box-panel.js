@@ -865,52 +865,60 @@ class LocalGrowBoxPanel extends HTMLElement {
                     shadow.getElementById(`settings-nav-${i}`)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
                 }
 
-                // Settings Save
+                // Settings Save - Store selections in memory when dropdowns change
                 if (this._activeTab === 'settings') {
+                    // Initialize config state if not exists
+                    if (!this._configState) this._configState = {};
+                    if (!this._configState[d.entryId]) {
+                        this._configState[d.entryId] = { ...options };
+                    }
+
+                    // Attach change listeners to all dropdowns/inputs to update in-memory state
+                    const attachListener = (id, key) => {
+                        const el = shadow.getElementById(id);
+                        if (el) {
+                            el.addEventListener('change', () => {
+                                const val = el.value;
+                                console.log(`Config updated: ${key} = ${val}`);
+                                this._configState[d.entryId][key] = val;
+                            });
+                        }
+                    };
+
+                    // Entity selectors
+                    attachListener(`cfg-light-${i}`, 'light_entity');
+                    attachListener(`cfg-fan-${i}`, 'fan_entity');
+                    attachListener(`cfg-pump-${i}`, 'pump_entity');
+                    attachListener(`cfg-camera-${i}`, 'camera_entity');
+                    attachListener(`cfg-temp-${i}`, 'temp_sensor');
+                    attachListener(`cfg-hum-${i}`, 'humidity_sensor');
+                    attachListener(`cfg-mois-${i}`, 'moisture_sensor');
+
+                    // Numeric inputs
+                    attachListener(`cfg-target-temp-${i}`, 'target_temp');
+                    attachListener(`cfg-target-hum-${i}`, 'max_humidity');
+                    attachListener(`cfg-target-mois-${i}`, 'target_moisture');
+                    attachListener(`cfg-pump-dur-${i}`, 'pump_duration');
+                    attachListener(`cfg-light-start-${i}`, 'light_start_hour');
+                    attachListener(`cfg-phase-start-${i}`, 'phase_start_date');
+
+                    // Save button - save directly from memory
                     shadow.getElementById(`save-cfg-${i}`)?.addEventListener('click', () => {
-                        const getVal = (id) => {
-                            const el = shadow.getElementById(id);
-                            if (!el) {
-                                console.warn(`Element not found: ${id}`);
-                                return null;
-                            }
+                        const cfg = this._configState[d.entryId] || {};
 
-                            // For ha-entity-picker, try both .value and getAttribute('value')
-                            let val = el.value;
-                            if (!val || val === '') {
-                                val = el.getAttribute('value');
-                            }
-
-                            console.log(`Reading ${id}:`, el.tagName, 'value=', el.value, 'attr=', el.getAttribute('value'), 'final=', val);
-                            return val;
-                        };
-
-                        const cfg = {
-                            light_entity: getVal(`cfg-light-${i}`),
-                            fan_entity: getVal(`cfg-fan-${i}`),
-                            pump_entity: getVal(`cfg-pump-${i}`),
-                            camera_entity: getVal(`cfg-camera-${i}`),
-                            temp_sensor: getVal(`cfg-temp-${i}`),
-                            humidity_sensor: getVal(`cfg-hum-${i}`),
-                            moisture_sensor: getVal(`cfg-mois-${i}`),
-
-                            target_temp: parseFloat(getVal(`cfg-target-temp-${i}`)),
-                            max_humidity: parseFloat(getVal(`cfg-target-hum-${i}`)),
-                            target_moisture: parseFloat(getVal(`cfg-target-mois-${i}`)),
-                            pump_duration: parseFloat(getVal(`cfg-pump-dur-${i}`)),
-                            light_start_hour: parseFloat(getVal(`cfg-light-start-${i}`)),
-                            phase_start_date: getVal(`cfg-phase-start-${i}`) || null,
-                        };
-
-                        // Filter out empty strings to avoid overwriting existing values with blanks
+                        // Filter out empty strings
                         const filteredCfg = {};
                         for (const [key, val] of Object.entries(cfg)) {
-                            if (val !== null && val !== '' && val !== undefined && !isNaN(val)) {
+                            if (val === null) {
+                                filteredCfg[key] = val;
+                            } else if (typeof val === 'string' && val !== '') {
+                                filteredCfg[key] = val;
+                            } else if (typeof val === 'number' && !isNaN(val)) {
                                 filteredCfg[key] = val;
                             }
                         }
 
-                        console.log("Final config to save:", filteredCfg);
+                        console.log("Saving from memory:", filteredCfg);
                         this._saveConfig(d.entryId, filteredCfg);
                     });
                 }
