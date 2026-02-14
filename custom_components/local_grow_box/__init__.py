@@ -402,7 +402,7 @@ async def ws_update_config(hass, connection, msg):
     # Reload entry to apply changes
     await hass.config_entries.async_reload(entry_id)
     
-    connection.send_result(msg["id"])
+    connection.send_result(msg["id"], {"options": entry.options})
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""

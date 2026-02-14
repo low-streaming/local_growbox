@@ -866,13 +866,21 @@ class LocalGrowBoxPanel extends HTMLElement {
         }
 
         try {
-            await this._hass.callWS({
+            const result = await this._hass.callWS({
                 type: 'local_grow_box/update_config',
                 entry_id: entryId,
                 config: config
             });
+
+            // Update with authoritative result from server
+            if (device && result && result.options) {
+                device.options = { ...device.options, ...result.options };
+                this._render();
+            }
+
             // Refresh logic to show new phases in dropdown immediately
-            this._fetchDevices();
+            // Delay slightly to ensure config_entries/get returns fresh data
+            setTimeout(() => this._fetchDevices(), 1000);
         } catch (err) {
             alert('Fehler: ' + err.message);
         }
