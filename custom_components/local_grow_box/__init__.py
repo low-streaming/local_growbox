@@ -409,7 +409,15 @@ async def ws_update_config(hass, connection, msg):
             updates[CONF_PHASE_START_DATE] = dt_util.now().isoformat()
             
     # Update options
-    hass.config_entries.async_update_entry(entry, options={**current_options, **updates})
+    # Filter out empty strings to avoid overwriting existing values
+    filtered_updates = {}
+    for key, value in updates.items():
+        if value != '':  # Keep everything except empty strings
+            filtered_updates[key] = value
+    
+    _LOGGER.error("Filtered updates (removed empty strings): %s", filtered_updates)
+    
+    hass.config_entries.async_update_entry(entry, options={**current_options, **filtered_updates})
     # Reload entry to apply changes
     await hass.config_entries.async_reload(entry_id)
     
