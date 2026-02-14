@@ -870,11 +870,19 @@ class LocalGrowBoxPanel extends HTMLElement {
                     shadow.getElementById(`save-cfg-${i}`)?.addEventListener('click', () => {
                         const getVal = (id) => {
                             const el = shadow.getElementById(id);
-                            if (!el) return null;
-                            // For ha-entity-picker and ha-selector, value property is usually correct
-                            // But we log it to be sure
-                            console.log(`Reading ${id}:`, el.tagName, el.value);
-                            return el.value;
+                            if (!el) {
+                                console.warn(`Element not found: ${id}`);
+                                return null;
+                            }
+
+                            // For ha-entity-picker, try both .value and getAttribute('value')
+                            let val = el.value;
+                            if (!val || val === '') {
+                                val = el.getAttribute('value');
+                            }
+
+                            console.log(`Reading ${id}:`, el.tagName, 'value=', el.value, 'attr=', el.getAttribute('value'), 'final=', val);
+                            return val;
                         };
 
                         const cfg = {
@@ -894,6 +902,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                             phase_start_date: getVal(`cfg-phase-start-${i}`) || null,
                         };
 
+                        console.log("Final config to save:", cfg);
                         this._saveConfig(d.entryId, cfg);
                     });
                 }
