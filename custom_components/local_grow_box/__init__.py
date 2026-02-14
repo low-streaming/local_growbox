@@ -380,6 +380,7 @@ async def ws_update_config(hass, connection, msg):
     """Handle config update."""
     entry_id = msg["entry_id"]
     new_config = msg["config"]
+    _LOGGER.error("WS_UPDATE_CONFIG Received: %s", new_config)
     
     entry = hass.config_entries.async_get_entry(entry_id)
     if not entry:
@@ -396,7 +397,11 @@ async def ws_update_config(hass, connection, msg):
     if "current_phase" in new_config:
         # Use merged config to get old phase, in case it wasn't in options yet
         full_config = {**entry.data, **current_options}
-        old_phase = full_config.get("current_phase")
+        if full_config:
+             old_phase = full_config.get("current_phase")
+        else:
+             old_phase = None
+             
         new_phase = new_config.get("current_phase")
         
         if old_phase != new_phase and CONF_PHASE_START_DATE not in new_config:
@@ -408,6 +413,7 @@ async def ws_update_config(hass, connection, msg):
     # Reload entry to apply changes
     await hass.config_entries.async_reload(entry_id)
     
+    _LOGGER.error("WS_UPDATE_CONFIG Saved Options: %s", entry.options)
     connection.send_result(msg["id"], {"options": dict(entry.options)})
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

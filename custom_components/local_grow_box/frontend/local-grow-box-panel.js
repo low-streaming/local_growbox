@@ -911,6 +911,8 @@ class LocalGrowBoxPanel extends HTMLElement {
     }
 
     async _saveConfig(entryId, config) {
+        console.log("Saving Config for Entry:", entryId, config);
+
         // Optimistically update local state to prevent UI flicker/reset
         const device = this._devices.find(d => d.entryId === entryId);
         if (device) {
