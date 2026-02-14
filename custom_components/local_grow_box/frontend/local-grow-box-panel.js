@@ -129,44 +129,51 @@ class LocalGrowBoxPanel extends HTMLElement {
         // Basic CSS
         const style = `
             <style>
+                @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
+
                 :host {
-                    --primary-color: #00E5FF; /* Cyan */
-                    --accent-color: #2979FF; /* Electric Blue */
-                    --text-primary-color: #ffffff;
-                    --card-bg: #0a0b10; /* Dark Navy/Black */
-                    --primary-text: #ffffff;
-                    --secondary-text: #b0b0b0;
-                    --success-color: #00E676;
-                    --warning-color: #FFAB00;
-                    --danger-color: #FF1744;
-                    --info-color: #2979FF;
-                    
-                    --grad-success: linear-gradient(90deg, #00E676, #69F0AE);
-                    --grad-warning: linear-gradient(90deg, #FFAB00, #FFD740);
-                    --grad-danger: linear-gradient(90deg, #FF1744, #FF5252);
-                    --grad-info: linear-gradient(90deg, #2979FF, #448AFF);
+                    --primary-color: #0b6bcb; /* Vivid Blue */
+                    --accent-color: #3b82f6; /* Lighter Blue */
+                    --card-bg: #0a0e1a; /* Deep Navy Background */
+                    --card-surface: #0c1228; /* Slightly lighter navy for cards */
+                    --text-primary: #e2e8f0; /* Light Gray/White */
+                    --text-secondary: #94a3b8; /* Muted Blue-Gray */
+                    --success-color: #10b981;
+                    --warning-color: #f59e0b;
+                    --danger-color: #ef4444;
+                    --border-radius: 8px;
+                    --spacing-unit: 4px;
+                    font-family: 'Open Sans', sans-serif;
+
+                    --grad-success: linear-gradient(90deg, #10b981, #34d399);
+                    --grad-warning: linear-gradient(90deg, #f59e0b, #fbbf24);
+                    --grad-danger: linear-gradient(90deg, #ef4444, #f87171);
+                    --grad-info: linear-gradient(90deg, #0b6bcb, #3b82f6);
                     --grad-inactive: linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
 
                     display: block;
                     background-color: #050505;
                     min-height: 100vh;
-                    font-family: 'Roboto', 'Segoe UI', sans-serif;
-                    color: var(--primary-text);
+                     font-family: 'Open Sans', 'Roboto', 'Segoe UI', sans-serif;
+                    color: var(--text-primary);
                     padding-bottom: 40px;
                 }
                 .header {
-                    background: linear-gradient(135deg, #0a0b10, #1a237e);
-                    color: var(--text-primary-color);
-                    padding: 0; /* Padding handled by toolbar */
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+                    background: linear-gradient(180deg, #0a0e1a 0%, #0c1228 100%);
+                    color: var(--text-primary);
+                    padding: 20px 24px;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
                     margin-bottom: 24px;
-                    border-bottom: 1px solid var(--primary-color);
+                    border-bottom: 1px solid rgba(11, 107, 203, 0.3);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
                 }
                 .toolbar {
                     display: flex;
                     align-items: center;
                     justify-content: space-between;
-                    padding: 24px;
+                    padding: 0;
                 }
                 .brand {
                     display: flex;
@@ -174,14 +181,15 @@ class LocalGrowBoxPanel extends HTMLElement {
                     gap: 16px;
                 }
                 .logo-img {
-                    height: 50px;
+                    height: 36px;
                     width: auto;
+                    object-fit: contain;
                 }
                 .toolbar h1 {
                     margin: 0;
-                    font-size: 28px;
-                    font-weight: 300;
-                    letter-spacing: 1px;
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    letter-spacing: 0.5px;
                     color: var(--primary-color);
                     text-transform: uppercase;
                 }
