@@ -31,10 +31,52 @@ class LocalGrowBoxPanel extends HTMLElement {
         }
 
         // Re-render if we have devices to show status updates
-        // Re-render if we have devices to show status updates
         if (this._devices && (!this._activeTab || this._activeTab === 'overview')) {
-            this._render();
+            if (this._shouldRender()) {
+                this._render();
+            }
         }
+    }
+
+    _shouldRender() {
+        if (!this._lastStates) this._lastStates = {};
+        let changed = false;
+
+        // Collect all relevant entity IDs from devices
+        const watchedIds = [];
+        this._devices.forEach(d => {
+            // Entities
+            Object.values(d.entities).forEach(id => { if (id) watchedIds.push(id); });
+            // Options that are entities
+            const opts = d.options;
+            if (opts) {
+                ['temp_sensor', 'humidity_sensor', 'light_entity', 'fan_entity', 'pump_entity', 'moisture_sensor', 'camera_entity'].forEach(k => {
+                    if (opts[k]) watchedIds.push(opts[k]);
+                });
+            }
+        });
+
+        // Check if any changed
+        watchedIds.forEach(id => {
+            const newState = this._hass.states[id];
+            const oldState = this._lastStates[id];
+
+            // If state object ref changed key details
+            if (newState !== oldState) {
+                // If one exists and other doesn't, or state value changed, or attributes changed
+                // Simple equality check might be enough if HA creates new objects on update
+                // But HA updates state objects on every attribute change (e.g. timestamp)
+                // Let's filter for relevant changes: state and specific attributes?
+                // For now, strict inequality is better than constant rendering.
+                if (newState?.state !== oldState?.state ||
+                    newState?.last_updated !== oldState?.last_updated) {
+                    changed = true;
+                }
+                this._lastStates[id] = newState;
+            }
+        });
+
+        return changed;
     }
 
     async _fetchDevices() {

@@ -176,16 +176,22 @@ class GrowBoxManager:
 
         is_on = current_state.state == "on"
 
+        _LOGGER.debug(
+            "Light Logic - Phase: %s, Light Hours: %s, Start: %s, Now: %s, Elapsed: %s, Duration: %s, Is Light Time: %s",
+            phase, light_hours, start_time, now_local, elapsed, duration, is_light_time
+        )
+
+        msg = f"Phase: {phase}, Hours: {light_hours}, Start: {start_hour}:00, Now: {now_local.strftime('%H:%M')}, ON: {is_light_time}"
+        
         if is_light_time and not is_on:
             _LOGGER.info("Turning light ON for phase %s", self.current_phase)
-            await self.hass.services.async_call(
-                "homeassistant", "turn_on", {"entity_id": light_entity}
-            )
+            await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": light_entity})
+            self.hass.components.persistent_notification.async_create(f"Turning Light ON. {msg}", title="Grow Box Debug")
+            
         elif not is_light_time and is_on:
             _LOGGER.info("Turning light OFF for phase %s", self.current_phase)
-            await self.hass.services.async_call(
-                "homeassistant", "turn_off", {"entity_id": light_entity}
-            )
+            await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": light_entity})
+            self.hass.components.persistent_notification.async_create(f"Turning Light OFF. {msg}", title="Grow Box Debug")
 
     async def _async_update_water_logic(self, now: datetime.datetime):
         """Handle Water Pump Logic."""
@@ -402,7 +408,7 @@ async def ws_update_config(hass, connection, msg):
     # Reload entry to apply changes
     await hass.config_entries.async_reload(entry_id)
     
-    connection.send_result(msg["id"], {"options": entry.options})
+    connection.send_result(msg["id"], {"options": dict(entry.options)})
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
