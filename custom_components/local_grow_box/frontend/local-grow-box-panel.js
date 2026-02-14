@@ -130,36 +130,37 @@ class LocalGrowBoxPanel extends HTMLElement {
         const style = `
             <style>
                 :host {
-                    --primary-color: #03a9f4;
-                    --accent-color: #009688;
+                    --primary-color: #00E5FF; /* Cyan */
+                    --accent-color: #2979FF; /* Electric Blue */
                     --text-primary-color: #ffffff;
-                    --card-bg: #1c1c1e;
+                    --card-bg: #0a0b10; /* Dark Navy/Black */
                     --primary-text: #ffffff;
                     --secondary-text: #b0b0b0;
-                    --success-color: #4caf50;
-                    --warning-color: #ff9800;
-                    --danger-color: #f44336;
-                    --info-color: #2196f3;
+                    --success-color: #00E676;
+                    --warning-color: #FFAB00;
+                    --danger-color: #FF1744;
+                    --info-color: #2979FF;
                     
-                    --grad-success: linear-gradient(90deg, #66bb6a, #43a047);
-                    --grad-warning: linear-gradient(90deg, #ffa726, #fb8c00);
-                    --grad-danger: linear-gradient(90deg, #ef5350, #e53935);
-                    --grad-info: linear-gradient(90deg, #42a5f5, #1e88e5);
-                    --grad-inactive: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+                    --grad-success: linear-gradient(90deg, #00E676, #69F0AE);
+                    --grad-warning: linear-gradient(90deg, #FFAB00, #FFD740);
+                    --grad-danger: linear-gradient(90deg, #FF1744, #FF5252);
+                    --grad-info: linear-gradient(90deg, #2979FF, #448AFF);
+                    --grad-inactive: linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
 
                     display: block;
-                    background-color: #121212;
+                    background-color: #050505;
                     min-height: 100vh;
                     font-family: 'Roboto', 'Segoe UI', sans-serif;
                     color: var(--primary-text);
                     padding-bottom: 40px;
                 }
                 .header {
-                    background: linear-gradient(135deg, #0288d1, #00796b);
+                    background: linear-gradient(135deg, #0a0b10, #1a237e);
                     color: var(--text-primary-color);
                     padding: 0; /* Padding handled by toolbar */
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.6);
                     margin-bottom: 24px;
+                    border-bottom: 1px solid var(--primary-color);
                 }
                 .toolbar {
                     display: flex;
@@ -167,11 +168,22 @@ class LocalGrowBoxPanel extends HTMLElement {
                     justify-content: space-between;
                     padding: 24px;
                 }
+                .brand {
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                }
+                .logo-img {
+                    height: 50px;
+                    width: auto;
+                }
                 .toolbar h1 {
                     margin: 0;
                     font-size: 28px;
                     font-weight: 300;
-                    letter-spacing: 0.5px;
+                    letter-spacing: 1px;
+                    color: var(--primary-color);
+                    text-transform: uppercase;
                 }
                 .tabs {
                     display: flex;
