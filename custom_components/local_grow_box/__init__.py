@@ -126,6 +126,16 @@ class GrowBoxManager:
             return None
         return state
 
+    def _get_config_value(self, key, default, type_func=str):
+        """Get config value with type conversion and empty string handling."""
+        val = self.config.get(key)
+        if val is None or val == "":
+            return default
+        try:
+            return type_func(val)
+        except (ValueError, TypeError):
+            return default
+
     async def _async_update_logic(self, now: datetime.datetime):
         """Main automation logic."""
         if not self.master_switch_on:
@@ -150,30 +160,30 @@ class GrowBoxManager:
 
         # Standard Phases
         if phase == PHASE_SEEDLING:
-            light_hours = self.config.get(CONF_PHASE_SEEDLING_HOURS, 18)
+            light_hours = self._get_config_value(CONF_PHASE_SEEDLING_HOURS, 18, float)
         elif phase == PHASE_VEGETATIVE:
-            light_hours = self.config.get(CONF_PHASE_VEGETATIVE_HOURS, 18)
+            light_hours = self._get_config_value(CONF_PHASE_VEGETATIVE_HOURS, 18, float)
         elif phase == PHASE_FLOWERING:
-            light_hours = self.config.get(CONF_PHASE_FLOWERING_HOURS, 12)
+            light_hours = self._get_config_value(CONF_PHASE_FLOWERING_HOURS, 12, float)
         elif phase == PHASE_DRYING:
-            light_hours = self.config.get(CONF_PHASE_DRYING_HOURS, 0)
+            light_hours = self._get_config_value(CONF_PHASE_DRYING_HOURS, 0, float)
         elif phase == PHASE_CURING:
-            light_hours = self.config.get(CONF_PHASE_CURING_HOURS, 0)
+            light_hours = self._get_config_value(CONF_PHASE_CURING_HOURS, 0, float)
         
         # Custom Phases (Check by Name)
         elif phase == self.config.get(CONF_CUSTOM1_NAME):
-            light_hours = self.config.get(CONF_CUSTOM1_HOURS, 0)
+            light_hours = self._get_config_value(CONF_CUSTOM1_HOURS, 0, float)
         elif phase == self.config.get(CONF_CUSTOM2_NAME):
-            light_hours = self.config.get(CONF_CUSTOM2_HOURS, 0)
+            light_hours = self._get_config_value(CONF_CUSTOM2_HOURS, 0, float)
         elif phase == self.config.get(CONF_CUSTOM3_NAME):
-            light_hours = self.config.get(CONF_CUSTOM3_HOURS, 0)
+            light_hours = self._get_config_value(CONF_CUSTOM3_HOURS, 0, float)
         
         # Fallback
         else:
              light_hours = PHASE_LIGHT_HOURS.get(phase, 12)
 
         # Calculate schedule
-        start_hour = self.config.get(CONF_LIGHT_START_HOUR, DEFAULT_LIGHT_START_HOUR)
+        start_hour = self._get_config_value(CONF_LIGHT_START_HOUR, DEFAULT_LIGHT_START_HOUR, int)
         now_local = dt_util.now()
         start_time = now_local.replace(hour=int(start_hour), minute=0, second=0, microsecond=0)
 
@@ -217,7 +227,7 @@ class GrowBoxManager:
             return
 
         is_on = pump_state.state == "on"
-        duration = self.config.get(CONF_PUMP_DURATION, DEFAULT_PUMP_DURATION)
+        duration = self._get_config_value(CONF_PUMP_DURATION, DEFAULT_PUMP_DURATION, float)
         
         # 1. Handle Auto-Off (Duration Limit)
         if is_on:
@@ -237,7 +247,7 @@ class GrowBoxManager:
         # 2. Handle Auto-On (Soil Moisture)
         if not is_on:
             moisture_entity = self.config.get(CONF_MOISTURE_SENSOR)
-            target = self.config.get(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE)
+            target = self._get_config_value(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE, float)
             
             if moisture_entity:
                 state = self._get_safe_state(moisture_entity)
@@ -262,8 +272,8 @@ class GrowBoxManager:
         if not temp_entity or not humid_entity:
             return
 
-        target_temp = self.config.get(CONF_TARGET_TEMP, DEFAULT_TARGET_TEMP)
-        max_humidity = self.config.get(CONF_MAX_HUMIDITY, DEFAULT_MAX_HUMIDITY)
+        target_temp = self._get_config_value(CONF_TARGET_TEMP, DEFAULT_TARGET_TEMP, float)
+        max_humidity = self._get_config_value(CONF_MAX_HUMIDITY, DEFAULT_MAX_HUMIDITY, float)
 
         temp_state = self._get_safe_state(temp_entity)
         humid_state = self._get_safe_state(humid_entity)
