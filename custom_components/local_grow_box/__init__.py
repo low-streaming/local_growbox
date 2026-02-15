@@ -422,8 +422,8 @@ async def ws_update_config(hass, connection, msg):
 
     hass.config_entries.async_update_entry(entry, options=updated_options)
     
-    # Reload entry to apply changes
-    await hass.config_entries.async_reload(entry_id)
+    # Reload happens automatically via update listener
+    _LOGGER.debug("Updated config for entry %s: %s", entry_id, updated_options)
     
     connection.send_result(msg["id"], {"options": dict(entry.options)})
 
