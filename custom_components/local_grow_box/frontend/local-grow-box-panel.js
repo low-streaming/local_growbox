@@ -402,91 +402,107 @@ class LocalGrowBoxPanel extends HTMLElement {
             const section = document.createElement('div');
             section.className = 'settings-section';
 
-            // Helper to create placeholder HTML
-            const renderPickerHTML = (label, configKey) => {
-                return `
-                    <div class="form-group">
-                        <label class="form-label">${label}</label>
-                        <ha-entity-picker
-                            class="picker-${device.id}"
-                            data-key="${configKey}"
-                            data-entry="${device.entryId}"
-                            data-domain-json='${JSON.stringify(configKey === 'fan_entity' ? ['switch', 'fan'] :
-                    configKey === 'camera_entity' ? ['camera'] :
-                        configKey.includes('sensor') ? ['sensor'] : ['switch', 'light'])}'
-                        ></ha-entity-picker>
-                    </div>
-                `;
+            const title = document.createElement('div');
+            title.className = 'section-title';
+            title.innerText = `${device.name} - Konfiguration`;
+            section.appendChild(title);
+
+            const grid = document.createElement('div');
+            grid.className = 'form-grid';
+
+            // Helper to create columns
+            const createCol = (titleText) => {
+                const div = document.createElement('div');
+                const h4 = document.createElement('h4');
+                h4.style.cssText = "margin:0 0 16px 0; color:var(--text-secondary);";
+                h4.innerText = titleText;
+                div.appendChild(h4);
+                return div;
             };
 
-            const renderInput = (label, configKey, type = 'text') => {
-                const val = device.options[configKey] !== undefined ? device.options[configKey] : '';
-                return `
-                    <div class="form-group">
-                        <label class="form-label">${label}</label>
-                        <input type="${type}" value="${val}" data-key="${configKey}" data-entry="${device.entryId}">
-                    </div>
-                 `;
-            }
+            const col1 = createCol('Klima & Sensoren');
+            const col2 = createCol('Bewässerung & Licht');
+            const col3 = createCol('Erweitert');
 
-            section.innerHTML = `
-                <div class="section-title">${device.name} - Konfiguration</div>
-                
-                <div class="form-grid">
-                    <div>
-                        <h4 style="margin:0 0 16px 0; color:var(--text-secondary);">Klima & Sensoren</h4>
-                        ${renderPickerHTML('Temp. Sensor', 'temp_sensor')}
-                        ${renderPickerHTML('Luftfeuchte Sensor', 'humidity_sensor')}
-                        ${renderPickerHTML('Abluft Ventilator', 'fan_entity')}
-                        ${renderInput('Ziel Temperatur (°C)', 'target_temp', 'number')}
-                        ${renderInput('Max. Feuchte (%)', 'max_humidity', 'number')}
-                    </div>
-                    
-                    <div>
-                        <h4 style="margin:0 0 16px 0; color:var(--text-secondary);">Bewässerung & Licht</h4>
-                        ${renderPickerHTML('Licht Quelle', 'light_entity')}
-                        ${renderInput('Licht Start (Stunde)', 'light_start_hour', 'number')}
-                        
-                        ${renderPickerHTML('Wasserpumpe', 'pump_entity')}
-                        ${renderPickerHTML('Bodenfeuchte Sensor', 'moisture_sensor')}
-                        ${renderInput('Ziel Bodenfeuchte (%)', 'target_moisture', 'number')}
-                        ${renderInput('Pumpen Dauer (s)', 'pump_duration', 'number')}
-                    </div>
-                    
-                    <div>
-                        <h4 style="margin:0 0 16px 0; color:var(--text-secondary);">Erweitert</h4>
-                        ${renderPickerHTML('Kamera', 'camera_entity')}
-                        ${renderInput('Phasen Startdatum', 'phase_start_date', 'date')}
-                    </div>
-                </div>
-                
-                <div style="margin-top:24px; text-align:right;">
-                    <button class="btn active" id="save-${device.id}" style="width:auto; display:inline-flex; padding:12px 24px;">
-                        Speichern
-                    </button>
-                </div>
-            `;
+            // DOM-based Helper for Picker
+            const appendPicker = (parent, label, configKey, domains) => {
+                const group = document.createElement('div');
+                group.className = 'form-group';
 
-            // Post-process: Set properties on custom elements
-            section.querySelectorAll(`ha-entity-picker.picker-${device.id}`).forEach(picker => {
-                const configKey = picker.dataset.key;
-                const val = device.options[configKey];
+                const lbl = document.createElement('label');
+                lbl.className = 'form-label';
+                lbl.innerText = label;
+                group.appendChild(lbl);
 
-                // IMPORTANT: Set properties directly
+                const picker = document.createElement('ha-entity-picker');
                 picker.hass = this._hass;
-                picker.value = val;
+                picker.value = device.options[configKey];
+                picker.includeDomains = domains;
+                picker.dataset.key = configKey; // For saving
 
-                // Parse domains from data attribute we stored
-                try {
-                    const domains = JSON.parse(picker.dataset.domainJson);
-                    picker.includeDomains = domains;
-                } catch (e) {
-                    console.error("Error parsing domains", e);
-                }
-            });
+                // Add class for later updates if needed
+                picker.classList.add('live-picker');
 
-            // Bind Save
-            section.querySelector(`#save-${device.id}`).onclick = () => this._saveConfig_V2(section, device.entryId);
+                group.appendChild(picker);
+                parent.appendChild(group);
+            };
+
+            // DOM-based Helper for Input
+            const appendInput = (parent, label, configKey, type = 'text') => {
+                const group = document.createElement('div');
+                group.className = 'form-group';
+
+                const lbl = document.createElement('label');
+                lbl.className = 'form-label';
+                lbl.innerText = label;
+                group.appendChild(lbl);
+
+                const input = document.createElement('input');
+                input.type = type;
+                input.value = device.options[configKey] !== undefined ? device.options[configKey] : '';
+                input.dataset.key = configKey; // For saving
+
+                group.appendChild(input);
+                parent.appendChild(group);
+            };
+
+            // Col 1
+            appendPicker(col1, 'Temp. Sensor', 'temp_sensor', ['sensor']);
+            appendPicker(col1, 'Luftfeuchte Sensor', 'humidity_sensor', ['sensor']);
+            appendPicker(col1, 'Abluft Ventilator', 'fan_entity', ['switch', 'fan', 'input_boolean']);
+            appendInput(col1, 'Ziel Temperatur (°C)', 'target_temp', 'number');
+            appendInput(col1, 'Max. Feuchte (%)', 'max_humidity', 'number');
+
+            // Col 2
+            appendPicker(col2, 'Licht Quelle', 'light_entity', ['switch', 'light', 'input_boolean']);
+            appendInput(col2, 'Licht Start (Stunde)', 'light_start_hour', 'number');
+
+            appendPicker(col2, 'Wasserpumpe', 'pump_entity', ['switch', 'input_boolean']);
+            appendPicker(col2, 'Bodenfeuchte Sensor', 'moisture_sensor', ['sensor']);
+            appendInput(col2, 'Ziel Bodenfeuchte (%)', 'target_moisture', 'number');
+            appendInput(col2, 'Pumpen Dauer (s)', 'pump_duration', 'number');
+
+            // Col 3
+            appendPicker(col3, 'Kamera', 'camera_entity', ['camera']);
+            appendInput(col3, 'Phasen Startdatum', 'phase_start_date', 'date');
+
+            grid.appendChild(col1);
+            grid.appendChild(col2);
+            grid.appendChild(col3);
+            section.appendChild(grid);
+
+            // Save Button
+            const btnDiv = document.createElement('div');
+            btnDiv.style.cssText = "margin-top:24px; text-align:right;";
+            const btn = document.createElement('button');
+            btn.className = 'btn active';
+            btn.style.cssText = "width:auto; display:inline-flex; padding:12px 24px;";
+            btn.id = `save-${device.id}`; // Add ID for consistency
+            btn.innerText = 'Speichern';
+            btn.onclick = () => this._saveConfig_V2(section, device.entryId);
+            btnDiv.appendChild(btn);
+
+            section.appendChild(btnDiv);
 
             container.appendChild(section);
         });
