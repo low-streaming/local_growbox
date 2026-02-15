@@ -87,7 +87,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                 };
             });
 
-            this._render();
+            if (this.shadowRoot && this.shadowRoot.querySelector('.header')) {
+                this._updateContent();
+            } else {
+                this._render();
+            }
         } catch (err) {
             console.error("Error fetching grow boxes:", err);
         }
