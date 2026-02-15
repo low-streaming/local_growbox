@@ -100,31 +100,37 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
         data = self.config_entry.data
         
         def get_val(key):
-            return options.get(key, data.get(key))
+            val = options.get(key, data.get(key))
+            if val is None:
+                return vol.UNDEFINED
+            return val
+
+        # Dynamically build schema to avoid 'None' issues
+        schema = {
+            vol.Optional(CONF_TEMP_SENSOR, description={"suggested_value": get_val(CONF_TEMP_SENSOR)}): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            ),
+            vol.Optional(CONF_HUMIDITY_SENSOR, description={"suggested_value": get_val(CONF_HUMIDITY_SENSOR)}): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            ),
+            vol.Optional(CONF_LIGHT_ENTITY, description={"suggested_value": get_val(CONF_LIGHT_ENTITY)}): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["switch", "light", "input_boolean"])
+            ),
+            vol.Optional(CONF_FAN_ENTITY, description={"suggested_value": get_val(CONF_FAN_ENTITY)}): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["switch", "fan", "input_boolean"])
+            ),
+            vol.Optional(CONF_PUMP_ENTITY, description={"suggested_value": get_val(CONF_PUMP_ENTITY)}): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["switch", "input_boolean"])
+            ),
+            vol.Optional(CONF_MOISTURE_SENSOR, description={"suggested_value": get_val(CONF_MOISTURE_SENSOR)}): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            ),
+            vol.Optional(CONF_CAMERA_ENTITY, description={"suggested_value": get_val(CONF_CAMERA_ENTITY)}): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="camera")
+            ),
+        }
 
         return self.async_show_form(
             step_id="init",
-            data_schema=vol.Schema({
-                vol.Optional(CONF_TEMP_SENSOR, description={"suggested_value": get_val(CONF_TEMP_SENSOR)}): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
-                vol.Optional(CONF_HUMIDITY_SENSOR, description={"suggested_value": get_val(CONF_HUMIDITY_SENSOR)}): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
-                vol.Optional(CONF_LIGHT_ENTITY, description={"suggested_value": get_val(CONF_LIGHT_ENTITY)}): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain=["switch", "light", "input_boolean"])
-                ),
-                vol.Optional(CONF_FAN_ENTITY, description={"suggested_value": get_val(CONF_FAN_ENTITY)}): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain=["switch", "fan", "input_boolean"])
-                ),
-                vol.Optional(CONF_PUMP_ENTITY, description={"suggested_value": get_val(CONF_PUMP_ENTITY)}): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain=["switch", "input_boolean"])
-                ),
-                vol.Optional(CONF_MOISTURE_SENSOR, description={"suggested_value": get_val(CONF_MOISTURE_SENSOR)}): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="sensor")
-                ),
-                vol.Optional(CONF_CAMERA_ENTITY, description={"suggested_value": get_val(CONF_CAMERA_ENTITY)}): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain="camera")
-                ),
-            })
+            data_schema=vol.Schema(schema)
         )
