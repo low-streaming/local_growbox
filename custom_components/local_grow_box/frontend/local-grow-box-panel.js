@@ -30,53 +30,10 @@ class LocalGrowBoxPanel extends HTMLElement {
             this._fetchDevices();
         }
 
-        // Re-render if we have devices to show status updates
-        if (this._devices && (!this._activeTab || this._activeTab === 'overview')) {
-            if (this._shouldRender()) {
-                this._render();
-            }
+        // Re-render if we affect the UI
+        if (this._devices && !this._isInteracting) {
+            this._render();
         }
-    }
-
-    _shouldRender() {
-        if (!this._lastStates) this._lastStates = {};
-        let changed = false;
-
-        // Collect all relevant entity IDs from devices
-        const watchedIds = [];
-        this._devices.forEach(d => {
-            // Entities
-            Object.values(d.entities).forEach(id => { if (id) watchedIds.push(id); });
-            // Options that are entities
-            const opts = d.options;
-            if (opts) {
-                ['temp_sensor', 'humidity_sensor', 'light_entity', 'fan_entity', 'pump_entity', 'moisture_sensor', 'camera_entity'].forEach(k => {
-                    if (opts[k]) watchedIds.push(opts[k]);
-                });
-            }
-        });
-
-        // Check if any changed
-        watchedIds.forEach(id => {
-            const newState = this._hass.states[id];
-            const oldState = this._lastStates[id];
-
-            // If state object ref changed key details
-            if (newState !== oldState) {
-                // If one exists and other doesn't, or state value changed, or attributes changed
-                // Simple equality check might be enough if HA creates new objects on update
-                // But HA updates state objects on every attribute change (e.g. timestamp)
-                // Let's filter for relevant changes: state and specific attributes?
-                // For now, strict inequality is better than constant rendering.
-                if (newState?.state !== oldState?.state ||
-                    newState?.last_updated !== oldState?.last_updated) {
-                    changed = true;
-                }
-                this._lastStates[id] = newState;
-            }
-        });
-
-        return changed;
     }
 
     async _fetchDevices() {
@@ -94,7 +51,6 @@ class LocalGrowBoxPanel extends HTMLElement {
 
             this._devices = myDevices.map(device => {
                 const deviceEntities = entities.filter(e => e.device_id === device.id);
-                // Find config entry for this device (to get Entry ID for updates)
                 const entry = entries.find(e => e.entry_id === device.primary_config_entry);
 
                 const findEntity = (uniqueIdSuffix) => {
@@ -111,7 +67,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         phase: findEntity('_phase'),
                         master: findEntity('_master_switch'),
                         vpd: findEntity('_vpd'),
-                        pump: findEntity('_water_pump') || ((entry && entry.options) ? entry.options.pump_entity : null),
+                        pump: findEntity('_water_pump'),
                         days: findEntity('_days_in_phase'),
                     }
                 };
@@ -125,880 +81,501 @@ class LocalGrowBoxPanel extends HTMLElement {
 
     _render() {
         if (!this.shadowRoot) return;
-        const root = this.shadowRoot;
-        // Basic CSS
+
+        // If we haven't created the basic structure yet
+        if (!this.shadowRoot.querySelector('.header')) {
+            this._renderStructure();
+        }
+
+        this._updateContent();
+    }
+
+    _renderStructure() {
         const style = `
             <style>
-                @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
-
+                @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+                
                 :host {
-                    --primary-color: #0b6bcb; /* Vivid Blue */
-                    --accent-color: #3b82f6; /* Lighter Blue */
-                    --card-bg: #0a0e1a; /* Deep Navy Background */
-                    --card-surface: #0c1228; /* Slightly lighter navy for cards */
-                    --text-primary: #e2e8f0; /* Light Gray/White */
-                    --text-secondary: #94a3b8; /* Muted Blue-Gray */
+                    --primary-color: #03a9f4;
+                    --accent-color: #ff9800;
+                    --bg-color: #111827;
+                    --card-bg: #1f2937;
+                    --text-primary: #f9fafb;
+                    --text-secondary: #9ca3af;
                     --success-color: #10b981;
-                    --warning-color: #f59e0b;
                     --danger-color: #ef4444;
-                    --border-radius: 8px;
-                    --spacing-unit: 4px;
-                    font-family: 'Open Sans', sans-serif;
-
-                    --grad-success: linear-gradient(90deg, #10b981, #34d399);
-                    --grad-warning: linear-gradient(90deg, #f59e0b, #fbbf24);
-                    --grad-danger: linear-gradient(90deg, #ef4444, #f87171);
-                    --grad-info: linear-gradient(90deg, #0b6bcb, #3b82f6);
-                    --grad-inactive: linear-gradient(90deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
-
+                    font-family: 'Roboto', sans-serif;
                     display: block;
-                    background-color: #050505;
+                    background-color: var(--bg-color);
                     min-height: 100vh;
-                     font-family: 'Open Sans', 'Roboto', 'Segoe UI', sans-serif;
                     color: var(--text-primary);
-                    padding-bottom: 40px;
                 }
+                
+                /* Layout */
                 .header {
-                    background: linear-gradient(180deg, #0a0e1a 0%, #0c1228 100%);
-                    color: var(--text-primary);
-                    padding: 20px 24px;
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-                    margin-bottom: 24px;
-                    border-bottom: 1px solid rgba(11, 107, 203, 0.3);
-                    display: flex;
-                    flex-direction: column;
-                    gap: 16px;
-                }
-                .toolbar {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    padding: 0;
-                }
-                .brand {
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                }
-                .logo-img {
-                    height: 36px;
-                    width: auto;
-                    object-fit: contain;
-                }
-                .toolbar h1 {
-                    margin: 0;
-                    font-size: 1.25rem;
-                    font-weight: 700;
-                    letter-spacing: 0.5px;
-                    color: var(--primary-color);
-                    text-transform: uppercase;
-                }
-                .tabs {
-                    display: flex;
-                    background: rgba(0,0,0,0.2);
-                }
-                .tab {
-                    flex: 1;
-                    padding: 16px;
-                    text-align: center;
-                    cursor: pointer;
-                    text-transform: uppercase;
-                    font-weight: 500;
-                    letter-spacing: 1px;
-                    transition: background 0.3s;
-                    border-bottom: 3px solid transparent;
-                    color: rgba(255,255,255,0.7);
-                }
-                .tab:hover {
-                    background: rgba(255,255,255,0.1);
-                    color: white;
-                }
-                .tab.active {
-                    border-bottom-color: var(--accent-color);
-                    color: white;
-                    background: rgba(255,255,255,0.05);
-                }
-
-                .add-btn {
-                    background: rgba(255,255,255,0.15);
-                    color: white;
-                    width: 44px;
-                    height: 44px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 28px;
-                    cursor: pointer;
-                    transition: all 0.3s;
-                    backdrop-filter: blur(10px);
-                    border: 1px solid rgba(255,255,255,0.2);
-                }
-                .add-btn:hover {
-                    background: rgba(255,255,255,0.3);
-                    transform: scale(1.1);
-                }
-
-                /* Content Areas */
-                .content {
-                    padding: 0 24px;
-                    display: none; /* Hidden by default */
-                }
-                .content.active {
-                    display: grid;
-                }
-                .grid-view {
-                    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
-                    gap: 24px;
-                }
-                .list-view {
-                    grid-template-columns: 1fr;
-                    gap: 16px;
-                    max-width: 800px;
-                    margin: 0 auto;
-                }
-
-                /* Settings Layout */
-                .settings-group {
-                    background: rgba(255,255,255,0.03);
-                    padding: 16px;
-                    border-radius: 12px;
-                    border: 1px solid rgba(255,255,255,0.05);
-                }
-                .settings-group-title {
-                    margin-top: 0;
-                    margin-bottom: 16px;
-                    color: var(--accent-color);
-                    border-bottom: 1px solid rgba(255,255,255,0.1);
-                    padding-bottom: 8px;
-                }
-                .settings-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-                    gap: 16px;
-                }
-                .setting-item {
-                    display: flex;
-                    flex-direction: column;
-                }
-                .setting-item label {
-                    font-size: 12px;
-                    color: rgba(255,255,255,0.6);
-                    margin-bottom: 4px;
-                }
-                .setting-item input, .setting-item select {
-                    background: rgba(0,0,0,0.3);
-                    border: 1px solid rgba(255,255,255,0.1);
-                    color: white;
-                    padding: 8px;
-                    border-radius: 4px;
-                }
-
-                /* Cards (Overview) */
-                .card {
                     background-color: var(--card-bg);
-                    border-radius: 20px;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                    padding: 16px 24px;
+                    border-bottom: 1px solid rgba(255,255,255,0.1);
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                }
+                .header h1 { margin: 0; font-size: 20px; font-weight: 500; color: var(--primary-color); }
+                
+                .tabs { display: flex; gap: 24px; margin-left: 48px; }
+                .tab { 
+                    cursor: pointer; padding: 8px 0; border-bottom: 2px solid transparent; 
+                    opacity: 0.6; transition: all 0.2s; text-transform: uppercase; font-size: 14px; font-weight: 500; 
+                }
+                .tab:hover { opacity: 1; }
+                .tab.active { opacity: 1; border-bottom-color: var(--primary-color); color: var(--primary-color); }
+
+                .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+                
+                /* Cards */
+                .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 24px; }
+                
+                .card {
+                    background: var(--card-bg);
+                    border-radius: 12px;
                     overflow: hidden;
-                    display: flex;
-                    flex-direction: column;
-                    transition: transform 0.3s, box-shadow 0.3s;
-                    border: 1px solid rgba(255,255,255,0.08); 
-                    height: 100%;
-                }
-                .card:hover {
-                    transform: translateY(-4px);
-                    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
-                    border-color: rgba(255,255,255,0.15);
-                }
-                .card-header {
-                    padding: 18px 24px;
-                    background: rgba(255,255,255,0.03);
-                    font-size: 18px;
-                    font-weight: 500;
-                    letter-spacing: 0.5px;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    border-bottom: 1px solid rgba(255,255,255,0.05);
-                }
-                .card-image {
-                    height: 220px;
-                    background-color: #2c2c2e;
-                    background-size: cover;
-                    background-position: center;
-                    position: relative;
-                }
-                .card-image-overlay {
-                    position: absolute;
-                    bottom: 0; left: 0; right: 0;
-                    padding: 12px;
-                    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
-                    color: white;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                }
-                .live-badge {
-                    background: rgba(244, 67, 54, 0.85);
-                    padding: 4px 8px; border-radius: 6px; font-size: 11px;
-                    font-weight: bold; text-transform: uppercase;
-                    display: flex; align-items: center; gap: 6px;
-                }
-                .live-badge::before {
-                    content: ''; display: block; width: 6px; height: 6px;
-                    background: white; border-radius: 50%;
-                }
-                .card-content {
-                    padding: 24px; flex: 1; display: flex; flex-direction: column;
-                }
-                .sensor-row {
-                    display: flex; align-items: center; margin-bottom: 24px;
-                }
-                .sensor-icon {
-                    width: 40px; height: 40px; margin-right: 20px;
-                    font-size: 24px; display: flex; align-items: center; justify-content: center;
-                    background: rgba(255,255,255,0.05); border-radius: 50%;
-                    border: 1px solid rgba(255,255,255,0.1);
-                }
-                .sensor-data { flex: 1; }
-                .sensor-label { font-size: 11px; text-transform: uppercase; opacity: 0.6; }
-                .sensor-value { font-size: 18px; font-weight: 600; float: right; }
-                .sensor-bar-container { background: rgba(255,255,255,0.08); height: 10px; border-radius: 5px; margin-top: 10px; overflow:hidden;}
-                .sensor-bar-fill { height: 100%; border-radius: 5px; }
-                .grad-vpd { background: linear-gradient(90deg, #29b6f6, #66bb6a, #ef5350); }
-
-                /* Sensor Grid */
-                .sensor-grid {
-                    display: grid; grid-template-columns: 1fr 1fr; gap: 20px 32px;
-                    margin-top: auto; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08);
-                }
-                .sensor-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-                .sensor-icon-small { font-size: 22px; width: 28px; text-align: center; color: var(--secondary-text); }
-                .sensor-data-row { flex: 1; display: flex; align-items: center; gap: 16px; }
-                .sensor-bar-segmented { display: flex; gap: 4px; height: 8px; flex: 1; min-width: 50px; }
-                .bar-segment {
-                    flex: 1; height: 100%; background: rgba(255,255,255,0.1); border-radius: 2px;
-                }
-                .sensor-val-main { font-weight: 500; font-size: 15px; white-space: nowrap; text-align: right; min-width: 60px; color: #fff; }
-                .sensor-unit { font-size: 0.85em; opacity: 0.6; font-weight: normal; }
-
-                /* Controls */
-                .controls {
-                    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 24px; background: rgba(0,0,0,0.1);
-                }
-                .control-btn {
-                    cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center;
-                    padding: 16px; border-radius: 16px; transition: all 0.2s; background: rgba(255,255,255,0.05);
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
                     border: 1px solid rgba(255,255,255,0.05);
                 }
-                .control-btn:hover { background: rgba(255,255,255,0.1); transform: translateY(-2px); }
-                .control-btn.active {
-                    background: linear-gradient(135deg, var(--primary-color), var(--info-color));
-                    color: white; border: none;
-                }
-                .control-icon { font-size: 32px; margin-bottom: 8px; color: #757575; }
-                .control-btn.active .control-icon { color: white; }
-
-                /* Settings Cards */
-                .settings-card {
-                     background-color: var(--card-bg);
-                     border-radius: 16px;
-                     padding: 24px;
-                     border: 1px solid rgba(255,255,255,0.1);
-                }
-                .settings-card h3 { margin-top: 0; font-weight: 400; color: var(--primary-color); border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 12px; }
                 
-                .setting-row { margin-bottom: 16px; }
-                .setting-label { display: block; font-size: 12px; text-transform: uppercase; color: var(--secondary-text); margin-bottom: 6px; letter-spacing: 0.5px; }
+                .card-image {
+                    height: 200px; background: #000; position: relative;
+                }
+                .card-image img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+                .live-badge {
+                    position: absolute; top: 12px; right: 12px;
+                    background: rgba(220, 38, 38, 0.9); padding: 4px 8px;
+                    border-radius: 4px; font-size: 10px; font-weight: bold;
+                }
                 
-                select, input {
-                    padding: 12px 14px;
-                    border-radius: 8px;
-                    border: 1px solid rgba(255,255,255,0.1);
-                    background: #2c2c2e;
-                    color: white;
-                    font-size: 14px;
-                    width: 100%;
-                    outline: none;
-                    box-sizing: border-box;
+                .card-header {
+                    padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05);
+                    display: flex; justify-content: space-between; align-items: center;
                 }
-                select:focus, input:focus { border-color: var(--primary-color); }
+                .card-title { font-size: 18px; font-weight: 500; }
+                .card-subtitle { font-size: 12px; color: var(--text-secondary); }
                 
-                .save-btn {
-                    width: 100%;
-                    padding: 14px;
-                    background: var(--primary-color);
-                    border: none; border-radius: 8px;
-                    color: white; font-weight: 600; font-size: 14px;
-                    cursor: pointer; margin-top: 10px;
-                    transition: filter 0.2s;
+                .card-body { padding: 16px; }
+                
+                .stat-row { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center; }
+                .stat-label { color: var(--text-secondary); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+                .stat-value { font-weight: 500; font-size: 15px; }
+                
+                .bar-bg { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+                .bar-fill { height: 100%; border-radius: 3px; background: var(--primary-color); }
+                
+                /* Controls */
+                .controls { padding: 16px; background: rgba(0,0,0,0.2); display: flex; gap: 8px; }
+                .btn {
+                    flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer;
+                    background: rgba(255,255,255,0.1); color: var(--text-primary);
+                    font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 6px;
+                    transition: background 0.2s;
                 }
-                .save-btn:hover { filter: brightness(1.1); }
-
-                .input-group { display: flex; gap: 12px; align-items: flex-end; }
-                .input-group > div { flex: 1; }
-
-                /* Modals & Inputs from before */
-                .modal-backdrop {
-                    background: rgba(0, 0, 0, 0.8); backdrop-filter: blur(8px);
-                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                    display: none; justify-content: center; align-items: center; z-index: 100;
+                .btn:hover { background: rgba(255,255,255,0.15); }
+                .btn.active { background: var(--primary-color); color: white; }
+                
+                /* Settings Form */
+                .settings-section { background: var(--card-bg); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
+                .section-title { font-size: 16px; color: var(--primary-color); margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+                
+                .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+                .form-group { margin-bottom: 16px; }
+                .form-label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--text-secondary); text-transform: uppercase; }
+                
+                input, select {
+                    width: 100%; padding: 10px; background: #111827; border: 1px solid rgba(255,255,255,0.1);
+                    color: white; border-radius: 6px; box-sizing: border-box;
                 }
-                .modal-backdrop.open { display: flex; }
-                .modal {
-                    background: #2c2c2e; padding: 32px; width: 90%; max-width: 480px;
-                    border-radius: 24px; border: 1px solid rgba(255,255,255,0.1);
+                
+                /* HA Entity Picker override */
+                ha-entity-picker {
+                    display: block; width: 100%;
                 }
-                .modal-actions { display: flex; justify-content: flex-end; gap: 16px; margin-top: 32px; }
-                .modal-btn { padding: 12px 24px; border-radius: 12px; border:none; cursor: pointer; font-weight: 600; }
-                .modal-btn.confirm { background: var(--primary-color); color: white; }
-                .modal-btn.cancel { background: rgba(255,255,255,0.1); color: white; }
-                input[type="file"] { display: none; }
-                .edit-image-btn { 
-                    width: 28px; height: 28px; border-radius: 50%; background:rgba(0,0,0,0.6); 
-                    display:flex; align-items:center; justify-content:center; cursor:pointer; 
-                    border: 1px solid white; transition: transform 0.2s;
+                
+                .save-bar {
+                    position: fixed; bottom: 20px; right: 20px;
+                    background: var(--success-color); color: white;
+                    padding: 12px 24px; border-radius: 8px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    transform: translateY(100px); transition: transform 0.3s;
+                    display: flex; align-items: center; gap: 8px;
                 }
-                .edit-image-btn:hover{ transform: scale(1.1); }
+                .save-bar.visible { transform: translateY(0); }
+                
+                .fab {
+                    position: fixed; bottom: 24px; right: 24px;
+                    width: 56px; height: 56px; border-radius: 50%;
+                    background: var(--primary-color); color: white;
+                    display: flex; align-items: center; justify-content: center;
+                    font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    cursor: pointer; z-index: 100;
+                }
             </style>
-        `;
-
-        if (!this._devices) return; // Wait for data
-
-        // --- Render Helpers ---
-
-        const renderOverview = () => {
-            return this._devices.map((device, index) => {
-                // Fetch States & Attrs
-                const masterState = this._hass.states[device.entities.master];
-                const daysState = this._hass.states[device.entities.days];
-                const phaseState = this._hass.states[device.entities.phase];
-                const vpdState = this._hass.states[device.entities.vpd];
-                const pumpState = this._hass.states[device.entities.pump];
-
-                // Values
-                const tempEntity = masterState?.attributes?.temp_sensor;
-                const humidityEntity = masterState?.attributes?.humidity_sensor;
-                const lightEntity = masterState?.attributes?.light_entity;
-                const fanEntity = masterState?.attributes?.fan_entity;
-
-                const tempVal = this._hass.states[tempEntity]?.state;
-                const humVal = this._hass.states[humidityEntity]?.state;
-                const lightVal = this._hass.states[lightEntity]?.state;
-                const fanVal = this._hass.states[fanEntity]?.state;
-                const currentPhase = phaseState?.state || 'vegetative';
-
-                // Phase Options - Mix standard and custom
-                const phases = ['seedling', 'vegetative', 'flowering', 'drying', 'curing'];
-                // Add custom phases if defined in options
-                // Add custom phases if defined in options
-                if (device.options) {
-                    ['custom1', 'custom2', 'custom3'].forEach(c => {
-                        const name = device.options[`${c}_phase_name`];
-                        if (name) phases.push(name);
-                    });
-                }
-
-                const phaseTranslations = {
-                    'seedling': 'Keimling', 'vegetative': 'Wachstum', 'flowering': 'Blüte', 'drying': 'Trocknen', 'curing': 'Veredelung'
-                };
-
-                // Image
-                const timestamp = new Date().getTime();
-                let imageUrl = `/local/local_grow_box_images/${device.id}.jpg?t=${timestamp}`;
-                let isLive = false;
-                if (masterState?.attributes?.camera_entity) {
-                    const camState = this._hass.states[masterState.attributes.camera_entity];
-                    if (camState) {
-                        imageUrl = camState.attributes.entity_picture || `/api/camera_proxy_stream/${masterState.attributes.camera_entity}`;
-                        isLive = true;
-                    }
-                }
-
-                // Helpers for Status Bars
-                const getStatus = (t, v) => {
-                    if (!v || v === 'unavailable') return { color: 'var(--grad-inactive)', level: 0 };
-                    v = parseFloat(v);
-                    if (t === 'temp') {
-                        if (v < 18) return { color: 'var(--grad-info)', level: 1 };
-                        if (v > 28) return { color: 'var(--grad-danger)', level: 4 };
-                        return { color: 'var(--grad-success)', level: 3 };
-                    }
-                    if (t === 'hum') {
-                        if (v < 40) return { color: 'var(--grad-warning)', level: 1 };
-                        if (v > 70) return { color: 'var(--grad-danger)', level: 4 };
-                        return { color: 'var(--grad-success)', level: 3 };
-                    }
-                    return { color: 'var(--grad-success)', level: 2 };
-                };
-
-                const renderBar = (icon, val, unit, status) => {
-                    let segs = '';
-                    for (let i = 1; i <= 4; i++) {
-                        segs += `<div class="bar-segment" style="${i <= status.level ? `background:${status.color}; box-shadow:0 0 6px ${status.color};` : ''}"></div>`;
-                    }
-                    return `<div class="sensor-item"><div class="sensor-icon-small">${icon}</div><div class="sensor-data-row"><div class="sensor-bar-segmented">${segs}</div><span class="sensor-val-main">${val || '--'} <span class="sensor-unit">${unit}</span></span></div></div>`;
-                };
-
-                return `
-                    <div class="card">
-                        <div class="card-header">
-                            <span>${device.name}</span>
-                            <span>${daysState?.state || '0'} Tage</span>
-                        </div>
-                        <div class="card-image">
-                            <img src="${imageUrl}" onerror="this.onerror=null;this.src='/local/growbox-default.jpg';" style="width:100%;height:100%;object-fit:cover;">
-                            <div class="card-image-overlay">
-                                ${!isLive ? `<div class="edit-image-btn" id="edit-img-${index}">✎</div><input type="file" id="file-${index}" accept="image/*">` : '<div></div>'}
-                                <span class="live-badge" style="${!isLive ? 'background:#607d8b;' : ''}">${isLive ? 'LIVE' : 'BILD'}</span>
-                            </div>
-                        </div>
-                        <div class="card-content">
-                            <div class="sensor-row">
-                                <div class="sensor-icon">🌱</div>
-                                <div class="sensor-data">
-                                    <span class="sensor-label">Phase</span>
-                                    <select id="phase-${index}" data-entity="${device.entities.phase}" style="margin-top:4px;">
-                                        ${phases.map(o => `<option value="${o}" ${o === currentPhase ? 'selected' : ''}>${phaseTranslations[o] || o}</option>`).join('')}
-                                    </select>
-                                </div>
-                            </div>
-                            <!-- VPD Bar -->
-                            <div class="sensor-row">
-                                <div class="sensor-icon">💧</div>
-                                <div class="sensor-data">
-                                   <div style="display:flex;justify-content:space-between;"><span class="sensor-label">VPD</span><span class="sensor-value">${vpdState?.state || '--'} <small>kPa</small></span></div>
-                                   <div class="sensor-bar-container"><div class="sensor-bar-fill grad-vpd" style="width:${Math.min(100, Math.max(0, (parseFloat(vpdState?.state) || 0) / 3 * 100))}%"></div></div>
-                                </div>
-                            </div>
-                            <div class="sensor-grid">
-                                ${renderBar('🌡️', tempVal, '°C', getStatus('temp', tempVal))}
-                                ${renderBar('☁️', humVal, '%', getStatus('hum', humVal))}
-                            </div>
-                            <!-- Extra Sensors Row 2 -->
-                            <div class="sensor-grid" style="border-top:none; padding-top:0; margin-top:20px;">
-                                ${(() => {
-                        const moistVal = this._hass.states[device.options.moisture_sensor]?.state;
-                        return renderBar('💧', moistVal, '%', getStatus('hum', moistVal)); // Reuse hum status logic for now
-                    })()}
-                                
-                                <div class="sensor-item">
-                                    <div class="sensor-icon-small">💡</div>
-                                    <div style="flex:1;">
-                                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                                             <span style="font-weight:500; font-size:15px; color:${lightVal === 'on' ? 'var(--warning-color)' : '#fff'}">${lightVal === 'on' ? 'AN' : 'AUS'}</span>
-                                             <span style="font-size:11px; opacity:0.6;">Start: ${device.options.light_start_hour || 6}:00</span>
-                                        </div>
-                                        <div class="sensor-bar-segmented" style="height:4px; margin-top:6px; opacity:0.5;">
-                                            <div class="bar-segment" style="background:${lightVal === 'on' ? 'var(--warning-color)' : 'rgba(255,255,255,0.2)'}"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="controls">
-                             <div class="control-btn ${masterState?.state === 'on' ? 'active' : ''}" id="master-${index}" data-entity="${device.entities.master}"><div class="control-icon">🔌</div><span>Master</span></div>
-                             <div class="control-btn ${pumpState?.state === 'on' ? 'active' : ''}" id="pump-${index}" data-entity="${device.entities.pump}"><div class="control-icon">🚿</div><span>Pumpe</span></div>
-                             <div class="control-btn" id="settings-nav-${index}"><div class="control-icon">⚙️</div><span>Einst.</span></div>
-                        </div>
-                    </div>
-                 `;
-            }).join('');
-        };
-
-        const renderSettings = () => {
-            if (!this._hass || !this._devices) return '';
-
-            const allEntities = Object.keys(this._hass.states).sort();
-            const filterDomain = (d) => allEntities.filter(e => e.startsWith(d));
-            const switches = [...filterDomain('switch.'), ...filterDomain('light.')];
-            const fans = [...filterDomain('switch.'), ...filterDomain('fan.')];
-            const cameras = filterDomain('camera.');
-            const sensors = filterDomain('sensor.');
-
-            const renderSelect = (label, id, value, options) => {
-                const optsHtml = options.map(o => {
-                    const stateObj = this._hass.states[o];
-                    const friendly = stateObj ? (stateObj.attributes.friendly_name || o) : o;
-                    const selected = o === value ? 'selected' : '';
-                    return `<option value="${o}" ${selected}>${friendly}</option>`;
-                }).join('');
-
-                return `
-                <div class="setting-item">
-                    <label class="setting-label">${label}</label>
-                    <select id="${id}">
-                         <option value="">-- Wählen --</option>
-                         ${optsHtml}
-                    </select>
-                </div>
-                `;
-            };
-
-            return this._devices.map((device, index) => {
-                const options = device.options || {};
-                const phaseStartDate = options.phase_start_date ? new Date(options.phase_start_date).toISOString().split('T')[0] : '';
-
-                // Safe unique IDs for template literals
-                const camId = `cfg-camera-${index}`;
-                const pumpId = `cfg-pump-${index}`;
-                const lightId = `cfg-light-${index}`;
-
-                return `
-                    <div class="settings-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                            <h3 style="margin:0;">${device.name} - Konfiguration</h3>
-                            <button class="save-btn" id="save-cfg-${index}" data-entry="${device.entryId}">Speichern</button>
-                        </div>
-
-                        <!-- 1. Klimatisierung -->
-                        <div class="settings-group">
-                            <h4 class="settings-group-title">🌡️ Klimatisierung</h4>
-                            <div class="settings-grid">
-                                ${renderSelect('Temp. Sensor', `cfg-temp-${index}`, options.temp_sensor, sensors)}
-                                ${renderSelect('Luftfeuchte Sensor', `cfg-hum-${index}`, options.humidity_sensor, sensors)}
-                                ${renderSelect('Abluft-Ventilator', `cfg-fan-${index}`, options.fan_entity, fans)}
-                                
-                                <div class="setting-item">
-                                    <label>Ziel-Temp (°C)</label>
-                                    <input type="number" id="cfg-target-temp-${index}" value="${options.target_temp || 24}">
-                                </div>
-                                <div class="setting-item">
-                                    <label>Max. Feuchte (%)</label>
-                                    <input type="number" id="cfg-target-hum-${index}" value="${options.max_humidity || 60}">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 2. Bewässerung -->
-                        <div class="settings-group" style="margin-top:16px;">
-                            <h4 class="settings-group-title">💧 Bewässerung</h4>
-                            <div class="settings-grid">
-                                ${renderSelect('Pumpe', pumpId, options.pump_entity, filterDomain('switch.'))}
-                                ${renderSelect('Boden-Sensor', `cfg-mois-${index}`, options.moisture_sensor, sensors)}
-                                
-                                <div class="setting-item">
-                                    <label>Ziel-Bodenfeuchte (%)</label>
-                                    <input type="number" id="cfg-target-mois-${index}" value="${options.target_moisture || 40}">
-                                </div>
-                                <div class="setting-item">
-                                    <label>Pumpen-Laufzeit (s)</label>
-                                    <input type="number" id="cfg-pump-dur-${index}" value="${options.pump_duration || 30}">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 3. Beleuchtung & Phasen -->
-                        <div class="settings-group" style="margin-top:16px;">
-                            <h4 class="settings-group-title">💡 Licht & Phase</h4>
-                            <div class="settings-grid">
-                                ${renderSelect('Licht-Quelle', lightId, options.light_entity, switches)}
-                                <div class="setting-item">
-                                    <label>Tagesbeginn (Licht an)</label>
-                                    <input type="number" id="cfg-light-start-${index}" value="${options.light_start_hour || 6}" min="0" max="23">
-                                </div>
-                                <div class="setting-item">
-                                    <label>Phasen-Startdatum</label>
-                                    <input type="date" id="cfg-phase-start-${index}" value="${phaseStartDate}">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- 4. Sonstiges -->
-                        <div class="settings-group" style="margin-top:16px;">
-                            <h4 class="settings-group-title">📷 Sonstiges</h4>
-                            <div class="settings-grid">
-                                ${renderSelect('Kamera', camId, options.camera_entity, cameras)}
-                            </div>
-                        </div>
-
-                    </div>
-                  `;
-            }).join('');
-        };
-
-        const renderPhases = () => {
-            return this._devices.map((device, index) => {
-                const opts = device.options;
-
-                // Helper for inputs
-                const renderPhaseInput = (label, key, defaultVal) => {
-                    const val = opts[`phase_${key}_hours`] || defaultVal;
-                    return `
-                    <div class="setting-item">
-                        <label>${label} (Std)</label>
-                        <input type="number" id="ph-${key}-${index}" value="${val}" placeholder="${defaultVal}">
-                    </div>
-                `;
-                };
-
-                return `
-                    <div class="settings-card">
-                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                            <h3>${device.name} - Phasen Zeiten</h3>
-                            <button class="save-btn" id="save-phases-${index}" data-entry="${device.entryId}">Speichern</button>
-                        </div>
-                        
-                        <div class="settings-grid">
-                             ${renderPhaseInput('🌱 Keimling', 'seedling', 18)}
-                             ${renderPhaseInput('🌿 Wachstum', 'vegetative', 18)}
-                             ${renderPhaseInput('🌸 Blüte', 'flowering', 12)}
-                             ${renderPhaseInput('🍂 Trocknen', 'drying', 0)}
-                             ${renderPhaseInput('🏺 Aushärten', 'curing', 0)}
-                        </div>
-
-                        <div style="margin-top:20px; border-top:1px solid #444; padding-top:10px;">
-                            <h4>Benutzerdefinierte Phasen</h4>
-                            <div class="settings-grid">
-                                <div class="setting-item">
-                                    <label>Phase 1 Name</label>
-                                    <input type="text" id="ph-c1-name-${index}" value="${opts['custom1_phase_name'] || ''}">
-                                </div>
-                                <div class="setting-item">
-                                    <label>Std.</label>
-                                    <input type="number" id="ph-c1-hours-${index}" value="${opts['custom1_phase_hours'] || 0}">
-                                </div>
-                                
-                                <div class="setting-item">
-                                    <label>Phase 2 Name</label>
-                                    <input type="text" id="ph-c2-name-${index}" value="${opts['custom2_phase_name'] || ''}">
-                                </div>
-                                <div class="setting-item">
-                                    <label>Std.</label>
-                                    <input type="number" id="ph-c2-hours-${index}" value="${opts['custom2_phase_hours'] || 0}">
-                                </div>
-
-                                <div class="setting-item">
-                                    <label>Phase 3 Name</label>
-                                    <input type="text" id="ph-c3-name-${index}" value="${opts['custom3_phase_name'] || ''}">
-                                </div>
-                                <div class="setting-item">
-                                    <label>Std.</label>
-                                    <input type="number" id="ph-c3-hours-${index}" value="${opts['custom3_phase_hours'] || 0}">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        };
-
-        // --- View HTML ---
-        root.innerHTML = `
-            ${style}
+            
             <div class="header">
-                <div class="toolbar">
-                    <h1>Mein Anbauraum</h1>
-                    <div class="add-btn" id="add-plant-nav">+</div>
-                </div>
-                <div class="tabs">
-                    <div class="tab ${this._activeTab === 'overview' ? 'active' : ''}" id="tab-overview">Übersicht</div>
-                    <div class="tab ${this._activeTab === 'settings' ? 'active' : ''}" id="tab-settings">Geräte</div>
-                    <div class="tab ${this._activeTab === 'phases' ? 'active' : ''}" id="tab-phases">Phasen</div>
+                <div style="display:flex; align-items:center;">
+                    <h1>GROW ROOM</h1>
+                    <div class="tabs">
+                        <div class="tab active" data-tab="overview">Übersicht</div>
+                        <div class="tab" data-tab="settings">Geräte & Config</div>
+                        <div class="tab" data-tab="phases">Phasen</div>
+                    </div>
                 </div>
             </div>
             
-            <div class="content ${this._activeTab === 'overview' ? 'active' : ''} grid-view" id="view-overview">
-                ${this._devices && this._devices.length ? renderOverview() : '<p style="color:gray;text-align:center;width:100%;">Keine Boxen gefunden.</p>'}
+            <div class="content" id="main-content">
+                <!-- Injected via JS -->
             </div>
-
-            <div class="content ${this._activeTab === 'settings' ? 'active' : ''} list-view" id="view-settings">
-                 ${this._devices ? renderSettings() : ''}
+            
+            <div class="save-bar" id="save-toast">
+                <span>✅ Einstellungen gespeichert!</span>
             </div>
+        `;
 
-            <div class="content ${this._activeTab === 'phases' ? 'active' : ''} list-view" id="view-phases">
-                 ${this._devices ? renderPhases() : ''}
-            </div>
+        this.shadowRoot.innerHTML = style;
 
-            <div class="modal-backdrop" id="add-modal">
-                <div class="modal">
-                    <h2>Neue Pflanze</h2>
-                    <p>Neue Box in den Einstellungen anlegen?</p>
-                    <div class="modal-actions">
-                        <button class="modal-btn cancel" id="modal-cancel">Abbrechen</button>
-                        <button class="modal-btn confirm" id="modal-confirm">Ja, anlegen</button>
-                    </div>
-                </div>
-            </div>
-                `;
+        // Tab Event Listeners
+        this.shadowRoot.querySelectorAll('.tab').forEach(t => {
+            t.addEventListener('click', (e) => {
+                this._activeTab = e.target.dataset.tab;
 
-        // --- Event Listeners ---
+                // Update UI
+                this.shadowRoot.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+                e.target.classList.add('active');
 
-        // --- Event Listeners ---
-
-        // Tab Navigation
-        root.getElementById('tab-overview').addEventListener('click', () => { this._activeTab = 'overview'; this._render(); });
-        root.getElementById('tab-settings').addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
-        root.getElementById('tab-phases').addEventListener('click', () => { this._activeTab = 'phases'; this._render(); });
-
-        // Add Modal
-        root.getElementById('add-plant-nav').addEventListener('click', () => root.getElementById('add-modal').classList.add('open'));
-        root.getElementById('modal-cancel').addEventListener('click', () => root.getElementById('add-modal').classList.remove('open'));
-        root.getElementById('modal-confirm').addEventListener('click', () => {
-            history.pushState(null, "", "/config/integrations/dashboard");
-            this.dispatchEvent(new Event("location-changed", { bubbles: true, composed: true }));
-        });
-
-        if (this._devices) {
-            this._devices.forEach((d, i) => {
-                const shadow = this.shadowRoot;
-
-                // Overview Actions
-                if (this._activeTab === 'overview') {
-                    shadow.getElementById(`master-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.master }));
-                    shadow.getElementById(`pump-${i}`)?.addEventListener('click', () => this._hass.callService("homeassistant", "toggle", { entity_id: d.entities.pump }));
-                    shadow.getElementById(`phase-${i}`)?.addEventListener('change', (e) => this._hass.callWS({ type: 'local_grow_box/update_config', entry_id: d.entryId, config: { current_phase: e.target.value } }));
-
-                    const fileInput = shadow.getElementById(`file-${i}`);
-                    shadow.getElementById(`edit-img-${i}`)?.addEventListener('click', () => fileInput.click());
-                    fileInput?.addEventListener('change', (e) => {
-                        if (e.target.files[0]) {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                                this._hass.callWS({ type: 'local_grow_box/upload_image', device_id: d.id, image: ev.target.result })
-                                    .then(() => setTimeout(() => this._render(), 1000));
-                            };
-                            reader.readAsDataURL(e.target.files[0]);
-                        }
-                    });
-                    shadow.getElementById(`settings-nav-${i}`)?.addEventListener('click', () => { this._activeTab = 'settings'; this._render(); });
-                }
-
-                // Settings Save - Store selections in memory (ZigAlarm Pattern)
-                if (this._activeTab === 'settings') {
-                    // Initialize config state if not exists or empty
-                    if (!this._configState) this._configState = {};
-
-                    // Only initialize from current options if state is empty/undefined for this device
-                    // This is the key ZigAlarm pattern: Don't overwrite state on re-render if we have pending changes!
-                    if (!this._configState[d.entryId]) {
-                        // Use device.options instead of potentially undefined 'options' variable
-                        const currentOpts = device.options || {};
-                        this._configState[d.entryId] = { ...currentOpts };
-                        console.log("Initialized state from options:", this._configState[d.entryId]);
-                    }
-
-                    // Helper to sync UI with State
-                    const syncField = (id, key) => {
-                        const el = shadow.getElementById(id);
-                        if (el) {
-                            // 1. Set initial value from state
-                            if (this._configState[d.entryId][key] !== undefined) {
-                                el.value = this._configState[d.entryId][key];
-                            }
-
-                            // 2. Update state on change
-                            // Remove old listener if exists to prevent duplicates (though less critical with render)
-                            const newListener = (e) => {
-                                const val = e.target.value;
-                                console.log(`Config updated: ${key} = ${val}`);
-                                this._configState[d.entryId][key] = val;
-                            };
-                            el.removeEventListener('change', el._changeListener); // Clean up old ref if stored
-                            el.addEventListener('change', newListener);
-                            el._changeListener = newListener; // Store ref for cleanup
-                        }
-                    };
-
-                    // Entity selectors
-                    syncField(`cfg-light-${i}`, 'light_entity');
-                    syncField(`cfg-fan-${i}`, 'fan_entity');
-                    syncField(`cfg-pump-${i}`, 'pump_entity');
-                    syncField(`cfg-camera-${i}`, 'camera_entity');
-                    syncField(`cfg-temp-${i}`, 'temp_sensor');
-                    syncField(`cfg-hum-${i}`, 'humidity_sensor');
-                    syncField(`cfg-mois-${i}`, 'moisture_sensor');
-
-                    // Numeric inputs
-                    syncField(`cfg-target-temp-${i}`, 'target_temp');
-                    syncField(`cfg-target-hum-${i}`, 'max_humidity');
-                    syncField(`cfg-target-mois-${i}`, 'target_moisture');
-                    syncField(`cfg-pump-dur-${i}`, 'pump_duration'); // Corrected ID from cfg-pump-duration-${i}
-                    syncField(`cfg-light-start-${i}`, 'light_start_hour');
-
-                    // Phase Durations (Adding missing syncs)
-                    syncField(`cfg-phase-seedling-${i}`, 'phase_seedling_hours');
-                    syncField(`cfg-phase-veg-${i}`, 'phase_vegetative_hours');
-                    syncField(`cfg-phase-flower-${i}`, 'phase_flowering_hours');
-                    syncField(`cfg-phase-drying-${i}`, 'phase_drying_hours');
-                    syncField(`cfg-phase-curing-${i}`, 'phase_curing_hours');
-                    syncField(`cfg-phase-start-${i}`, 'phase_start_date');
-
-                    // Save button - save directly from memory
-                    shadow.getElementById(`save-cfg-${i}`)?.addEventListener('click', () => {
-                        const cfg = this._configState[d.entryId] || {};
-
-                        // Filter out empty strings/nulls (Frontend side safety)
-                        const filteredCfg = {};
-                        for (const [key, val] of Object.entries(cfg)) {
-                            filteredCfg[key] = val; // Send everything, backend filters empty strings now
-                        }
-
-                        console.log("Saving from memory:", filteredCfg);
-                        this._saveConfig(d.entryId, filteredCfg);
-                    });
-                }
-
-                // Phases Save
-                if (this._activeTab === 'phases') {
-                    shadow.getElementById(`save-phases-${i}`)?.addEventListener('click', () => {
-                        const val = (id) => {
-                            const el = shadow.getElementById(id);
-                            return el ? (el.type === 'number' ? parseInt(el.value) : el.value) : null;
-                        };
-
-                        const cfg = {
-                            phase_seedling_hours: val(`ph-seedling-${i}`),
-                            phase_vegetative_hours: val(`ph-vegetative-${i}`),
-                            phase_flowering_hours: val(`ph-flowering-${i}`),
-                            phase_drying_hours: val(`ph-drying-${i}`),
-                            phase_curing_hours: val(`ph-curing-${i}`),
-
-                            custom1_phase_name: val(`ph-c1-name-${i}`),
-                            custom1_phase_hours: val(`ph-c1-hours-${i}`),
-                            custom2_phase_name: val(`ph-c2-name-${i}`),
-                            custom2_phase_hours: val(`ph-c2-hours-${i}`),
-                            custom3_phase_name: val(`ph-c3-name-${i}`),
-                            custom3_phase_hours: val(`ph-c3-hours-${i}`),
-                        };
-                        this._saveConfig(d.entryId, cfg);
-                    });
-                }
+                this._updateContent();
             });
+        });
+    }
+
+    _updateContent() {
+        const container = this.shadowRoot.getElementById('main-content');
+        if (!container || !this._devices) return;
+
+        container.innerHTML = '';
+
+        if (this._activeTab === 'overview') {
+            this._renderOverview(container);
+        } else if (this._activeTab === 'settings') {
+            this._renderSettings(container);
+        } else if (this._activeTab === 'phases') {
+            this._renderPhases(container);
         }
     }
 
-    async _saveConfig(entryId, config) {
-        console.log("Saving Config for Entry:", entryId, config);
-
-        // Optimistically update local state to prevent UI flicker/reset
-        const device = this._devices.find(d => d.entryId === entryId);
-        if (device) {
-            device.options = { ...device.options, ...config };
-            // Force render to lock in values
-            this._render();
+    _renderOverview(container) {
+        if (this._devices.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Keine Grow Box gefunden. Bitte Integration hinzufügen.</div>';
+            return;
         }
 
-        try {
-            const result = await this._hass.callWS({
-                type: 'local_grow_box/update_config',
-                entry_id: entryId,
-                config: config
-            });
+        const grid = document.createElement('div');
+        grid.className = 'grid';
 
-            // Update with authoritative result from server
-            if (device && result && result.options) {
-                device.options = { ...device.options, ...result.options };
-                this._render();
+        this._devices.forEach(device => {
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            // Data
+            const masterState = this._hass.states[device.entities.master];
+            const pumpState = this._hass.states[device.entities.pump];
+            const daysInPhase = this._hass.states[device.entities.days]?.state || 0;
+            const phase = this._hass.states[device.entities.phase]?.state || device.options.current_phase || 'vegetative';
+
+            // Image
+            const timestamp = new Date().getTime();
+            let imgUrl = `/local/local_grow_box_images/${device.id}.jpg?t=${timestamp}`;
+            let isLive = false;
+
+            // Check Camera
+            if (device.options.camera_entity) {
+                const cam = this._hass.states[device.options.camera_entity];
+                if (cam) {
+                    imgUrl = cam.attributes.entity_picture;
+                    isLive = true;
+                }
             }
 
-            // Refresh logic to show new phases in dropdown immediately
-            // Delay slightly to ensure config_entries/get returns fresh data
-            setTimeout(() => this._fetchDevices(), 1000);
-        } catch (err) {
-            alert('Fehler: ' + err.message);
+            // Calculations for Bars
+            const getVal = (entity) => {
+                if (!entity) return null;
+                const s = this._hass.states[entity];
+                return s && !isNaN(s.state) ? parseFloat(s.state) : null;
+            }
+
+            const temp = getVal(device.options.temp_sensor);
+            const hum = getVal(device.options.humidity_sensor);
+            const vpd = getVal(device.entities.vpd);
+
+            // Translations
+            const phaseNames = {
+                'seedling': 'Keimling', 'vegetative': 'Wachstum', 'flowering': 'Blüte', 'drying': 'Trocknen', 'curing': 'Veredelung'
+            };
+            const phaseDisplay = device.options[`${phase}_phase_name`] || phaseNames[phase] || phase;
+
+            card.innerHTML = `
+                <div class="card-image">
+                    <img src="${imgUrl}" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg'">
+                    ${isLive ? '<div class="live-badge">LIVE</div>' : ''}
+                    <div style="position:absolute; bottom:0; left:0; right:0; padding:12px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent);">
+                        <div style="color:white; font-weight:500;">${phaseDisplay}</div>
+                        <div style="color:var(--text-secondary); font-size:12px;">Tag ${daysInPhase}</div>
+                    </div>
+                </div>
+                
+                <div class="card-header">
+                    <div class="card-title">${device.name}</div>
+                    <div>${masterState && masterState.state === 'on' ? '🟢 Online' : '⚪ Offline'}</div>
+                </div>
+                
+                <div class="card-body">
+                    ${this._renderStatBar('Temperatur', temp, '°C', 18, 30, '#ef4444')}
+                    ${this._renderStatBar('Luftfeuchte', hum, '%', 30, 80, '#3b82f6')}
+                    ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3, '#10b981')}
+                </div>
+                
+                <div class="controls">
+                    <button class="btn ${masterState?.state === 'on' ? 'active' : ''}" id="btn-master-${device.id}">
+                        ⚡ Master
+                    </button>
+                    <button class="btn ${pumpState?.state === 'on' ? 'active' : ''}" id="btn-pump-${device.id}">
+                        💧 Pumpe
+                    </button>
+                    <button class="btn" id="btn-upload-${device.id}">
+                        📷 Bild
+                    </button>
+                </div>
+            `;
+
+            // Events
+            const q = s => card.querySelector(s);
+            q(`#btn-master-${device.id}`).onclick = () => this._toggle(device.entities.master);
+            q(`#btn-pump-${device.id}`).onclick = () => this._hass.callService('homeassistant', 'toggle', { entity_id: device.entities.pump || device.options.pump_entity });
+            q(`#btn-upload-${device.id}`).onclick = () => this._triggerUpload(device.id);
+
+            grid.appendChild(card);
+        });
+
+        container.appendChild(grid);
+    }
+
+    _renderStatBar(label, val, unit, min, max, color) {
+        if (val === null) return `<div class="stat-row"><span class="stat-label">${label}</span><span class="stat-value">--</span></div>`;
+
+        const pct = Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100));
+
+        return `
+            <div style="margin-bottom:12px;">
+                <div class="stat-row" style="margin-bottom:4px;">
+                    <span class="stat-label">${label}</span>
+                    <span class="stat-value">${val} ${unit}</span>
+                </div>
+                <div class="bar-bg">
+                    <div class="bar-fill" style="width:${pct}%; background-color:${color};"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    _renderSettings(container) {
+        this._devices.forEach(device => {
+            const section = document.createElement('div');
+            section.className = 'settings-section';
+
+            const renderPicker = (label, configKey, domain) => {
+                const val = device.options[configKey];
+                return `
+                    <div class="form-group">
+                        <label class="form-label">${label}</label>
+                        <ha-entity-picker
+                            .hass=${this._hass}
+                            .value=${val}
+                            .includeDomains=${JSON.stringify([domain])}
+                            data-key="${configKey}"
+                            data-entry="${device.entryId}"
+                        ></ha-entity-picker>
+                    </div>
+                `;
+            };
+
+            const renderInput = (label, configKey, type = 'text') => {
+                const val = device.options[configKey] || '';
+                return `
+                    <div class="form-group">
+                        <label class="form-label">${label}</label>
+                        <input type="${type}" value="${val}" data-key="${configKey}" data-entry="${device.entryId}">
+                    </div>
+                 `;
+            }
+
+            section.innerHTML = `
+                <div class="section-title">${device.name} - Konfiguration</div>
+                
+                <div class="form-grid">
+                    <div>
+                        <h4 style="margin:0 0 16px 0; color:var(--text-secondary);">Klima & Sensoren</h4>
+                        ${renderPicker('Temp. Sensor', 'temp_sensor', 'sensor')}
+                        ${renderPicker('Luftfeuchte Sensor', 'humidity_sensor', 'sensor')}
+                        ${renderPicker('Abluft Ventilator', 'fan_entity', 'switch')} <!-- Switch/Fan -->
+                        ${renderInput('Ziel Temperatur (°C)', 'target_temp', 'number')}
+                        ${renderInput('Max. Feuchte (%)', 'max_humidity', 'number')}
+                    </div>
+                    
+                    <div>
+                        <h4 style="margin:0 0 16px 0; color:var(--text-secondary);">Bewässerung & Licht</h4>
+                        ${renderPicker('Licht Quelle', 'light_entity', 'switch')}
+                        ${renderInput('Licht Start (Stunde)', 'light_start_hour', 'number')}
+                        
+                        ${renderPicker('Wasserpumpe', 'pump_entity', 'switch')}
+                        ${renderPicker('Bodenfeuchte Sensor', 'moisture_sensor', 'sensor')}
+                        ${renderInput('Ziel Bodenfeuchte (%)', 'target_moisture', 'number')}
+                        ${renderInput('Pumpen Dauer (s)', 'pump_duration', 'number')}
+                    </div>
+                    
+                    <div>
+                        <h4 style="margin:0 0 16px 0; color:var(--text-secondary);">Erweitert</h4>
+                        ${renderPicker('Kamera', 'camera_entity', 'camera')}
+                        ${renderInput('Phasen Startdatum', 'phase_start_date', 'date')}
+                    </div>
+                </div>
+                
+                <div style="margin-top:24px; text-align:right;">
+                    <button class="btn active" id="save-${device.id}" style="width:auto; display:inline-flex; padding:12px 24px;">
+                        Speichern
+                    </button>
+                </div>
+            `;
+
+            // Bind Save
+            section.querySelector(`#save-${device.id}`).onclick = () => this._saveConfig_V2(section, device.entryId);
+
+            // Bind Entity Pickers manually because innerHTML doesn't upgrade Custom Elements effectively sometimes
+            // But wait, ha-entity-picker works if properties are set.
+            // We need to set properties after insertion.
+            section.querySelectorAll('ha-entity-picker').forEach(picker => {
+                picker.hass = this._hass;
+                // Domains done in HTML attr JSON.stringify
+            });
+
+            container.appendChild(section);
+        });
+    }
+
+    _renderPhases(container) {
+        this._devices.forEach(device => {
+            const section = document.createElement('div');
+            section.className = 'settings-section';
+
+            const renderInput = (label, configKey, val) => `
+                <div class="form-group">
+                    <label class="form-label">${label}</label>
+                    <input type="number" value="${val}" data-key="${configKey}" data-entry="${device.entryId}">
+                </div>
+            `;
+
+            section.innerHTML = `
+                <div class="section-title">${device.name} - Phasen Zeiten (Stunden)</div>
+                <div class="form-grid">
+                    ${renderInput('Keimling', 'phase_seedling_hours', device.options.phase_seedling_hours || 18)}
+                    ${renderInput('Wachstum', 'phase_vegetative_hours', device.options.phase_vegetative_hours || 18)}
+                    ${renderInput('Blüte', 'phase_flowering_hours', device.options.phase_flowering_hours || 12)}
+                </div>
+                
+                <h4 style="margin:24px 0 16px 0; color:var(--text-secondary);">Benutzerdefinierte Phasen (Name | Stunden)</h4>
+                
+                <div class="form-grid">
+                     <div class="form-group">
+                        <label class="form-label">Custom 1 Name</label>
+                        <input type="text" value="${device.options.custom1_phase_name || ''}" data-key="custom1_phase_name" data-entry="${device.entryId}">
+                     </div>
+                     <div class="form-group">
+                        <label class="form-label">Stunden</label>
+                        <input type="number" value="${device.options.custom1_phase_hours || 0}" data-key="custom1_phase_hours" data-entry="${device.entryId}">
+                     </div>
+                </div>
+                
+                 <div style="margin-top:24px; text-align:right;">
+                    <button class="btn active" id="save-p-${device.id}" style="width:auto; display:inline-flex; padding:12px 24px;">
+                        Speichern
+                    </button>
+                </div>
+            `;
+
+            section.querySelector(`#save-p-${device.id}`).onclick = () => this._saveConfig_V2(section, device.entryId);
+            container.appendChild(section);
+        });
+    }
+
+    async _saveConfig_V2(section, entryId) {
+        const updates = {};
+
+        // Inputs
+        section.querySelectorAll('input, select').forEach(el => {
+            if (el.dataset.key) {
+                updates[el.dataset.key] = el.value;
+            }
+        });
+
+        // Entity Pickers
+        section.querySelectorAll('ha-entity-picker').forEach(el => {
+            if (el.dataset.key) {
+                updates[el.dataset.key] = el.value;
+            }
+        });
+
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/update_config',
+                entry_id: entryId,
+                config: updates
+            });
+
+            const toast = this.shadowRoot.getElementById('save-toast');
+            toast.classList.add('visible');
+            setTimeout(() => toast.classList.remove('visible'), 3000);
+
+            // Refresh
+            this._fetchDevices();
+
+        } catch (e) {
+            alert("Fehler beim Speichern: " + e.message);
         }
     }
+
+    _toggle(entityId) {
+        if (!entityId) return;
+        this._hass.callService('homeassistant', 'toggle', { entity_id: entityId });
+    }
+
+    _triggerUpload(deviceId) {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*';
+        input.onchange = e => {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+                try {
+                    await this._hass.callWS({
+                        type: 'local_grow_box/upload_image',
+                        device_id: deviceId,
+                        image: ev.target.result
+                    });
+                    this._fetchDevices(); // Refresh
+                } catch (err) {
+                    alert('Upload fehlgeschlagen');
+                }
+            };
+            reader.readAsDataURL(file);
+        };
+        input.click();
+    }
 }
+
 customElements.define('local-grow-box-panel', LocalGrowBoxPanel);

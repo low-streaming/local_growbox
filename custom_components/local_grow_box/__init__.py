@@ -10,7 +10,7 @@ import voluptuous as vol
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform, CONF_NAME
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
@@ -44,20 +44,18 @@ from .const import (
     CONF_PUMP_DURATION,
     CONF_MOISTURE_SENSOR,
     CONF_TARGET_MOISTURE,
-    CONF_TARGET_MOISTURE,
     CONF_LIGHT_START_HOUR,
     CONF_PHASE_START_DATE,
     DEFAULT_PUMP_DURATION,
     DEFAULT_TARGET_MOISTURE,
     DEFAULT_LIGHT_START_HOUR,
+    CONF_PUMP_ENTITY,
+    CONF_CAMERA_ENTITY,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.SWITCH, Platform.SELECT]
-
-# Start time for light cycle (e.g., 06:00 AM)
-LIGHT_START_HOUR = 6 
 
 class GrowBoxManager:
     """Class to manage the Grow Box automation."""
@@ -119,19 +117,33 @@ class GrowBoxManager:
         delta = now - start
         return max(0, delta.days)
 
+    def _get_safe_state(self, entity_id: str):
+        """Get state safely, returning None if unavailable/unknown."""
+        if not entity_id:
+            return None
+        state = self.hass.states.get(entity_id)
+        if not state or state.state in ["unavailable", "unknown"]:
+            return None
+        return state
+
     async def _async_update_logic(self, now: datetime.datetime):
         """Main automation logic."""
         if not self.master_switch_on:
             return
 
-        await self._async_update_light_logic(now)
-        await self._async_update_climate_logic(now)
-        await self._async_update_water_logic(now)
+        try:
+            await self._async_update_light_logic(now)
+            await self._async_update_climate_logic(now)
+            await self._async_update_water_logic(now)
+        except Exception as e:
+            _LOGGER.error("Error in update logic: %s", e)
 
     async def _async_update_light_logic(self, now: datetime.datetime):
         """Handle Light Schedule."""
-        light_entity = self.config[CONF_LIGHT_ENTITY]
-        
+        light_entity = self.config.get(CONF_LIGHT_ENTITY)
+        if not light_entity:
+            return
+
         # Determine light hours based on current phase (Standard or Custom)
         light_hours = 0
         phase = self.current_phase
@@ -156,12 +168,12 @@ class GrowBoxManager:
         elif phase == self.config.get(CONF_CUSTOM3_NAME):
             light_hours = self.config.get(CONF_CUSTOM3_HOURS, 0)
         
-        # Fallback to hardcoded defaults if not found (shouldn't happen for standard phases)
+        # Fallback
         else:
              light_hours = PHASE_LIGHT_HOURS.get(phase, 12)
 
         # Calculate schedule
-        start_hour = self.config.get(CONF_LIGHT_START_HOUR) or DEFAULT_LIGHT_START_HOUR
+        start_hour = self.config.get(CONF_LIGHT_START_HOUR, DEFAULT_LIGHT_START_HOUR)
         now_local = dt_util.now()
         start_time = now_local.replace(hour=int(start_hour), minute=0, second=0, microsecond=0)
 
@@ -175,7 +187,7 @@ class GrowBoxManager:
         is_light_time = 0 <= elapsed < duration
 
         # Get current state of light
-        current_state = self.hass.states.get(light_entity)
+        current_state = self._get_safe_state(light_entity)
         if not current_state:
             return
 
@@ -185,8 +197,6 @@ class GrowBoxManager:
             "Light Logic - Phase: %s, Light Hours: %s, Start: %s, Now: %s, Elapsed: %s, Duration: %s, Is Light Time: %s",
             phase, light_hours, start_time, now_local, elapsed, duration, is_light_time
         )
-
-        msg = f"Phase: {phase}, Hours: {light_hours}, Start: {start_hour}:00, Now: {now_local.strftime('%H:%M')}, ON: {is_light_time}"
         
         if is_light_time and not is_on:
             _LOGGER.info("Turning light ON for phase %s", self.current_phase)
@@ -198,17 +208,11 @@ class GrowBoxManager:
 
     async def _async_update_water_logic(self, now: datetime.datetime):
         """Handle Water Pump Logic."""
-        pump_entity = self.config.get("water_pump_entity") # Using literal temporarily as const might be missing locally
-        if not pump_entity:
-            # Try to find it from standard config if not found
-            # Actually we likely defined it in const as CONF_PUMP_ENTITY but user might not have migrated
-            # Let's check typical key
-            pump_entity = self.config.get("pump_entity")
-
+        pump_entity = self.config.get(CONF_PUMP_ENTITY)
         if not pump_entity:
             return
 
-        pump_state = self.hass.states.get(pump_entity)
+        pump_state = self._get_safe_state(pump_entity)
         if not pump_state:
             return
 
@@ -236,8 +240,8 @@ class GrowBoxManager:
             target = self.config.get(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE)
             
             if moisture_entity:
-                state = self.hass.states.get(moisture_entity)
-                if state and state.state not in ["unknown", "unavailable"]:
+                state = self._get_safe_state(moisture_entity)
+                if state:
                     try:
                         val = float(state.state)
                         if val < target:
@@ -251,20 +255,18 @@ class GrowBoxManager:
 
     async def _async_update_climate_logic(self, now: datetime.datetime):
         """Handle Fan and VPD."""
-        temp_entity = self.config[CONF_TEMP_SENSOR]
-        humid_entity = self.config[CONF_HUMIDITY_SENSOR]
-        fan_entity = self.config[CONF_FAN_ENTITY]
+        temp_entity = self.config.get(CONF_TEMP_SENSOR)
+        humid_entity = self.config.get(CONF_HUMIDITY_SENSOR)
+        fan_entity = self.config.get(CONF_FAN_ENTITY)
+        
+        if not temp_entity or not humid_entity:
+            return
 
-        target_temp = self.config.get(CONF_TARGET_TEMP)
-        if target_temp is None:
-            target_temp = DEFAULT_TARGET_TEMP
-            
-        max_humidity = self.config.get(CONF_MAX_HUMIDITY)
-        if max_humidity is None:
-            max_humidity = DEFAULT_MAX_HUMIDITY
+        target_temp = self.config.get(CONF_TARGET_TEMP, DEFAULT_TARGET_TEMP)
+        max_humidity = self.config.get(CONF_MAX_HUMIDITY, DEFAULT_MAX_HUMIDITY)
 
-        temp_state = self.hass.states.get(temp_entity)
-        humid_state = self.hass.states.get(humid_entity)
+        temp_state = self._get_safe_state(temp_entity)
+        humid_state = self._get_safe_state(humid_entity)
 
         if not temp_state or not humid_state:
              return
@@ -276,15 +278,14 @@ class GrowBoxManager:
             return
 
         # VPD Calculation
-        # SVP = 0.61078 * exp((17.27 * T) / (T + 237.3))
-        # VPD = SVP * (1 - RH / 100)
-        # Leaf temperature offset is ignored for simplicity (~ -2C usually)
-
         svp = 0.61078 * math.exp((17.27 * current_temp) / (current_temp + 237.3))
         self.vpd = svp * (1 - current_humid / 100)
 
-        # Fan Control Logic (Bang-bang controller with hysteresis)
-        fan_state = self.hass.states.get(fan_entity)
+        # Fan Control Logic
+        if not fan_entity:
+            return
+            
+        fan_state = self._get_safe_state(fan_entity)
         if not fan_state:
             return
 
@@ -296,11 +297,9 @@ class GrowBoxManager:
             should_fan_on = True
 
         # Logic: Turn OFF if cool enough AND dry enough (w/ hysteresis)
-        # Hysteresis: 1.0 C / 5.0 %
         elif current_temp < (target_temp - 1.0) and current_humid < (max_humidity - 5.0):
              should_fan_on = False
         else:
-             # Keep current state (Deadband)
              should_fan_on = is_fan_on
 
         if should_fan_on and not is_fan_on:
@@ -346,13 +345,13 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         hass,
         webcomponent_name="local-grow-box-panel",
         frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=1.2.0",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.0",
         sidebar_title="Grow Room",
         sidebar_icon="mdi:sprout",
         require_admin=False,
     )
 
-    # Register Websocket API for image upload and config update
+    # Register Websocket API
     websocket_api.async_register_command(hass, ws_upload_image)
     websocket_api.async_register_command(hass, ws_update_config)
     
@@ -389,16 +388,12 @@ async def ws_update_config(hass, connection, msg):
         connection.send_error(msg["id"], "not_found", "Entry not found")
         return
 
-    # Handle Phase Change Logic
-    # If phase is changing, reset start date (unless start date is also being manually set)
-    current_options = entry.options
-    
-    updates = {**new_config}
+    current_options = {**entry.options}
     
     # Check if phase changed
     if "current_phase" in new_config:
-        # Use merged config to get old phase, in case it wasn't in options yet
-        full_config = {**entry.data, **current_options}
+        # Use merged config to get old phase
+        full_config = {**entry.data, **entry.options}
         if full_config:
              old_phase = full_config.get("current_phase")
         else:
@@ -408,16 +403,16 @@ async def ws_update_config(hass, connection, msg):
         
         if old_phase != new_phase and CONF_PHASE_START_DATE not in new_config:
             # Phase changed, and user didn't manually set a date -> Reset to Now
-            updates[CONF_PHASE_START_DATE] = dt_util.now().isoformat()
+            new_config[CONF_PHASE_START_DATE] = dt_util.now().isoformat()
             
-    # Update options
-    # Filter out empty strings to avoid overwriting existing values
-    filtered_updates = {}
-    for key, value in updates.items():
-        if value != '':  # Keep everything except empty strings
-            filtered_updates[key] = value
+    # Clean up empty strings in new_config
+    filtered_config = {k: v for k, v in new_config.items() if v != ""}
+
+    # Update options logic: merge new with existing
+    updated_options = {**current_options, **filtered_config}
+
+    hass.config_entries.async_update_entry(entry, options=updated_options)
     
-    hass.config_entries.async_update_entry(entry, options={**current_options, **filtered_updates})
     # Reload entry to apply changes
     await hass.config_entries.async_reload(entry_id)
     
@@ -446,7 +441,6 @@ async def ws_upload_image(hass, connection, msg):
     device_id = msg["device_id"]
     image_data = msg["image"]
     
-    # Remove header if present (data:image/jpeg;base64,...)
     if "," in image_data:
         image_data = image_data.split(",")[1]
 
@@ -459,8 +453,6 @@ async def ws_upload_image(hass, connection, msg):
                 f.write(decoded)
 
         await hass.async_add_executor_job(_write_file)
-        # Use a timestamp to force cache refresh on the client side if needed, 
-        # though the client usually handles that.
         connection.send_result(msg["id"], {"path": f"/local/local_grow_box_images/{device_id}.jpg"})
     except Exception as e:
         connection.send_error(msg["id"], "upload_failed", str(e))
