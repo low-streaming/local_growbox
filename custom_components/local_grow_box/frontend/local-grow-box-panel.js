@@ -357,6 +357,27 @@ class LocalGrowBoxPanel extends HTMLElement {
                     ${this._renderStatBar('Temperatur', temp, '°C', 18, 30, '#ef4444')}
                     ${this._renderStatBar('Luftfeuchte', hum, '%', 30, 80, '#3b82f6')}
                     ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3, '#10b981')}
+                    
+                    ${/* Add Soil Moisture if configured */ ''}
+                    ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6') : ''}
+                    
+                    <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px; display:flex; gap:16px;">
+                        ${/* Light Status */ ''}
+                        <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary);">
+                            <span style="font-size:16px;">${this._hass.states[device.options.light_entity]?.state === 'on' ? '💡' : '🌑'}</span>
+                            <span>Licht</span>
+                        </div>
+                        ${/* Fan Status */ ''}
+                        <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary);">
+                            <span style="font-size:16px;">${this._hass.states[device.options.fan_entity]?.state === 'on' ? '🌪️' : '💨'}</span>
+                            <span>Abluft</span>
+                        </div>
+                         ${/* Pump Status (Active) */ ''}
+                        <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary);">
+                            <span style="font-size:16px;">${pumpState?.state === 'on' ? '💧' : '⛔'}</span>
+                            <span>Pumpe</span>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="controls">

@@ -345,7 +345,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         hass,
         webcomponent_name="local-grow-box-panel",
         frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.0",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.1",
         sidebar_title="Grow Room",
         sidebar_icon="mdi:sprout",
         require_admin=False,
