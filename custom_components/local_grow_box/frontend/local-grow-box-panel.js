@@ -388,24 +388,25 @@ class LocalGrowBoxPanel extends HTMLElement {
             const section = document.createElement('div');
             section.className = 'settings-section';
 
-            const renderPicker = (label, configKey, domain) => {
-                const val = device.options[configKey];
+            // Helper to create placeholder HTML
+            const renderPickerHTML = (label, configKey) => {
                 return `
                     <div class="form-group">
                         <label class="form-label">${label}</label>
                         <ha-entity-picker
-                            .hass=${this._hass}
-                            .value=${val}
-                            .includeDomains=${JSON.stringify([domain])}
+                            class="picker-${device.id}"
                             data-key="${configKey}"
                             data-entry="${device.entryId}"
+                            data-domain-json='${JSON.stringify(configKey === 'fan_entity' ? ['switch', 'fan'] :
+                    configKey === 'camera_entity' ? ['camera'] :
+                        configKey.includes('sensor') ? ['sensor'] : ['switch', 'light'])}'
                         ></ha-entity-picker>
                     </div>
                 `;
             };
 
             const renderInput = (label, configKey, type = 'text') => {
-                const val = device.options[configKey] || '';
+                const val = device.options[configKey] !== undefined ? device.options[configKey] : '';
                 return `
                     <div class="form-group">
                         <label class="form-label">${label}</label>
@@ -420,27 +421,27 @@ class LocalGrowBoxPanel extends HTMLElement {
                 <div class="form-grid">
                     <div>
                         <h4 style="margin:0 0 16px 0; color:var(--text-secondary);">Klima & Sensoren</h4>
-                        ${renderPicker('Temp. Sensor', 'temp_sensor', 'sensor')}
-                        ${renderPicker('Luftfeuchte Sensor', 'humidity_sensor', 'sensor')}
-                        ${renderPicker('Abluft Ventilator', 'fan_entity', 'switch')} <!-- Switch/Fan -->
+                        ${renderPickerHTML('Temp. Sensor', 'temp_sensor')}
+                        ${renderPickerHTML('Luftfeuchte Sensor', 'humidity_sensor')}
+                        ${renderPickerHTML('Abluft Ventilator', 'fan_entity')}
                         ${renderInput('Ziel Temperatur (°C)', 'target_temp', 'number')}
                         ${renderInput('Max. Feuchte (%)', 'max_humidity', 'number')}
                     </div>
                     
                     <div>
                         <h4 style="margin:0 0 16px 0; color:var(--text-secondary);">Bewässerung & Licht</h4>
-                        ${renderPicker('Licht Quelle', 'light_entity', 'switch')}
+                        ${renderPickerHTML('Licht Quelle', 'light_entity')}
                         ${renderInput('Licht Start (Stunde)', 'light_start_hour', 'number')}
                         
-                        ${renderPicker('Wasserpumpe', 'pump_entity', 'switch')}
-                        ${renderPicker('Bodenfeuchte Sensor', 'moisture_sensor', 'sensor')}
+                        ${renderPickerHTML('Wasserpumpe', 'pump_entity')}
+                        ${renderPickerHTML('Bodenfeuchte Sensor', 'moisture_sensor')}
                         ${renderInput('Ziel Bodenfeuchte (%)', 'target_moisture', 'number')}
                         ${renderInput('Pumpen Dauer (s)', 'pump_duration', 'number')}
                     </div>
                     
                     <div>
                         <h4 style="margin:0 0 16px 0; color:var(--text-secondary);">Erweitert</h4>
-                        ${renderPicker('Kamera', 'camera_entity', 'camera')}
+                        ${renderPickerHTML('Kamera', 'camera_entity')}
                         ${renderInput('Phasen Startdatum', 'phase_start_date', 'date')}
                     </div>
                 </div>
@@ -452,16 +453,26 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
             `;
 
+            // Post-process: Set properties on custom elements
+            section.querySelectorAll(`ha-entity-picker.picker-${device.id}`).forEach(picker => {
+                const configKey = picker.dataset.key;
+                const val = device.options[configKey];
+
+                // IMPORTANT: Set properties directly
+                picker.hass = this._hass;
+                picker.value = val;
+
+                // Parse domains from data attribute we stored
+                try {
+                    const domains = JSON.parse(picker.dataset.domainJson);
+                    picker.includeDomains = domains;
+                } catch (e) {
+                    console.error("Error parsing domains", e);
+                }
+            });
+
             // Bind Save
             section.querySelector(`#save-${device.id}`).onclick = () => this._saveConfig_V2(section, device.entryId);
-
-            // Bind Entity Pickers manually because innerHTML doesn't upgrade Custom Elements effectively sometimes
-            // But wait, ha-entity-picker works if properties are set.
-            // We need to set properties after insertion.
-            section.querySelectorAll('ha-entity-picker').forEach(picker => {
-                picker.hass = this._hass;
-                // Domains done in HTML attr JSON.stringify
-            });
 
             container.appendChild(section);
         });
