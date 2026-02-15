@@ -405,11 +405,10 @@ async def ws_update_config(hass, connection, msg):
             # Phase changed, and user didn't manually set a date -> Reset to Now
             new_config[CONF_PHASE_START_DATE] = dt_util.now().isoformat()
             
-    # Clean up empty strings in new_config
-    filtered_config = {k: v for k, v in new_config.items() if v != ""}
-
     # Update options logic: merge new with existing
-    updated_options = {**current_options, **filtered_config}
+    # We DO NOT filter empty strings, because we want to allow users to "unset" values 
+    # (e.g. removing a sensor binding).
+    updated_options = {**current_options, **new_config}
 
     hass.config_entries.async_update_entry(entry, options=updated_options)
     
