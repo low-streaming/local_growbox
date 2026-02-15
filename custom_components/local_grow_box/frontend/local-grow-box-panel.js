@@ -484,8 +484,21 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 const input = document.createElement('input');
                 input.type = type;
-                input.value = device.options[configKey] !== undefined ? device.options[configKey] : '';
+
+                // Draft logic: Check draft first, then stored option
+                const draftVal = this._draft[device.entryId] && this._draft[device.entryId][configKey];
+                const storedVal = device.options[configKey] !== undefined ? device.options[configKey] : '';
+                input.value = (draftVal !== undefined) ? draftVal : storedVal;
+
                 input.dataset.key = configKey; // For saving
+
+                // Save to draft on input
+                input.addEventListener('input', (e) => {
+                    if (!this._draft[device.entryId]) {
+                        this._draft[device.entryId] = {};
+                    }
+                    this._draft[device.entryId][configKey] = e.target.value;
+                });
 
                 group.appendChild(input);
                 parent.appendChild(group);
@@ -638,6 +651,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         });
 
         try {
+            console.log("Sending config update for entry:", entryId, updates);
             await this._hass.callWS({
                 type: 'local_grow_box/update_config',
                 entry_id: entryId,
