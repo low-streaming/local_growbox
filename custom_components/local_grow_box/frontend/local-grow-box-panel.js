@@ -440,12 +440,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                 group.appendChild(lbl);
 
                 const picker = document.createElement('ha-entity-picker');
-                picker.hass = this._hass;
-                picker.value = device.options[configKey];
-                picker.includeDomains = domains;
                 picker.dataset.key = configKey; // For saving
+                picker.dataset.domainJson = JSON.stringify(domains);
 
                 // Add class for later updates if needed
+                picker.classList.add(`picker-${device.id}`);
                 picker.classList.add('live-picker');
 
                 group.appendChild(picker);
@@ -510,6 +509,47 @@ class LocalGrowBoxPanel extends HTMLElement {
             section.appendChild(btnDiv);
 
             container.appendChild(section);
+
+            // Post-process: Set properties on custom elements
+            section.querySelectorAll(`ha-entity-picker.picker-${device.id}`).forEach(picker => {
+                const configKey = picker.dataset.key;
+                const entryId = device.entryId;
+
+                // IMPORTANT: implementation order: includeDomains -> hass -> value
+
+                // Parse domains from data attribute we stored
+                try {
+                    const domains = JSON.parse(picker.dataset.domainJson);
+                    picker.includeDomains = domains;
+                } catch (e) {
+                    console.error("Error parsing domains", e);
+                }
+
+                picker.hass = this._hass;
+
+                // Draft > gespeicherte Optionen
+                // Check if we have a draft value for this device and key
+                const draftVal = this._draft[entryId] && this._draft[entryId][configKey];
+                const storedVal = device.options[configKey];
+
+                picker.value = (draftVal !== undefined) ? draftVal : storedVal;
+
+                // WICHTIG: jede Änderung sofort in Draft schreiben
+                picker.addEventListener('value-changed', (ev) => {
+                    // Normalize value from event or picker
+                    const v = ev.detail?.value !== undefined ? ev.detail.value : picker.value;
+
+                    if (!this._draft[entryId]) {
+                        this._draft[entryId] = {};
+                    }
+                    this._draft[entryId][configKey] = v || ''; // Store empty string if null/undefined
+
+                    // Also update the picker's value to ensure it sticks visually if the component tries to revert
+                    if (picker.value !== v) {
+                        picker.value = v || '';
+                    }
+                });
+            });
         });
     }
 
