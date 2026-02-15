@@ -30,8 +30,22 @@ class LocalGrowBoxPanel extends HTMLElement {
             this._fetchDevices();
         }
 
-        // Re-render if we affect the UI
-        if (this._devices && !this._isInteracting) {
+        // Re-render logic
+        if (this._devices) {
+            // If we are in Settings or Phases, DO NOT blow away the DOM on every state update.
+            // The user is likely typing or selecting.
+            if (this._activeTab === 'settings' || this._activeTab === 'phases') {
+                // But we MUST update the hass object on pickers so they can search
+                if (this.shadowRoot) {
+                    this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(picker => {
+                        picker.hass = this._hass;
+                    });
+                }
+                return;
+            }
+
+            // In Overview, we want live updates, but maybe debounce or check logic?
+            // for now, just render is fine as it's read-only
             this._render();
         }
     }
