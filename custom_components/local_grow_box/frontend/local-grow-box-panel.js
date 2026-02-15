@@ -4,6 +4,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         this.attachShadow({ mode: 'open' });
         this._initialized = false;
         this._activeTab = 'overview'; // 'overview', 'settings', 'phases'
+        this._draft = {}; // entryId -> { key: value }
     }
 
     set hass(hass) {
@@ -558,7 +559,8 @@ class LocalGrowBoxPanel extends HTMLElement {
     }
 
     async _saveConfig_V2(section, entryId) {
-        const updates = {};
+        // Start with draft values if they exist
+        const updates = { ...(this._draft && this._draft[entryId] ? this._draft[entryId] : {}) };
 
         // Inputs
         section.querySelectorAll('input, select').forEach(el => {
