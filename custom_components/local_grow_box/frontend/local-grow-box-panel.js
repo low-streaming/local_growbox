@@ -578,19 +578,27 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 picker.value = finalVal;
 
+                // WICHTIG: jede Änderung sofort in Draft schreiben
                 picker.addEventListener('value-changed', (ev) => {
                     const v = ev.detail?.value;
-                    if (v === undefined) return; // Ignore initial undefined events
+                    console.log(`[PICKER] ${configKey} changed to:`, v);
 
                     if (!this._draft[entryId]) {
                         this._draft[entryId] = {};
                     }
                     this._draft[entryId][configKey] = v;
 
-                    if (picker.value !== v) {
-                        picker.value = v;
-                    }
+                    // Do NOT force picker.value = v here, it might interrupt internal state.
+                    // Just trust the event.
                 });
+
+                // Workaround: Sometimes initial value doesn't stick if domains aren't ready?
+                // Re-apply value after a short tick?
+                setTimeout(() => {
+                    if (picker.value !== finalVal) {
+                        picker.value = finalVal;
+                    }
+                }, 100);
             });
         });
     }
@@ -644,7 +652,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         // Start with draft values if they exist
         const updates = { ...(this._draft && this._draft[entryId] ? this._draft[entryId] : {}) };
 
-        // Inputs (overwrite/add from current DOM state just in case)
+        // Inputs
         section.querySelectorAll('input, select').forEach(el => {
             if (el.dataset.key) {
                 updates[el.dataset.key] = el.value;
@@ -652,9 +660,16 @@ class LocalGrowBoxPanel extends HTMLElement {
         });
 
         // Entity Pickers
+        // Fix: Don't blindly overwrite from DOM if we have a draft value (DOM might be empty/reset)
         section.querySelectorAll('ha-entity-picker').forEach(el => {
-            if (el.dataset.key) {
-                updates[el.dataset.key] = el.value;
+            const key = el.dataset.key;
+            if (key) {
+                // Only take from DOM if NOT in draft (e.g. initial load unmodified)
+                // If user modified it, it's in draft.
+                // If user didn't modify, draft is undefined for this key.
+                if (updates[key] === undefined) {
+                    updates[key] = el.value;
+                }
             }
         });
 
