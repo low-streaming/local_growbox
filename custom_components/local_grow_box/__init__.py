@@ -259,7 +259,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.3",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.4",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 
@@ -268,6 +268,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     try:
         websocket_api.async_register_command(hass, ws_upload_image)
         websocket_api.async_register_command(hass, ws_update_config)
+        websocket_api.async_register_command(hass, ws_get_config)
     except Exception as e:
         _LOGGER.warning("Failed to register websocket commands in async_setup (might be duplicate): %s", e)
     
@@ -280,6 +281,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     try:
         websocket_api.async_register_command(hass, ws_upload_image)
         websocket_api.async_register_command(hass, ws_update_config)
+        websocket_api.async_register_command(hass, ws_get_config)
     except Exception:
         pass # Expected if already registered
 
@@ -349,11 +351,24 @@ async def ws_upload_image(hass, connection, msg):
         decoded = base64.b64decode(image_data)
         img_path = hass.config.path("www", "local_grow_box_images", f"{device_id}.jpg")
         
-        def _write_file():
-            with open(img_path, "wb") as f:
-                f.write(decoded)
-
         await hass.async_add_executor_job(_write_file)
         connection.send_result(msg["id"], {"path": f"/local/local_grow_box_images/{device_id}.jpg"})
     except Exception as e:
         connection.send_error(msg["id"], "upload_failed", str(e))
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/get_config",
+    vol.Required("entry_id"): str,
+})
+@websocket_api.async_response
+async def ws_get_config(hass, connection, msg):
+    """Handle config get."""
+    entry_id = msg["entry_id"]
+    entry = hass.config_entries.async_get_entry(entry_id)
+
+    if not entry:
+        connection.send_error(msg["id"], "not_found", "Entry not found")
+        return
+
+    data = {**entry.data, **entry.options}
+    connection.send_result(msg["id"], {"config": data})

@@ -65,16 +65,28 @@ class LocalGrowBoxPanel extends HTMLElement {
                 d.identifiers && d.identifiers.some(id => id[0] === 'local_grow_box')
             );
 
-            this._devices = myDevices.map(device => {
+            // map() with async is tricky, use Promise.all
+            this._devices = await Promise.all(myDevices.map(async device => {
                 const deviceEntities = entities.filter(e => e.device_id === device.id);
                 const entry = entries.find(e => e.entry_id === device.primary_config_entry);
 
                 console.log(`[FETCH] Device: ${device.name} (${device.id})`);
-                console.log(`[FETCH] -> Primary Entry ID: ${device.primary_config_entry}`);
-                console.log(`[FETCH] -> Found Entry:`, entry);
 
-                const combinedOptions = (entry) ? { ...entry.data, ...entry.options } : {};
-                console.log(`[FETCH] -> Combined Options:`, combinedOptions);
+                // Fetch actual config via custom command because standard list might exclude options
+                let combinedOptions = {};
+                if (entry) {
+                    try {
+                        const confResp = await this._hass.callWS({
+                            type: 'local_grow_box/get_config',
+                            entry_id: entry.entry_id
+                        });
+                        combinedOptions = confResp.config || {};
+                        console.log(`[FETCH] -> Fetched Config:`, combinedOptions);
+                    } catch (e) {
+                        console.warn(`[FETCH] Failed to fetch config for ${device.name}:`, e);
+                        // Fallback?
+                    }
+                }
 
                 const findEntity = (uniqueIdSuffix) => {
                     const ent = deviceEntities.find(e => e.unique_id.endsWith(uniqueIdSuffix));
@@ -94,7 +106,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         days: findEntity('_days_in_phase'),
                     }
                 };
-            });
+            }));
 
             if (this.shadowRoot && this.shadowRoot.querySelector('.header')) {
                 this._updateContent();
@@ -574,9 +586,13 @@ class LocalGrowBoxPanel extends HTMLElement {
                 // FALLBACK: Wenn storedVal undefined ist, leerstring nehmen
                 const finalVal = (draftVal !== undefined) ? draftVal : (storedVal || '');
 
-                console.log(`[RENDER] ${device.name} (${configKey}): Draft=${draftVal}, Stored=${storedVal} -> Final=${finalVal}`);
+                // Reset .hass to be absolutely synonymous with loading
+                picker.hass = this._hass;
 
-                picker.value = finalVal;
+                // Set value immediately
+                if (finalVal) {
+                    picker.value = finalVal;
+                }
 
                 // WICHTIG: jede Änderung sofort in Draft schreiben
                 picker.addEventListener('value-changed', (ev) => {
@@ -591,14 +607,6 @@ class LocalGrowBoxPanel extends HTMLElement {
                     // Do NOT force picker.value = v here, it might interrupt internal state.
                     // Just trust the event.
                 });
-
-                // Workaround: Sometimes initial value doesn't stick if domains aren't ready?
-                // Re-apply value after a short tick?
-                setTimeout(() => {
-                    if (picker.value !== finalVal) {
-                        picker.value = finalVal;
-                    }
-                }, 100);
             });
         });
     }
