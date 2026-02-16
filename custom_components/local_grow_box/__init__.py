@@ -197,12 +197,20 @@ class GrowBoxManager:
                      _LOGGER.info("Pump run time exceeded (%.1fs > %.1fs). Turning Off.", elapsed, duration)
                      await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": pump_entity})
         else:
+            # PUMP IS OFF
+            # Anti-Short-Cycle / Soaking Logic
+            # We must wait after the pump turns off to allow water to soak in before measuring/pumping again.
+            # Using 15 minutes (900 seconds) as a safe default.
+            last_changed = pump_state.last_changed
+            if last_changed:
+                time_off = (now - last_changed).total_seconds()
+                if time_off < 900:
+                    # _LOGGER.debug("Pump in soak time (%.0fs < 900s). Waiting.", time_off)
+                    return
+
             # Check moisture trigger logic (existing)
             moisture_entity = self.config.get(CONF_MOISTURE_SENSOR)
             target = self._get_config_value(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE, float)
-            
-            # Simple debounce: Don't turn on if we just turned off? 
-            # Not needed if interval is small and logic is robust.
             
             if moisture_entity:
                 state = self._get_safe_state(moisture_entity)
@@ -212,7 +220,6 @@ class GrowBoxManager:
                         if val < target:
                             _LOGGER.info("Moisture low (%.1f < %.1f). Pump ON.", val, target)
                             await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": pump_entity})
-                            # pump_start_time tracking removed in favor of last_changed
                     except ValueError:
                         pass
 
