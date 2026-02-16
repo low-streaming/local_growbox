@@ -264,13 +264,25 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     )
 
     # Register Websocket API
-    websocket_api.async_register_command(hass, ws_upload_image)
-    websocket_api.async_register_command(hass, ws_update_config)
+    _LOGGER.debug("Registering Local Grow Box Websocket Commands")
+    try:
+        websocket_api.async_register_command(hass, ws_upload_image)
+        websocket_api.async_register_command(hass, ws_update_config)
+    except Exception as e:
+        _LOGGER.warning("Failed to register websocket commands in async_setup (might be duplicate): %s", e)
     
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
+    
+    # FAILSAFE: Ensure commands are registered even if async_setup didn't run or failed
+    try:
+        websocket_api.async_register_command(hass, ws_upload_image)
+        websocket_api.async_register_command(hass, ws_update_config)
+    except Exception:
+        pass # Expected if already registered
+
     manager = GrowBoxManager(hass, entry)
     hass.data[DOMAIN][entry.entry_id] = manager
     await manager.async_setup()
