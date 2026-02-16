@@ -259,7 +259,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.4",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.9",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 
@@ -351,6 +351,10 @@ async def ws_upload_image(hass, connection, msg):
         decoded = base64.b64decode(image_data)
         img_path = hass.config.path("www", "local_grow_box_images", f"{device_id}.jpg")
         
+        def _write_file():
+            with open(img_path, "wb") as f:
+                f.write(decoded)
+
         await hass.async_add_executor_job(_write_file)
         connection.send_result(msg["id"], {"path": f"/local/local_grow_box_images/{device_id}.jpg"})
     except Exception as e:

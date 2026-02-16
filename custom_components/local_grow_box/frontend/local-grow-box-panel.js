@@ -54,6 +54,14 @@ class LocalGrowBoxPanel extends HTMLElement {
     async _fetchDevices() {
         if (!this._hass) return;
 
+        // Ensure helpers are loaded (might trigger Custom Element upgrades for ha-entity-picker)
+        if (window.loadCardHelpers) {
+            try {
+                await window.loadCardHelpers();
+            } catch (e) { console.warn("Could not load card helpers", e); }
+        }
+        console.log("ha-entity-picker defined?", !!customElements.get('ha-entity-picker'));
+
         try {
             const devices = await this._hass.callWS({ type: 'config/device_registry/list' });
             const entities = await this._hass.callWS({ type: 'config/entity_registry/list' });
@@ -134,7 +142,6 @@ class LocalGrowBoxPanel extends HTMLElement {
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
                 
-                :host {
                     --primary-color: #03a9f4;
                     --accent-color: #ff9800;
                     --bg-color: #111827;
@@ -148,6 +155,12 @@ class LocalGrowBoxPanel extends HTMLElement {
                     background-color: var(--bg-color);
                     min-height: 100vh;
                     color: var(--text-primary);
+                }
+                
+                ha-entity-picker {
+                    display: block;
+                    min-height: 40px;
+                    border: 1px dashed rgba(255,0,0,0.3); /* DEBUG: Visualize if element is there */
                 }
                 
                 /* Layout */
@@ -481,14 +494,87 @@ class LocalGrowBoxPanel extends HTMLElement {
                 group.appendChild(lbl);
 
                 const picker = document.createElement('ha-entity-picker');
+                picker.id = `picker-${device.id}-${configKey}`;
                 picker.dataset.key = configKey; // For saving
-                picker.dataset.domainJson = JSON.stringify(domains);
 
-                // Add class for later updates if needed
-                picker.classList.add(`picker-${device.id}`);
-                picker.classList.add('live-picker');
+                // Draft logic
+                const entryId = device.entryId;
+                const draftVal = this._draft[entryId] && this._draft[entryId][configKey];
+                const storedVal = device.options[configKey];
+                const finalVal = (draftVal !== undefined) ? draftVal : (storedVal || '');
 
+                // Append to DOM first - Critical for some Custom Elements
                 group.appendChild(picker);
+                parent.appendChild(group);
+
+                // Function to set properties safely
+                const setProps = () => {
+                    picker.hass = this._hass;
+                    picker.includeDomains = domains;
+
+                    if (finalVal) {
+                        picker.value = finalVal;
+                    }
+                    // Double check value set after a microtask for LitElement reactivity
+                    setTimeout(() => {
+                        if (finalVal && picker.value !== finalVal) {
+                            picker.value = finalVal;
+                        }
+                    }, 50);
+                };
+
+                // Initialize properties
+                if (customElements.get('ha-entity-picker')) {
+                    setProps();
+                } else {
+                    customElements.whenDefined('ha-entity-picker').then(setProps);
+                }
+
+                // Listen for changes
+                picker.addEventListener('value-changed', (ev) => {
+                    const v = ev.detail?.value;
+                    if (v !== undefined) {
+                        if (!this._draft[entryId]) this._draft[entryId] = {};
+                        this._draft[entryId][configKey] = v;
+                    }
+                });
+            };
+
+            // NEW: HA Selector Helper (Modern)
+            const appendSelector = (parent, label, configKey, domain) => {
+                const group = document.createElement('div');
+                group.className = 'form-group';
+
+                // Label is handled by ha-selector usually, but we keep our layout
+                // const lbl = document.createElement('label');
+                // lbl.className = 'form-label';
+                // lbl.innerText = label;
+                // group.appendChild(lbl);
+
+                const selector = document.createElement('ha-selector');
+                selector.label = label; // HA Selector handles label internally well
+
+                // Config
+                const entryId = device.entryId;
+                const draftVal = this._draft[entryId] && this._draft[entryId][configKey];
+                const storedVal = device.options[configKey];
+                const finalVal = (draftVal !== undefined) ? draftVal : (storedVal || '');
+
+                selector.hass = this._hass;
+                selector.selector = { entity: { domain: domain } };
+                selector.value = finalVal;
+                selector.required = false;
+
+                console.log(`[SELECTOR] Created for ${configKey}, value: ${finalVal}`);
+
+                selector.addEventListener('value-changed', (ev) => {
+                    const v = ev.detail?.value;
+                    console.log(`[SELECTOR] ${configKey} changed to:`, v);
+                    if (!this._draft[entryId]) this._draft[entryId] = {};
+                    this._draft[entryId][configKey] = v;
+                });
+
+                group.appendChild(selector);
                 parent.appendChild(group);
             };
 
@@ -525,7 +611,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             };
 
             // Col 1
-            appendPicker(col1, 'Temp. Sensor', 'temp_sensor', ['sensor']);
+            // TEST: Use ha-selector for Temp Sensor
+            appendSelector(col1, 'Temp. Sensor', 'temp_sensor', 'sensor');
             appendPicker(col1, 'Luftfeuchte Sensor', 'humidity_sensor', ['sensor']);
             appendPicker(col1, 'Abluft Ventilator', 'fan_entity', ['switch', 'fan', 'input_boolean']);
             appendInput(col1, 'Ziel Temperatur (°C)', 'target_temp', 'number');
@@ -564,50 +651,7 @@ class LocalGrowBoxPanel extends HTMLElement {
 
             container.appendChild(section);
 
-            // Post-process: Set properties on custom elements
-            section.querySelectorAll(`ha-entity-picker.picker-${device.id}`).forEach(picker => {
-                const configKey = picker.dataset.key;
-                const entryId = device.entryId;
 
-                // Parse domains from data attribute we stored
-                try {
-                    const domains = JSON.parse(picker.dataset.domainJson);
-                    picker.includeDomains = domains;
-                } catch (e) {
-                    console.error("Error parsing domains", e);
-                }
-
-                picker.hass = this._hass;
-
-                // Draft > gespeicherte Optionen
-                const draftVal = this._draft[entryId] && this._draft[entryId][configKey];
-                const storedVal = device.options[configKey];
-
-                // FALLBACK: Wenn storedVal undefined ist, leerstring nehmen
-                const finalVal = (draftVal !== undefined) ? draftVal : (storedVal || '');
-
-                // Reset .hass to be absolutely synonymous with loading
-                picker.hass = this._hass;
-
-                // Set value immediately
-                if (finalVal) {
-                    picker.value = finalVal;
-                }
-
-                // WICHTIG: jede Änderung sofort in Draft schreiben
-                picker.addEventListener('value-changed', (ev) => {
-                    const v = ev.detail?.value;
-                    console.log(`[PICKER] ${configKey} changed to:`, v);
-
-                    if (!this._draft[entryId]) {
-                        this._draft[entryId] = {};
-                    }
-                    this._draft[entryId][configKey] = v;
-
-                    // Do NOT force picker.value = v here, it might interrupt internal state.
-                    // Just trust the event.
-                });
-            });
         });
     }
 
