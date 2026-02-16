@@ -1,8 +1,83 @@
 # Local Grow Box Integration 🌿
 
-The **Local Grow Box** integration turns your Home Assistant instance into a fully automated Grow Room controller. It manages light cycles, climate (VPD), watering, and tracking of growth phases through a dedicated, beautiful dashboard panel.
+**[🇩🇪 Deutsch](#-deutsch) | [🇬🇧 English](#-english)**
 
 ---
+
+# 🇩🇪 Deutsch
+
+Die **Local Grow Box** Integration verwandelt dein Home Assistant in eine vollautomatische Grow-Room-Steuerung. Sie verwaltet Lichtzyklen, Klima (VPD), Bewässerung und verfolgt die Wachstumsphasen über ein schickes, modernes Dashboard.
+
+## ✨ Hauptfunktionen
+
+### 1. **Phasen-Management** 🌱
+Verfolge den Lebenszyklus deiner Pflanze vom Keimling bis zur Veredelung (Curing).
+-   **Automatischer Tageszähler:** Setzt sich automatisch auf 0 zurück, wenn du die Phase wechselst.
+-   **Phasen-Profile:** Vorkonfigurierte Lichtstunden für jede Phase (z.B. 18/6 für Wachstum, 12/12 für Blüte).
+-   **Eigene Phasen:** Erstelle benutzerdefinierte Phasen mit eigenen Namen und Lichtzeiten.
+
+### 2. **Smarter Lichtzyklus** 💡
+-   **Automatische Steuerung:** Schaltet dein Licht basierend auf der aktuellen Phase AN/AUS.
+-   **Flexible Startzeit:** Lege fest, wann der "Tag" beginnt (z.B. 18:00 Uhr), um Stromkosten zu sparen oder Hitze zu vermeiden.
+-   **Timer-Anzeige:** Zeigt im Dashboard exakt an, wie lange das Licht noch an bleibt oder wann es wieder angeht.
+
+### 3. **Klima-Kontrolle (VPD)** 🌪️
+-   **Vapor Pressure Deficit (VPD):** Berechnet den VPD-Wert in Echtzeit aus Temperatur und Luftfeuchtigkeit.
+-   **Smarte Abluft:** Steuert deinen Lüfter automatisch, um optimale Bedingungen zu schaffen.
+-   **Visuelles Feedback:** Farbige Balken zeigen sofort, ob sich deine Werte im "grünen Bereich" befinden.
+
+### 4. **Intelligentes Bewässerungssystem** 💧
+-   **Bodenfeuchte-Trigger:** Aktiviert die Pumpe nur, wenn die Erde zu trocken ist.
+-   **Präzise Dosierung:** Die Pumpe läuft für exakt die eingestellte Zeit (z.B. 5 Sekunden).
+-   **Anti-Staunässe (Einwirkzeit):** Nach dem Gießen macht das System zwingend **15 Minuten Pause**. Erst wenn das Wasser verteilt ist und der Sensor immer noch "trocken" meldet, wird erneut gegossen.
+
+### 5. **Kamera Integration** 📷
+-   **Live-Ansicht:** Beobachte deine Pflanze direkt im Dashboard.
+-   **Zoom-Popup:** Klicke auf das Kamerabild für eine Vollbild-Ansicht.
+
+---
+
+## 🚀 Installation & Einrichtung
+
+1.  Kopiere den Ordner `custom_components/local_grow_box` in dein Home Assistant `/config/custom_components/` Verzeichnis.
+2.  Starte Home Assistant neu.
+3.  Gehe zu **Einstellungen -> Geräte & Dienste**.
+4.  Klicke auf **Integration hinzufügen** und suche nach **"Local Grow Box"**.
+5.  Ein neuer Menüpunkt **"Grow Room"** erscheint in deiner Seitenleiste.
+
+---
+
+## 🖥️ Das Dashboard
+
+### **Übersicht (Overview)**
+Deine Kommandozentrale.
+-   **Live Status:** Temperatur, RLF, VPD, Bodenfeuchte und Licht-Status auf einen Blick.
+-   **Schnellzugriff:** Manuelles Schalten von Licht, Pumpe oder Lüfter.
+-   **Phasen-Wähler:** Ändere die Wachstumsphase direkt über das Dropdown-Menü im Bild.
+
+### **Geräte & Config**
+Hier verknüpfst du deine Home Assistant Geräte mit der Box.
+-   **Sensoren:** Wähle deine Temperatur-, Feuchte- und Boden-Sensoren.
+-   **Aktoren:** Wähle die Schalter (Switch) für Licht, Lüfter und Pumpe.
+-   **Einstellungen:** Definiere Ziel-Temperatur, Max-RLF und Pumpdauer.
+-   **Licht Startstunde:** Wann soll der Tag beginnen? (z.B. `18` für 18:00 Uhr).
+
+### **Phasen**
+Passe die Lichtdauer für jede Phase an (Standard: 18h Wachstum, 12h Blüte) oder erstelle eigene Phasen.
+
+---
+
+## 🛠️ Logik Details
+
+-   **Licht:** Prüft jede Minute. Nutzt `Startstunde` und `Phasendauer`. Beispiel: Start 18:00, Dauer 12h -> Licht AN von 18:00 bis 06:00.
+-   **Pumpe:** Prüft alle 5 Sekunden. Wenn Feuchtigkeit < Zielwert UND Pumpe war >15 Minuten aus -> Pumpe AN für X Sekunden.
+
+---
+---
+
+# 🇬🇧 English
+
+The **Local Grow Box** integration turns your Home Assistant instance into a fully automated Grow Room controller. It manages light cycles, climate (VPD), watering, and tracking of growth phases through a dedicated, beautiful dashboard panel.
 
 ## ✨ Key Features
 
@@ -30,20 +105,6 @@ Track your plant's lifecycle from Seedling to Curing.
 ### 5. **Camera Integration** 📷
 -   **Live Feed:** View your plant directly in the dashboard.
 -   **Zoom Popup:** Click the camera image to view a large, detailed live stream.
--   **Daily Snapshots:** *Currently in development.*
-
----
-
-## 🚀 Installation
-
-### Option 1: HACS (Recommended)
-1.  Add this repository as a **Custom Repository** in HACS.
-2.  Search for "Local Grow Box" and install.
-3.  Restart Home Assistant.
-
-### Option 2: Manual Check
-1.  Copy the `custom_components/local_grow_box` folder into your Home Assistant `/config/custom_components/` directory.
-2.  Restart Home Assistant.
 
 ---
 
@@ -64,31 +125,19 @@ This is your main command center.
 -   **Quick Actions:** Manually toggle Light (Master), Pump, or Fan.
 -   **Phase Selector:** Change the current growth phase directly from the dropdown.
 
-### **Geräte & Config Tab**
+### **Settings Tab**
 Here you map your Home Assistant entities to the Grow Box features.
 -   **Sensors:** Select your Temperature, Humidity, and Soil Moisture sensors.
 -   **Actuators:** Select your Light Switch, Fan Switch, and Pump Switch.
 -   **Settings:** Define Target Temperature, Max Humidity, and Pump Duration.
 -   **Light Start Hour:** Define when the "Day" begins (e.g., `18` for 6 PM).
 
-### **Phasen Tab**
-Customize the duration of light for each phase (standard: 18h for Veg, 12h for Flower). You can also define custom phases here.
-
 ---
 
 ## 🛠️ Logic Details
 
--   **Light Logic:** Checks every minute. Uses your `Start Hour` and `Phase Duration` to calculate if the light should be ON. E.g., if Start is 18:00 and Duration is 18h, light is ON from 18:00 to 12:00 next day.
+-   **Light Logic:** Checks every minute. Uses your `Start Hour` and `Phase Duration` to calculate if the light should be ON.
 -   **Pump Logic:** Checks every 5 seconds. If moisture < target AND pump has been off for >15 minutes -> Turns ON for `Pump Duration` seconds.
--   **Fan Logic:** Turns ON if Temp > Target OR Humidity > Max. Turns OFF if conditions are well below targets (hysteresis included).
-
----
-
-## ❓ Troubleshooting
-
--   **"Light flickers on/off":** Check if you accidentally assigned the same switch entity to both "Light" and "Fan".
--   **"Phase didn't change":** Refresh the browser page. The dashboard prioritizes configuration over sensor data for immediate feedback.
--   **"Pump keeps running":** Ensure your pump entity supports status reporting. The system relies on the entity state to track run time.
 
 ---
 
