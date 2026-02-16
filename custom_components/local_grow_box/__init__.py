@@ -5,16 +5,17 @@ import logging
 import datetime
 import math
 import os
+import base64
 import voluptuous as vol
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 from homeassistant.components.http import StaticPathConfig
-from homeassistant.components import panel_custom
+from homeassistant.components import panel_custom, websocket_api
 
 from .const import (
     DOMAIN, CONF_LIGHT_ENTITY, CONF_FAN_ENTITY, CONF_TEMP_SENSOR, CONF_HUMIDITY_SENSOR,
@@ -261,6 +262,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.2",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
+
+    # Register Websocket API
+    websocket_api.async_register_command(hass, ws_upload_image)
+    websocket_api.async_register_command(hass, ws_update_config)
+    
     return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -279,3 +285,63 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/update_config",
+    vol.Required("entry_id"): str,
+    vol.Required("config"): dict,
+})
+@websocket_api.async_response
+async def ws_update_config(hass, connection, msg):
+    """Handle config update."""
+    entry_id = msg["entry_id"]
+    new_config = msg["config"]
+    entry = hass.config_entries.async_get_entry(entry_id)
+
+    if not entry:
+        connection.send_error(msg["id"], "not_found", "Entry not found")
+        return
+
+    # Check for phase change to update start date
+    if "current_phase" in new_config:
+        full_config = {**entry.data, **entry.options}
+        current_phase = full_config.get("current_phase") if full_config else None
+        
+        if current_phase != new_config.get("current_phase"):
+            # If phase changed and no start date provided, reset it
+            if CONF_PHASE_START_DATE not in new_config:
+                new_config[CONF_PHASE_START_DATE] = dt_util.now().isoformat()
+
+    # Clean empty values
+    clean = {k: v for k, v in new_config.items() if v is not None and str(v).strip() != ""}
+    opts = {**entry.options, **clean}
+    
+    hass.config_entries.async_update_entry(entry, options=opts)
+    connection.send_result(msg["id"], {"options": opts})
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/upload_image",
+    vol.Required("device_id"): str,
+    vol.Required("image"): str, # Base64 encoded
+})
+@websocket_api.async_response
+async def ws_upload_image(hass, connection, msg):
+    """Handle image upload."""
+    device_id = msg["device_id"]
+    image_data = msg["image"]
+    
+    if "," in image_data:
+        image_data = image_data.split(",")[1]
+
+    try:
+        decoded = base64.b64decode(image_data)
+        img_path = hass.config.path("www", "local_grow_box_images", f"{device_id}.jpg")
+        
+        def _write_file():
+            with open(img_path, "wb") as f:
+                f.write(decoded)
+
+        await hass.async_add_executor_job(_write_file)
+        connection.send_result(msg["id"], {"path": f"/local/local_grow_box_images/{device_id}.jpg"})
+    except Exception as e:
+        connection.send_error(msg["id"], "upload_failed", str(e))
