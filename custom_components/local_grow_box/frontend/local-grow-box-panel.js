@@ -69,6 +69,13 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const deviceEntities = entities.filter(e => e.device_id === device.id);
                 const entry = entries.find(e => e.entry_id === device.primary_config_entry);
 
+                console.log(`[FETCH] Device: ${device.name} (${device.id})`);
+                console.log(`[FETCH] -> Primary Entry ID: ${device.primary_config_entry}`);
+                console.log(`[FETCH] -> Found Entry:`, entry);
+
+                const combinedOptions = (entry) ? { ...entry.data, ...entry.options } : {};
+                console.log(`[FETCH] -> Combined Options:`, combinedOptions);
+
                 const findEntity = (uniqueIdSuffix) => {
                     const ent = deviceEntities.find(e => e.unique_id.endsWith(uniqueIdSuffix));
                     return ent ? ent.entity_id : null;
@@ -78,7 +85,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     name: device.name_by_user || device.name,
                     id: device.id,
                     entryId: entry ? entry.entry_id : null,
-                    options: (entry) ? { ...entry.data, ...entry.options } : {},
+                    options: combinedOptions,
                     entities: {
                         phase: findEntity('_phase'),
                         master: findEntity('_master_switch'),
