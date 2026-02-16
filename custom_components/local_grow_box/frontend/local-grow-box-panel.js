@@ -54,19 +54,18 @@ class LocalGrowBoxPanel extends HTMLElement {
     async _fetchDevices() {
         if (!this._hass) return;
 
-        // Ensure helpers are loaded (might trigger Custom Element upgrades for ha-entity-picker)
+        // Ensure helpers are loaded (might trigger Custom Element upgrades for ha-selector)
         if (window.loadCardHelpers) {
             try {
                 await window.loadCardHelpers();
             } catch (e) { console.warn("Could not load card helpers", e); }
         }
-        console.log("ha-entity-picker defined?", !!customElements.get('ha-entity-picker'));
 
         try {
             const devices = await this._hass.callWS({ type: 'config/device_registry/list' });
             const entities = await this._hass.callWS({ type: 'config/entity_registry/list' });
             const entries = await this._hass.callWS({ type: 'config_entries/get', domain: 'local_grow_box' });
-            console.log("Fetched entries:", entries);
+            // console.log("Fetched entries:", entries);
 
             // Filter: Look for devices with identifiers matching our domain
             const myDevices = devices.filter(d =>
@@ -78,7 +77,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const deviceEntities = entities.filter(e => e.device_id === device.id);
                 const entry = entries.find(e => e.entry_id === device.primary_config_entry);
 
-                console.log(`[FETCH] Device: ${device.name} (${device.id})`);
+                // console.log(`[FETCH] Device: ${device.name} (${device.id})`);
 
                 // Fetch actual config via custom command because standard list might exclude options
                 let combinedOptions = {};
@@ -89,10 +88,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                             entry_id: entry.entry_id
                         });
                         combinedOptions = confResp.config || {};
-                        console.log(`[FETCH] -> Fetched Config:`, combinedOptions);
+                        // console.log(`[FETCH] -> Fetched Config:`, combinedOptions);
                     } catch (e) {
                         console.warn(`[FETCH] Failed to fetch config for ${device.name}:`, e);
-                        // Fallback?
                     }
                 }
 
@@ -218,15 +216,48 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .bar-fill { height: 100%; border-radius: 3px; background: var(--primary-color); }
                 
                 /* Controls */
-                .controls { padding: 16px; background: rgba(0,0,0,0.2); display: flex; gap: 8px; }
-                .btn {
-                    flex: 1; padding: 10px; border-radius: 8px; border: none; cursor: pointer;
-                    background: rgba(255,255,255,0.1); color: var(--text-primary);
-                    font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 6px;
-                    transition: background 0.2s;
+                .controls { 
+                    padding: 16px; 
+                    background: rgba(0,0,0,0.2); 
+                    display: grid; 
+                    grid-template-columns: 1fr 1fr 1fr; 
+                    gap: 12px; 
+                    border-top: 1px solid rgba(255,255,255,0.05);
                 }
-                .btn:hover { background: rgba(255,255,255,0.15); }
-                .btn.active { background: var(--primary-color); color: white; }
+                .btn {
+                    padding: 12px; border-radius: 8px; border: none; cursor: pointer;
+                    background: rgba(255,255,255,0.05); color: var(--text-primary);
+                    font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px;
+                    transition: all 0.2s;
+                    border: 1px solid rgba(255,255,255,0.05);
+                }
+                .btn:hover { background: rgba(255,255,255,0.1); transform: translateY(-1px); }
+                .btn.active { 
+                    background: rgba(3, 169, 244, 0.2); 
+                    color: #38bdf8; 
+                    border-color: rgba(3, 169, 244, 0.4);
+                }
+                
+                /* Enhanced UI Elements */
+                .status-badge {
+                    font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+                }
+                .status-badge.online { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
+                .status-badge.offline { background: rgba(107, 114, 128, 0.15); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.2); }
+
+                .info-box {
+                    background: rgba(255, 255, 255, 0.03);
+                    border-radius: 10px;
+                    padding: 10px 12px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                }
+                .info-icon { font-size: 20px; line-height: 1; opacity: 0.9; }
+                .info-content { display: flex; flex-direction: column; gap: 2px; }
+                .info-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+                .info-val { font-size: 13px; font-weight: 500; color: var(--text-primary); }
                 
                 /* Settings Form */
                 .settings-section { background: var(--card-bg); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
@@ -251,38 +282,59 @@ class LocalGrowBoxPanel extends HTMLElement {
                     background: var(--success-color); color: white;
                     padding: 12px 24px; border-radius: 8px;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    transform: translateY(100px); transition: transform 0.3s;
-                    display: flex; align-items: center; gap: 8px;
+                    display: none; align-items: center; gap: 8px; font-weight: 500;
+                    z-index: 100;
                 }
-                .save-bar.visible { transform: translateY(0); }
+                .save-bar.visible { display: flex; animation: slideUp 0.3s ease-out; }
                 
-                .fab {
-                    position: fixed; bottom: 24px; right: 24px;
-                    width: 56px; height: 56px; border-radius: 50%;
-                    background: var(--primary-color); color: white;
-                    display: flex; align-items: center; justify-content: center;
-                    font-size: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                    cursor: pointer; z-index: 100;
+                @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+                /* Modal */
+                .modal {
+                    display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
+                    background-color: rgba(0,0,0,0.9); backdrop-filter: blur(8px);
+                    align-items: center; justify-content: center;
                 }
+                .modal.visible { display: flex; animation: fadeIn 0.2s; }
+                .modal-content {
+                    background: var(--card-bg); padding: 16px; border-radius: 12px; 
+                    max-width: 95%; max-height: 95vh; overflow: auto;
+                    position: relative; border: 1px solid rgba(255,255,255,0.1);
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+                }
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                .close-modal {
+                    position: absolute; top: -40px; right: 0; color: #fff; font-size: 30px; font-weight: bold; cursor: pointer;
+                    background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%;
+                    display: flex; align-items: center; justify-content: center;
+                }
+                .close-modal:hover { background: rgba(255,255,255,0.2); }
             </style>
             
             <div class="header">
-                <div style="display:flex; align-items:center;">
-                    <h1>GROW ROOM</h1>
-                    <div class="tabs">
-                        <div class="tab active" data-tab="overview">Übersicht</div>
-                        <div class="tab" data-tab="settings">Geräte & Config</div>
-                        <div class="tab" data-tab="phases">Phasen</div>
-                    </div>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <h1 style="display:flex; align-items:center; gap:8px;">🌱 <span>Grow Room</span></h1>
+                </div>
+                <div class="tabs">
+                    <div class="tab active" data-tab="overview">Übersicht</div>
+                    <div class="tab" data-tab="settings">Geräte & Config</div>
+                    <div class="tab" data-tab="phases">Phasen</div>
                 </div>
             </div>
             
-            <div class="content" id="main-content">
-                <!-- Injected via JS -->
+            <div class="content" id="main-content"></div>
+            
+            <div id="save-toast" class="save-bar">
+                <span>✅</span> Einstellungen gespeichert!
             </div>
             
-            <div class="save-bar" id="save-toast">
-                <span>✅ Einstellungen gespeichert!</span>
+            <!-- Camera Modal -->
+            <div id="camera-modal" class="modal">
+                <div class="close-modal">&times;</div>
+                <div class="modal-content">
+                    <img id="modal-img" src="" style="width:100%; height:auto; display:block; border-radius:8px;">
+                    <div id="modal-title" style="margin-top:12px; font-size:16px; font-weight:500; text-align:center;"></div>
+                </div>
             </div>
         `;
 
@@ -326,6 +378,22 @@ class LocalGrowBoxPanel extends HTMLElement {
         const grid = document.createElement('div');
         grid.className = 'grid';
 
+        // Phase Hours Map (default)
+        const PHASE_HOURS = {
+            'seedling': 18,
+            'vegetative': 18,
+            'flowering': 12,
+            'drying': 0,
+            'curing': 0
+        };
+        const PHASES = [
+            { id: 'seedling', label: '🌱 Keimling' },
+            { id: 'vegetative', label: '🌿 Wachstum' },
+            { id: 'flowering', label: '🌸 Blüte' },
+            { id: 'drying', label: '🍂 Trocknen' },
+            { id: 'curing', label: '🏺 Veredelung' }
+        ];
+
         this._devices.forEach(device => {
             const card = document.createElement('div');
             card.className = 'card';
@@ -334,14 +402,67 @@ class LocalGrowBoxPanel extends HTMLElement {
             const masterState = this._hass.states[device.entities.master];
             const pumpState = this._hass.states[device.entities.pump];
             const daysInPhase = this._hass.states[device.entities.days]?.state || 0;
-            const phase = this._hass.states[device.entities.phase]?.state || device.options.current_phase || 'vegetative';
+            // Fix: Prioritize options over sensor state to avoid stale data after update
+            const currentPhase = device.options.current_phase || this._hass.states[device.entities.phase]?.state || 'vegetative';
+
+            // --- Light Timer Logic ---
+            let lightInfo = "Unbekannt";
+            let lightStatus = "off";
+            const startHour = parseInt(device.options.light_start_hour || 18);
+            // Get duration (checking custom overrides would require more logic, sticking to defaults/options for now)
+            // Ideally read from backend entity if available, but we calculate here for UI speed
+            let duration = PHASE_HOURS[currentPhase] || 12;
+            if (device.options[`${currentPhase}_hours`]) duration = parseFloat(device.options[`${currentPhase}_hours`]);
+
+            const now = new Date();
+            const start = new Date(now);
+            start.setHours(startHour, 0, 0, 0);
+
+            // Adjust start if needed logic (similar to backend)
+            // Simple approach: Check if we are currently inside the window [start, start+duration]
+            // Handling day wrap
+            let startTime = start.getTime();
+            let endTime = startTime + (duration * 3600 * 1000);
+
+            // Adjust for "yesterday" start if now < startHour
+            if (now.getHours() < startHour) {
+                startTime -= 24 * 3600 * 1000;
+                endTime -= 24 * 3600 * 1000;
+            }
+
+            const nowTime = now.getTime();
+            const isLightTime = nowTime >= startTime && nowTime < endTime;
+
+            if (isLightTime) {
+                const remainingMs = endTime - nowTime;
+                const hrs = Math.floor(remainingMs / (1000 * 60 * 60));
+                const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+                lightInfo = `An (noch ${hrs}h ${mins}m)`;
+                lightStatus = "on";
+            } else {
+                // Next start
+                let nextStart = startTime + 24 * 3600 * 1000;
+                // If we passed the window but it's still "today" (e.g. cycle 18:00-06:00, now is 07:00), next start is today 18:00.
+                // If cycle was yesterday, next start is today.
+                // Correct logic: find next start point in future
+                if (nowTime > endTime) {
+                    // cycle finished for "today relative", next is +24h from start
+                    // start was "startTime", next is startTime + 24h
+                    nextStart = startTime + 24 * 3600 * 1000;
+                }
+
+                const untilStart = nextStart - nowTime;
+                const hrs = Math.floor(untilStart / (1000 * 60 * 60));
+                const mins = Math.floor((untilStart % (1000 * 60 * 60)) / (1000 * 60));
+                lightInfo = `Aus (an in ${hrs}h ${mins}m)`;
+                lightStatus = "off";
+            }
+
 
             // Image
             const timestamp = new Date().getTime();
             let imgUrl = `/local/local_grow_box_images/${device.id}.jpg?t=${timestamp}`;
             let isLive = false;
-
-            // Check Camera
             if (device.options.camera_entity) {
                 const cam = this._hass.states[device.options.camera_entity];
                 if (cam) {
@@ -361,50 +482,72 @@ class LocalGrowBoxPanel extends HTMLElement {
             const hum = getVal(device.options.humidity_sensor);
             const vpd = getVal(device.entities.vpd);
 
-            // Translations
-            const phaseNames = {
-                'seedling': 'Keimling', 'vegetative': 'Wachstum', 'flowering': 'Blüte', 'drying': 'Trocknen', 'curing': 'Veredelung'
-            };
-            const phaseDisplay = device.options[`${phase}_phase_name`] || phaseNames[phase] || phase;
+            // Phase Options HTML
+            const phaseOptions = PHASES.map(p =>
+                `<option value="${p.id}" ${currentPhase === p.id ? 'selected' : ''}>${p.label}</option>`
+            ).join('');
 
             card.innerHTML = `
                 <div class="card-image">
                     <img src="${imgUrl}" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg'">
                     ${isLive ? '<div class="live-badge">LIVE</div>' : ''}
-                    <div style="position:absolute; bottom:0; left:0; right:0; padding:12px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent);">
-                        <div style="color:white; font-weight:500;">${phaseDisplay}</div>
-                        <div style="color:var(--text-secondary); font-size:12px;">Tag ${daysInPhase}</div>
+                    <div style="position:absolute; bottom:0; left:0; right:0; padding:12px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent); display:flex; justify-content:space-between; align-items:end;">
+                        <div>
+                             <select class="phase-select" id="phase-select-${device.id}" style="
+                                background: rgba(0,0,0,0.6); 
+                                border: 1px solid rgba(255,255,255,0.2); 
+                                color: white; 
+                                padding: 4px 8px; 
+                                border-radius: 4px; 
+                                font-size: 14px;
+                                cursor: pointer;
+                                outline: none;
+                             ">
+                                ${phaseOptions}
+                            </select>
+                            <div style="color:var(--text-secondary); font-size:12px; margin-top:4px; margin-left:2px;">Tag ${daysInPhase}</div>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="card-header">
                     <div class="card-title">${device.name}</div>
-                    <div>${masterState && masterState.state === 'on' ? '🟢 Online' : '⚪ Offline'}</div>
+                    <div class="status-badge ${masterState && masterState.state === 'on' ? 'online' : 'offline'}">
+                        ${masterState && masterState.state === 'on' ? '● Online' : '○ Offline'}
+                    </div>
                 </div>
                 
                 <div class="card-body">
-                    ${this._renderStatBar('Temperatur', temp, '°C', 18, 30, '#ef4444')}
-                    ${this._renderStatBar('Luftfeuchte', hum, '%', 30, 80, '#3b82f6')}
-                    ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3, '#10b981')}
+                    ${this._renderStatBar('Temperatur', temp, '°C', 18, 30, '#ef4444', '🌡️')}
+                    ${this._renderStatBar('Luftfeuchte', hum, '%', 30, 80, '#3b82f6', '💧')}
+                    ${this._renderStatBar('VPD', vpd, 'kPa', 0.4, 1.6, '#10b981', '🍃')}
                     
-                    ${/* Add Soil Moisture if configured */ ''}
-                    ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6') : ''}
+                    ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6', '🪴') : ''}
                     
-                    <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.1); padding-top:12px; display:flex; gap:16px;">
-                        ${/* Light Status */ ''}
-                        <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary);">
-                            <span style="font-size:16px;">${this._hass.states[device.options.light_entity]?.state === 'on' ? '💡' : '🌑'}</span>
-                            <span>Licht</span>
+                    <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:16px; display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+                        
+                        <div class="info-box">
+                            <div class="info-icon">${lightStatus === 'on' ? '💡' : '🌑'}</div>
+                            <div class="info-content">
+                                <div class="info-label">Licht</div>
+                                <div class="info-val" style="font-size:12px;">${lightInfo}</div>
+                            </div>
                         </div>
-                        ${/* Fan Status */ ''}
-                        <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary);">
-                            <span style="font-size:16px;">${this._hass.states[device.options.fan_entity]?.state === 'on' ? '🌪️' : '💨'}</span>
-                            <span>Abluft</span>
+
+                         <div class="info-box">
+                            <div class="info-icon">${this._hass.states[device.options.fan_entity]?.state === 'on' ? '🌪️' : '💨'}</div>
+                            <div class="info-content">
+                                <div class="info-label">Abluft</div>
+                                <div class="info-val">${this._hass.states[device.options.fan_entity]?.state === 'on' ? 'An' : 'Aus'}</div>
+                            </div>
                         </div>
-                         ${/* Pump Status (Active) */ ''}
-                        <div style="display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary);">
-                            <span style="font-size:16px;">${pumpState?.state === 'on' ? '💧' : '⛔'}</span>
-                            <span>Pumpe</span>
+                        
+                         <div class="info-box">
+                            <div class="info-icon">${pumpState?.state === 'on' ? '💧' : '⛔'}</div>
+                            <div class="info-content">
+                                <div class="info-label">Pumpe</div>
+                                <div class="info-val">${pumpState?.state === 'on' ? 'Läuft' : 'Aus'}</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -427,11 +570,61 @@ class LocalGrowBoxPanel extends HTMLElement {
             q(`#btn-master-${device.id}`).onclick = () => this._toggle(device.entities.master);
             q(`#btn-pump-${device.id}`).onclick = () => this._hass.callService('homeassistant', 'toggle', { entity_id: device.entities.pump || device.options.pump_entity });
             q(`#btn-upload-${device.id}`).onclick = () => this._triggerUpload(device.id);
+            q('.card-image').style.cursor = 'pointer';
+            q('.card-image').onclick = (e) => {
+                // Prevent click if clicking the select or badge
+                if (e.target.tagName === 'SELECT' || e.target.closest('.phase-select')) return;
+                this._openCameraModal(imgUrl, device.name);
+            };
+
+            // Phase Change Event
+            const phaseSelect = q(`#phase-select-${device.id}`);
+            phaseSelect.onchange = async (e) => {
+                const newPhase = e.target.value;
+                if (confirm(`Phase wirklich auf "${PHASES.find(p => p.id === newPhase).label}" ändern?`)) {
+                    try {
+                        await this._hass.callWS({
+                            type: 'local_grow_box/update_config',
+                            entry_id: device.entryId,
+                            config: { current_phase: newPhase }
+                        });
+                        // Optimistic update or wait for reload
+                        // setTimeout(() => this._fetchDevices(), 500); // Reload data
+                        // actually config update should trigger reload via HA events if wired? 
+                        // But _fetchDevices is manual. Let's trigger it.
+                        this._fetchDevices();
+                    } catch (err) {
+                        alert("Fehler beim Ändern der Phase: " + err);
+                    }
+                } else {
+                    e.target.value = currentPhase; // Revert
+                }
+            };
 
             grid.appendChild(card);
         });
 
         container.appendChild(grid);
+    }
+
+    _openCameraModal(url, title) {
+        const modal = this.shadowRoot.getElementById('camera-modal');
+        const img = this.shadowRoot.getElementById('modal-img');
+        const txt = this.shadowRoot.getElementById('modal-title');
+
+        // Refresh image to ensure live content
+        const freshUrl = url.includes('?') ? url + '&t=' + Date.now() : url + '?t=' + Date.now();
+        img.src = freshUrl;
+
+        txt.innerText = title;
+        modal.classList.add('visible');
+
+        // Close logic
+        const close = modal.querySelector('.close-modal');
+        close.onclick = () => modal.classList.remove('visible');
+        modal.onclick = (e) => {
+            if (e.target === modal) modal.classList.remove('visible');
+        }
     }
 
     _renderStatBar(label, val, unit, min, max, color) {
@@ -675,6 +868,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                     ${renderInput('Keimling', 'phase_seedling_hours', device.options.phase_seedling_hours || 18)}
                     ${renderInput('Wachstum', 'phase_vegetative_hours', device.options.phase_vegetative_hours || 18)}
                     ${renderInput('Blüte', 'phase_flowering_hours', device.options.phase_flowering_hours || 12)}
+                    ${renderInput('Trocknen', 'phase_drying_hours', device.options.phase_drying_hours || 0)}
+                    ${renderInput('Veredelung', 'phase_curing_hours', device.options.phase_curing_hours || 0)}
                 </div>
                 
                 <h4 style="margin:24px 0 16px 0; color:var(--text-secondary);">Benutzerdefinierte Phasen (Name | Stunden)</h4>

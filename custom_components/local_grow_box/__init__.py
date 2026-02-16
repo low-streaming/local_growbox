@@ -60,8 +60,9 @@ class GrowBoxManager:
 
     async def async_setup(self):
         """Setup background tasks."""
+        # Check more frequently (5s) to handle pump duration accurately
         self._remove_update_listener = async_track_time_interval(
-            self.hass, self._async_update_logic, timedelta(minutes=1)
+            self.hass, self._async_update_logic, timedelta(seconds=5)
         )
         self.hass.async_create_task(self._async_update_logic(dt_util.now()))
 
@@ -113,6 +114,11 @@ class GrowBoxManager:
         light_entity = self.config.get(CONF_LIGHT_ENTITY)
         if not light_entity:
             return
+            
+        # Check if light is also configured as fan (common conflict)
+        fan_entity = self.config.get(CONF_FAN_ENTITY)
+        if fan_entity and fan_entity == light_entity:
+            _LOGGER.warning("CONFIGURATION ERROR: Light entity is same as Fan entity! This will cause toggling.")
 
         light_hours = 0
         phase = self.current_phase
@@ -139,12 +145,20 @@ class GrowBoxManager:
         start_hour = self._get_config_value(CONF_LIGHT_START_HOUR, DEFAULT_LIGHT_START_HOUR, int)
         now_local = dt_util.now()
         start_time = now_local.replace(hour=int(start_hour), minute=0, second=0, microsecond=0)
+        
+        # If we are before start_hour relative to 'today starts at 00:00', 
+        # then the cycle must have started yesterday.
         if now_local.hour < int(start_hour):
              start_time = start_time - timedelta(days=1)
 
         elapsed = (now_local - start_time).total_seconds()
         duration = float(light_hours) * 3600
         is_light_time = 0 <= elapsed < duration
+
+        _LOGGER.debug(
+            "Light Logic: Phase=%s, Hours=%s, Start=%s, Now=%s, Elapsed=%.1f, Duration=%.1f, IsLightTime=%s", 
+            phase, light_hours, start_hour, now_local.strftime("%H:%M"), elapsed, duration, is_light_time
+        )
 
         current_state = self._get_safe_state(light_entity)
         if not current_state:
@@ -153,8 +167,10 @@ class GrowBoxManager:
         is_on = current_state.state == "on"
         
         if is_light_time and not is_on:
+            _LOGGER.info("Light should be ON. Turning ON.")
             await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": light_entity})
         elif not is_light_time and is_on:
+            _LOGGER.info("Light should be OFF. Turning OFF.")
             await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": light_entity})
 
     async def _async_update_water_logic(self, now: datetime.datetime):
@@ -170,27 +186,33 @@ class GrowBoxManager:
         duration = self._get_config_value(CONF_PUMP_DURATION, DEFAULT_PUMP_DURATION, float)
         
         if is_on:
-            if self.pump_start_time is None:
-                self.pump_start_time = now
-            elapsed = (now - self.pump_start_time).total_seconds()
-            if elapsed > duration:
-                 _LOGGER.info("Pump run time exceeded. Off.")
-                 await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": pump_entity})
-                 self.pump_start_time = None
+            # Use state timestamp to handle manual toggles correctly
+            # last_changed is UTC, now is Timezone Aware (if dt_util.now() is used)
+            # We convert last_changed to match 'now' timezone or simple diff if compatible
+            start_time = pump_state.last_changed
+            if start_time:
+                elapsed = (now - start_time).total_seconds()
+                # _LOGGER.debug("Pump ON. Elapsed: %.1f s, Max: %.1f s", elapsed, duration)
+                if elapsed > duration:
+                     _LOGGER.info("Pump run time exceeded (%.1fs > %.1fs). Turning Off.", elapsed, duration)
+                     await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": pump_entity})
         else:
-            self.pump_start_time = None
-
-        if not is_on:
+            # Check moisture trigger logic (existing)
             moisture_entity = self.config.get(CONF_MOISTURE_SENSOR)
             target = self._get_config_value(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE, float)
+            
+            # Simple debounce: Don't turn on if we just turned off? 
+            # Not needed if interval is small and logic is robust.
+            
             if moisture_entity:
                 state = self._get_safe_state(moisture_entity)
                 if state:
                     try:
                         val = float(state.state)
                         if val < target:
+                            _LOGGER.info("Moisture low (%.1f < %.1f). Pump ON.", val, target)
                             await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": pump_entity})
-                            self.pump_start_time = now
+                            # pump_start_time tracking removed in favor of last_changed
                     except ValueError:
                         pass
 
@@ -259,7 +281,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.14",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.19",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 
