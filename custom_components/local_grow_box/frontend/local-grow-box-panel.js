@@ -157,11 +157,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     color: var(--text-primary);
                 }
                 
-                ha-entity-picker {
-                    display: block;
-                    min-height: 40px;
-                    border: 1px dashed rgba(255,0,0,0.3); /* DEBUG: Visualize if element is there */
-                }
+
                 
                 /* Layout */
                 .header {
@@ -569,9 +565,16 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 selector.addEventListener('value-changed', (ev) => {
                     const v = ev.detail?.value;
-                    console.log(`[SELECTOR] ${configKey} changed to:`, v);
+                    // console.log(`[SELECTOR] ${configKey} changed to:`, v);
+
                     if (!this._draft[entryId]) this._draft[entryId] = {};
-                    this._draft[entryId][configKey] = v;
+
+                    // IF v is undefined/null/empty, we save '' to draft to CLEAR stored val
+                    if (v === undefined || v === null || v === '') {
+                        this._draft[entryId][configKey] = '';
+                    } else {
+                        this._draft[entryId][configKey] = v;
+                    }
                 });
 
                 group.appendChild(selector);
@@ -611,24 +614,23 @@ class LocalGrowBoxPanel extends HTMLElement {
             };
 
             // Col 1
-            // TEST: Use ha-selector for Temp Sensor
-            appendSelector(col1, 'Temp. Sensor', 'temp_sensor', 'sensor');
-            appendPicker(col1, 'Luftfeuchte Sensor', 'humidity_sensor', ['sensor']);
-            appendPicker(col1, 'Abluft Ventilator', 'fan_entity', ['switch', 'fan', 'input_boolean']);
+            appendSelector(col1, 'Temp. Sensor', 'temp_sensor', ['sensor']);
+            appendSelector(col1, 'Luftfeuchte Sensor', 'humidity_sensor', ['sensor']);
+            appendSelector(col1, 'Abluft Ventilator', 'fan_entity', ['switch', 'fan', 'input_boolean']);
             appendInput(col1, 'Ziel Temperatur (°C)', 'target_temp', 'number');
             appendInput(col1, 'Max. Feuchte (%)', 'max_humidity', 'number');
 
             // Col 2
-            appendPicker(col2, 'Licht Quelle', 'light_entity', ['switch', 'light', 'input_boolean']);
+            appendSelector(col2, 'Licht Quelle', 'light_entity', ['switch', 'light', 'input_boolean']);
             appendInput(col2, 'Licht Start (Stunde)', 'light_start_hour', 'number');
 
-            appendPicker(col2, 'Wasserpumpe', 'pump_entity', ['switch', 'input_boolean']);
-            appendPicker(col2, 'Bodenfeuchte Sensor', 'moisture_sensor', ['sensor']);
+            appendSelector(col2, 'Wasserpumpe', 'pump_entity', ['switch', 'input_boolean']);
+            appendSelector(col2, 'Bodenfeuchte Sensor', 'moisture_sensor', ['sensor']);
             appendInput(col2, 'Ziel Bodenfeuchte (%)', 'target_moisture', 'number');
             appendInput(col2, 'Pumpen Dauer (s)', 'pump_duration', 'number');
 
             // Col 3
-            appendPicker(col3, 'Kamera', 'camera_entity', ['camera']);
+            appendSelector(col3, 'Kamera', 'camera_entity', ['camera']);
             appendInput(col3, 'Phasen Startdatum', 'phase_start_date', 'date');
 
             grid.appendChild(col1);

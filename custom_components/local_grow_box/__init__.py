@@ -259,7 +259,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.9",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.14",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 
@@ -327,7 +327,8 @@ async def ws_update_config(hass, connection, msg):
                 new_config[CONF_PHASE_START_DATE] = dt_util.now().isoformat()
 
     # Clean empty values
-    clean = {k: v for k, v in new_config.items() if v is not None and str(v).strip() != ""}
+    # Clean None values, but ALLOW empty strings (to clear fields)
+    clean = {k: v for k, v in new_config.items() if v is not None}
     opts = {**entry.options, **clean}
     
     hass.config_entries.async_update_entry(entry, options=opts)
