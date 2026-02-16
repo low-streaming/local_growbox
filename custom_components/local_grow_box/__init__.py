@@ -187,25 +187,23 @@ class GrowBoxManager:
         
         if is_on:
             # Use state timestamp to handle manual toggles correctly
-            # last_changed is UTC, now is Timezone Aware (if dt_util.now() is used)
-            # We convert last_changed to match 'now' timezone or simple diff if compatible
             start_time = pump_state.last_changed
             if start_time:
                 elapsed = (now - start_time).total_seconds()
-                # _LOGGER.debug("Pump ON. Elapsed: %.1f s, Max: %.1f s", elapsed, duration)
+                # _LOGGER.debug("Pump ON. Elapsed: %.1f s, Duration: %.1f s", elapsed, duration)
                 if elapsed > duration:
                      _LOGGER.info("Pump run time exceeded (%.1fs > %.1fs). Turning Off.", elapsed, duration)
                      await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": pump_entity})
         else:
             # PUMP IS OFF
             # Anti-Short-Cycle / Soaking Logic
-            # We must wait after the pump turns off to allow water to soak in before measuring/pumping again.
-            # Using 15 minutes (900 seconds) as a safe default.
             last_changed = pump_state.last_changed
             if last_changed:
                 time_off = (now - last_changed).total_seconds()
+                _LOGGER.debug("Pump OFF. Time off: %.1fs. Min Soak: 900s.", time_off)
+                
                 if time_off < 900:
-                    # _LOGGER.debug("Pump in soak time (%.0fs < 900s). Waiting.", time_off)
+                    # Prevent turning on
                     return
 
             # Check moisture trigger logic (existing)
@@ -218,7 +216,7 @@ class GrowBoxManager:
                     try:
                         val = float(state.state)
                         if val < target:
-                            _LOGGER.info("Moisture low (%.1f < %.1f). Pump ON.", val, target)
+                            _LOGGER.info("Moisture low (%.1f < %.1f) AND Soak time passed. Pump ON.", val, target)
                             await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": pump_entity})
                     except ValueError:
                         pass
@@ -288,7 +286,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.19",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.20",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 

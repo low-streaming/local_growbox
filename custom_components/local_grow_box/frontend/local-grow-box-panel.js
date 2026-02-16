@@ -140,6 +140,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
                 
+                :host {
                     --primary-color: #03a9f4;
                     --accent-color: #ff9800;
                     --bg-color: #111827;
@@ -148,6 +149,18 @@ class LocalGrowBoxPanel extends HTMLElement {
                     --text-secondary: #9ca3af;
                     --success-color: #10b981;
                     --danger-color: #ef4444;
+
+                    /* Force HA Light Theme compatibility */
+                    --primary-text-color: #f9fafb;
+                    --secondary-text-color: #9ca3af;
+                    --paper-input-container-color: rgba(255, 255, 255, 0.5);
+                    --paper-input-container-focus-color: #03a9f4;
+                    --mdc-theme-primary: #03a9f4;
+                    --mdc-text-field-ink-color: #ffffff;
+                    --mdc-select-ink-color: #ffffff;
+                    --mdc-text-field-label-ink-color: #9ca3af;
+                    --mdc-text-field-fill-color: rgba(255, 255, 255, 0.05);
+
                     font-family: 'Roboto', sans-serif;
                     display: block;
                     background-color: var(--bg-color);
@@ -505,7 +518,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                              ">
                                 ${phaseOptions}
                             </select>
-                            <div style="color:var(--text-secondary); font-size:12px; margin-top:4px; margin-left:2px;">Tag ${daysInPhase}</div>
+                            <div style="color:white; font-weight:500; font-size:13px; margin-top:6px; margin-left:2px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">Tag ${daysInPhase}</div>
                         </div>
                     </div>
                 </div>
