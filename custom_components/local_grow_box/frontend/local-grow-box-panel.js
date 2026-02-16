@@ -550,8 +550,6 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const configKey = picker.dataset.key;
                 const entryId = device.entryId;
 
-                // IMPORTANT: implementation order: includeDomains -> hass -> value
-
                 // Parse domains from data attribute we stored
                 try {
                     const domains = JSON.parse(picker.dataset.domainJson);
@@ -563,25 +561,27 @@ class LocalGrowBoxPanel extends HTMLElement {
                 picker.hass = this._hass;
 
                 // Draft > gespeicherte Optionen
-                // Check if we have a draft value for this device and key
                 const draftVal = this._draft[entryId] && this._draft[entryId][configKey];
                 const storedVal = device.options[configKey];
 
-                picker.value = (draftVal !== undefined) ? draftVal : storedVal;
+                // FALLBACK: Wenn storedVal undefined ist, leerstring nehmen
+                const finalVal = (draftVal !== undefined) ? draftVal : (storedVal || '');
 
-                // WICHTIG: jede Änderung sofort in Draft schreiben
+                console.log(`[RENDER] ${device.name} (${configKey}): Draft=${draftVal}, Stored=${storedVal} -> Final=${finalVal}`);
+
+                picker.value = finalVal;
+
                 picker.addEventListener('value-changed', (ev) => {
-                    // Normalize value from event or picker
-                    const v = ev.detail?.value !== undefined ? ev.detail.value : picker.value;
+                    const v = ev.detail?.value;
+                    if (v === undefined) return; // Ignore initial undefined events
 
                     if (!this._draft[entryId]) {
                         this._draft[entryId] = {};
                     }
-                    this._draft[entryId][configKey] = v || ''; // Store empty string if null/undefined
+                    this._draft[entryId][configKey] = v;
 
-                    // Also update the picker's value to ensure it sticks visually if the component tries to revert
                     if (picker.value !== v) {
-                        picker.value = v || '';
+                        picker.value = v;
                     }
                 });
             });
@@ -637,7 +637,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         // Start with draft values if they exist
         const updates = { ...(this._draft && this._draft[entryId] ? this._draft[entryId] : {}) };
 
-        // Inputs
+        // Inputs (overwrite/add from current DOM state just in case)
         section.querySelectorAll('input, select').forEach(el => {
             if (el.dataset.key) {
                 updates[el.dataset.key] = el.value;
@@ -653,20 +653,39 @@ class LocalGrowBoxPanel extends HTMLElement {
 
         try {
             console.log("Sending config update for entry:", entryId, updates);
-            await this._hass.callWS({
+            // Result contains { options: { ... } }
+            const result = await this._hass.callWS({
                 type: 'local_grow_box/update_config',
                 entry_id: entryId,
                 config: updates
             });
 
+            console.log("Save successful, received options:", result.options);
+
+            // Update local cache directly to avoid race conditions with registry fetch
+            const devIndex = this._devices.findIndex(d => d.entryId === entryId);
+            if (devIndex >= 0) {
+                // Merge new options into local device options
+                this._devices[devIndex].options = {
+                    ...this._devices[devIndex].options,
+                    ...result.options
+                };
+            }
+
+            // Clear draft for this entry as it is now saved
+            if (this._draft[entryId]) {
+                delete this._draft[entryId];
+            }
+
             const toast = this.shadowRoot.getElementById('save-toast');
             toast.classList.add('visible');
             setTimeout(() => toast.classList.remove('visible'), 3000);
 
-            // Refresh
-            this._fetchDevices();
+            // Re-render immediately with local data
+            this._updateContent();
 
         } catch (e) {
+            console.error("Save error:", e);
             alert("Fehler beim Speichern: " + e.message);
         }
     }
