@@ -58,6 +58,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             const devices = await this._hass.callWS({ type: 'config/device_registry/list' });
             const entities = await this._hass.callWS({ type: 'config/entity_registry/list' });
             const entries = await this._hass.callWS({ type: 'config_entries/get', domain: 'local_grow_box' });
+            console.log("Fetched entries:", entries);
 
             // Filter: Look for devices with identifiers matching our domain
             const myDevices = devices.filter(d =>

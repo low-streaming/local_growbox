@@ -9,15 +9,12 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfPressure
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.restore_state import RestoreEntity # If needed
-
 from homeassistant.helpers.device_registry import DeviceInfo
-from .const import DOMAIN, CONF_TEMP_SENSOR, CONF_HUMIDITY_SENSOR
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,21 +24,25 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor platform."""
+    _LOGGER.debug("Setting up Local Grow Box sensor platform")
     # Retrieve the manager
-    manager = hass.data[DOMAIN][entry.entry_id]
-    
-    async_add_entities([
-        GrowBoxVPDSensor(hass, manager, entry.entry_id),
-        GrowBoxDaysInPhaseSensor(hass, manager, entry.entry_id)
-    ])
+    try:
+        manager = hass.data[DOMAIN][entry.entry_id]
+        async_add_entities([
+            GrowBoxVPDSensor(hass, manager, entry.entry_id),
+            GrowBoxDaysInPhaseSensor(hass, manager, entry.entry_id)
+        ])
+        _LOGGER.debug("Sensors added successfully")
+    except Exception as e:
+        _LOGGER.error("Error setting up sensors: %s", e)
 
 class GrowBoxVPDSensor(SensorEntity):
     """Representation of a VPD Sensor."""
 
     _attr_has_entity_name = True
     _attr_name = "Vapor Pressure Deficit"
-    _attr_native_unit_of_measurement = "kPa"
-    _attr_device_class = None 
+    _attr_native_unit_of_measurement = UnitOfPressure.KPA
+    _attr_device_class = SensorDeviceClass.PRESSURE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:water-percent"
 
@@ -105,9 +106,3 @@ class GrowBoxDaysInPhaseSensor(SensorEntity):
     def native_value(self) -> int:
         """Return the value of the sensor."""
         return self.manager.days_in_phase
-
-
-
-
-
-
