@@ -178,15 +178,23 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 
                 /* Layout */
-                .header {
-                    background-color: var(--card-bg);
-                    padding: 16px 24px;
-                    border-bottom: 1px solid rgba(255,255,255,0.1);
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
+                .header { 
+                    background-color: var(--card-bg); 
+                    padding: 16px 24px; 
+                    border-bottom: 1px solid rgba(255,255,255,0.05);
+                    display: flex; align-items: center; 
                 }
-                .header h1 { margin: 0; font-size: 20px; font-weight: 500; color: var(--primary-color); }
+                .header h1 { 
+                    margin: 0; 
+                    font-size: 24px; 
+                    font-weight: 800; 
+                    background: linear-gradient(135deg, #4ade80 0%, #3b82f6 100%);
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    display: flex; align-items: center; gap: 8px;
+                    letter-spacing: -0.5px;
+                    text-transform: uppercase;
+                }
                 
                 .tabs { 
                     display: flex; gap: 8px; margin-left: auto; margin-right: 0; 
@@ -346,13 +354,12 @@ class LocalGrowBoxPanel extends HTMLElement {
             
             <div class="header">
                 <div style="display:flex; align-items:center; gap:12px;">
-                    <h1 style="display:flex; align-items:center; gap:8px;">🌱 <span>Grow Room</span></h1>
+                    <h1>🌱 <span>Grow Room</span></h1>
                 </div>
                 <div class="tabs">
                     <div class="tab active" data-tab="overview">Übersicht</div>
                     <div class="tab" data-tab="settings">Geräte & Config</div>
-                    <div class="tab" data-tab="phases">Phasen</div>
-                    <div class="tab" data-tab="log">Protokoll</div>
+                    <div class="tab" data-tab="phasen">Phasen</div>
                     <div class="tab" data-tab="info">Info / Hilfe</div>
                 </div>
             </div>
@@ -405,8 +412,6 @@ class LocalGrowBoxPanel extends HTMLElement {
             this._renderSettings(container);
         } else if (this._activeTab === 'phases') {
             this._renderPhases(container);
-        } else if (this._activeTab === 'log') {
-            this._renderLog(container);
         } else if (this._activeTab === 'info') {
             this._renderInfo(container);
         }
@@ -1318,7 +1323,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 
                 <div style="text-align:center; margin-top:32px; opacity:0.5; font-size:12px;">
-                    Local Grow Box Integration v5.0.3
+                    Local Grow Box Integration v1.2.1
                 </div>
             </div>
         `;
