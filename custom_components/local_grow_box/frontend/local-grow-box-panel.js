@@ -1087,8 +1087,18 @@ class LocalGrowBoxPanel extends HTMLElement {
                         image: ev.target.result
                     });
 
-                    // Force refresh handled by config update in backend now
-                    this._fetchDevices(); // Refresh
+                    // Update local state immediately with returned version
+                    if (result && result.version) {
+                        const device = this._devices.find(d => d.id === deviceId);
+                        if (device) {
+                            if (!device.options) device.options = {};
+                            device.options.image_version = result.version;
+                            this._updateContent(); // Instant visual update
+                        }
+                    }
+
+                    // And refresh from backend to be sure
+                    setTimeout(() => this._fetchDevices(), 1000);
                 } catch (err) {
                     alert('Upload fehlgeschlagen');
                 }
@@ -1350,7 +1360,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 
                 <div style="text-align:center; margin-top:32px; opacity:0.5; font-size:12px;">
-                    Local Grow Box Integration v1.2.4
+                    Local Grow Box Integration v1.2.5
                 </div>
             </div>
         `;

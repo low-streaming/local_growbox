@@ -93,6 +93,27 @@ Nützliche Informationen.
 -   Erklärungen zu den Buttons und Funktionen.
 
 ---
+
+## 🗺️ Roadmap & Vision 🚀
+
+Wir haben Großes vor! Hier ist ein Ausblick auf kommende Features:
+
+### Phase 1: Deep Data 📊
+-   **Stromkosten-Rechner:** Erfasse den exakten Verbrauch (kWh) und die Kosten pro Grow-Zyklus.
+-   **Ernte-Logbuch:** Dokumentiere Trockengewicht, Qualität und Curing-Verlauf.
+-   **Dünge-Planer:** Integrierter Kalender für Nährstoffgaben.
+
+### Phase 2: AI & Vision 🤖
+-   **Zeitraffer-Generator:** Erstellt automatisch ein Video aus den täglichen Snapshots deiner Pflanze.
+-   **KI-Pflanzendoktor:** Analyse von Blattproblemen oder Mängeln direkt über das Kamerabild.
+-   **Smart Notifications:** Push-Nachrichten via Telegram/Discord (z.B. "Tank leer", "VPD kritisch").
+
+### Phase 3: Pro Hardware ⚡
+-   **CO2-Steuerung:** Integration von CO2-Sensoren und Magnetventilen.
+-   **Sonnenaufgangs-Simulation:** Sanftes Dimmen von LED-Panels (PWM/0-10V).
+-   **Hydroponik-Support:** pH- und EC-Wert Überwachung für rezirkulierende Systeme.
+
+---
 ---
 
 # 🇬🇧 English
@@ -178,6 +199,27 @@ The timeline.
 Useful resources.
 -   VPD Chart for all phases.
 -   Explanations of buttons and logic.
+
+---
+
+## 🗺️ Roadmap & Vision 🚀
+
+We have big plans! Here is a sneak peek at what's coming:
+
+### Phase 1: Deep Data 📊
+-   **Energy Calculator:** Track exact power usage (kWh) and cost per grow cycle.
+-   **Harvest Log:** Document dry weight, quality, and curing progress.
+-   **Nutrient Planner:** Integrated calendar for fertilizer schedules.
+
+### Phase 2: AI & Vision 🤖
+-   **Auto-Timelapse:** Generate a video from your plant's daily snapshots.
+-   **AI Plant Doctor:** Analyze leaf issues or deficiencies directly via camera images.
+-   **Smart Notifications:** Push alerts via Telegram/Discord (e.g., "Tank empty", "VPD critical").
+
+### Phase 3: Pro Hardware ⚡
+-   **CO2 Control:** Integration of CO2 sensors and solenoids.
+-   **Sunrise Simulation:** Smooth dimming for LED panels (PWM/0-10V).
+-   **Hydroponics Support:** pH and EC monitoring for recirculating systems.
 
 ---
 
