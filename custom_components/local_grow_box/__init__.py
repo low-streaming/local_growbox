@@ -334,7 +334,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=1.2.5",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=1.2.6",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 
@@ -432,25 +432,33 @@ async def ws_upload_image(hass, connection, msg):
                 f.write(decoded)
 
         await hass.async_add_executor_job(_write_file)
-        
-        timestamp = int(dt_util.now().timestamp())
-        
+
         # Update config entry with version timestamp to bust cache
-        entry = hass.config_entries.async_get_entry(device_id) 
-        if entry:
-            new_opts = {**entry.options, "image_version": timestamp}
-            hass.config_entries.async_update_entry(entry, options=new_opts)
-            
-            # Update running manager immediately to avoid race condition
-            if DOMAIN in hass.data and device_id in hass.data[DOMAIN]:
-                manager = hass.data[DOMAIN][device_id]
-                manager.config["image_version"] = timestamp
+        try:
+            timestamp = int(dt_util.now().timestamp())
+            entry = hass.config_entries.async_get_entry(device_id) 
+            if entry:
+                new_opts = {**entry.options, "image_version": timestamp}
+                hass.config_entries.async_update_entry(entry, options=new_opts)
+                
+                # Update running manager immediately to avoid race condition
+                if DOMAIN in hass.data and device_id in hass.data[DOMAIN]:
+                    manager = hass.data[DOMAIN][device_id]
+                    if hasattr(manager, 'config'):
+                        manager.config["image_version"] = timestamp
+            else:
+                _LOGGER.warning("Upload: No entry found for device_id %s", device_id)
+        except Exception as err:
+            _LOGGER.error("Error updating config entry during upload: %s", err)
+            # Default to current time if config update fails, so frontend at least tries to refresh
+            timestamp = int(dt_util.now().timestamp())
             
         connection.send_result(msg["id"], {
             "path": f"/local/local_grow_box_images/{device_id}.jpg",
             "version": timestamp
         })
     except Exception as e:
+        _LOGGER.error("Upload failed: %s", e)
         connection.send_error(msg["id"], "upload_failed", str(e))
 
 @websocket_api.websocket_command({
