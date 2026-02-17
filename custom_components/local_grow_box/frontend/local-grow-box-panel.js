@@ -188,13 +188,26 @@ class LocalGrowBoxPanel extends HTMLElement {
                 }
                 .header h1 { margin: 0; font-size: 20px; font-weight: 500; color: var(--primary-color); }
                 
-                .tabs { display: flex; gap: 24px; margin-left: 48px; }
-                .tab { 
-                    cursor: pointer; padding: 8px 0; border-bottom: 2px solid transparent; 
-                    opacity: 0.6; transition: all 0.2s; text-transform: uppercase; font-size: 14px; font-weight: 500; 
+                .tabs { 
+                    display: flex; gap: 8px; margin-left: auto; margin-right: 0; 
+                    background: rgba(0,0,0,0.3); padding: 4px; border-radius: 20px;
+                    border: 1px solid rgba(255,255,255,0.05);
                 }
-                .tab:hover { opacity: 1; }
-                .tab.active { opacity: 1; border-bottom-color: var(--primary-color); color: var(--primary-color); }
+                .tab { 
+                    cursor: pointer; padding: 6px 16px; border-radius: 16px;
+                    opacity: 0.7; transition: all 0.2s; text-transform: uppercase; 
+                    font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+                    color: var(--text-secondary);
+                    border: 1px solid transparent;
+                }
+                .tab:hover { opacity: 1; color: var(--text-primary); background: rgba(255,255,255,0.05); }
+                .tab.active { 
+                    opacity: 1; 
+                    background: var(--primary-color); 
+                    color: white; 
+                    box-shadow: 0 2px 8px rgba(3, 169, 244, 0.25);
+                    border-color: rgba(255,255,255,0.1);
+                }
 
                 .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
                 
@@ -1253,6 +1266,27 @@ class LocalGrowBoxPanel extends HTMLElement {
                                 <td style="padding:8px; color:#4ade80;">0.5 - 0.7</td>
                             </tr>
                         </table>
+                        <div style="text-align:center; padding:12px;">
+                            <span style="font-size:40px;">🥦</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="card-header">
+                        <div class="card-title">🎮 Steuerung</div>
+                    </div>
+                    <div class="card-body">
+                        <p style="color:var(--text-secondary); margin-bottom:12px;">Erklärung der Buttons auf der Übersichtsseite:</p>
+                        <ul style="color:var(--text-secondary); padding-left:20px; line-height:1.6;">
+                            <li><strong>⚡ Master:</strong> Hauptschalter für die Automatik. <br>
+                                <span style="opacity:0.7; font-size:12px;">(AN = Automatik aktiv. AUS = Handbetrieb/Pause. Zustand wird gespeichert.)</span>
+                            </li>
+                            <li><strong>💧 Pumpe:</strong> Manuelles Gießen. <br>
+                                <span style="opacity:0.7; font-size:12px;">(Pumpe läuft für die eingestellte Dauer und schaltet dann automatisch ab.)</span>
+                            </li>
+                            <li><strong>📷 Bild:</strong> Lade ein aktuelles Foto deiner Box hoch.</li>
+                        </ul>
                     </div>
                 </div>
 
