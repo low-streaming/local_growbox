@@ -104,12 +104,24 @@ class GrowBoxManager:
     async def _async_update_logic(self, now: datetime.datetime):
         if not self.master_switch_on:
             return
+            
+        # Isolate Light Logic
         try:
             await self._async_update_light_logic(now)
+        except Exception as e:
+            _LOGGER.error("Error in Light Logic: %s", e)
+
+        # Isolate Climate Logic
+        try:
             await self._async_update_climate_logic(now)
+        except Exception as e:
+            _LOGGER.error("Error in Climate Logic: %s", e)
+
+        # Isolate Water Logic
+        try:
             await self._async_update_water_logic(now)
         except Exception as e:
-            _LOGGER.error("Error in update logic: %s", e)
+            _LOGGER.error("Error in Water Logic: %s", e)
 
     async def _async_update_light_logic(self, now: datetime.datetime):
         light_entity = self.config.get(CONF_LIGHT_ENTITY)
@@ -144,6 +156,12 @@ class GrowBoxManager:
              light_hours = PHASE_LIGHT_HOURS.get(phase, 12)
 
         start_hour = self._get_config_value(CONF_LIGHT_START_HOUR, DEFAULT_LIGHT_START_HOUR, int)
+        
+        # Validate start_hour to prevent crash
+        if not (0 <= start_hour <= 23):
+             _LOGGER.warning("Invalid start_hour %s. Using default.", start_hour)
+             start_hour = 18
+
         now_local = dt_util.now()
         start_time = now_local.replace(hour=int(start_hour), minute=0, second=0, microsecond=0)
         
@@ -316,7 +334,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=5.0.0",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=5.0.1",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 
