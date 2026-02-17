@@ -334,6 +334,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     <div class="tab" data-tab="settings">Geräte & Config</div>
                     <div class="tab" data-tab="phases">Phasen</div>
                     <div class="tab" data-tab="log">Protokoll</div>
+                    <div class="tab" data-tab="info">Info / Hilfe</div>
                 </div>
             </div>
             
@@ -383,6 +384,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             this._renderPhases(container);
         } else if (this._activeTab === 'log') {
             this._renderLog(container);
+        } else if (this._activeTab === 'info') {
+            this._renderInfo(container);
         }
     }
 
@@ -1060,9 +1063,9 @@ class LocalGrowBoxPanel extends HTMLElement {
             return;
         }
 
-        // 2. Fetch
+        // 2. Fetch (Last 48 hours to ensure we see recent events)
         const end = new Date();
-        const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+        const start = new Date(end.getTime() - 48 * 60 * 60 * 1000);
 
         try {
             const rawEvents = await this._hass.callWS({
@@ -1190,6 +1193,72 @@ class LocalGrowBoxPanel extends HTMLElement {
             console.error("Log fetch failed", e);
             container.innerHTML = `<div style="color:var(--danger-color); padding:24px;">Fehler beim Laden des Protokolls: ${e.message}</div>`;
         }
+    }
+
+    _renderInfo(container) {
+        container.innerHTML = `
+            <div style="max-width:800px; margin:0 auto; padding:16px;">
+                <h2 style="text-align:center; margin-bottom:24px;">Grow Guide & Hilfe</h2>
+                
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="card-header">
+                        <div class="card-title">🍃 VPD (Vapor Pressure Deficit)</div>
+                    </div>
+                    <div class="card-body">
+                        <p style="color:var(--text-secondary); margin-bottom:16px;">Der VPD-Wert beschreibt, wie gut die Pflanze transpirieren kann. Grüne Bereiche sind optimal.</p>
+                        <table style="width:100%; text-align:left; border-collapse:collapse; color:white;">
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
+                                <th style="padding:8px;">Phase</th>
+                                <th style="padding:8px;">Optimaler Bereich (kPa)</th>
+                            </tr>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                <td style="padding:8px;">🌱 Keimling</td>
+                                <td style="padding:8px; color:#4ade80;">0.4 - 0.8</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                <td style="padding:8px;">🌿 Wachstum</td>
+                                <td style="padding:8px; color:#4ade80;">0.8 - 1.2</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px;">🌸 Blüte</td>
+                                <td style="padding:8px; color:#4ade80;">1.2 - 1.6</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="card-header">
+                        <div class="card-title">💡 Lichtsteuerung</div>
+                    </div>
+                    <div class="card-body">
+                        <p style="color:var(--text-secondary);">Das Licht wird basierend auf der <strong>Startzeit</strong> und der <strong>Phasendauer</strong> gesteuert.</p>
+                        <ul style="color:var(--text-secondary); padding-left:20px; margin-top:8px;">
+                            <li><strong>Startzeit:</strong> Kann unter "Geräte & Config" eingestellt werden.</li>
+                            <li><strong>Dauer:</strong> Wird durch die aktuelle Phase bestimmt (z.B. 18h Wachstum).</li>
+                            <li><strong>Manuell:</strong> Wenn du das Licht manuell ausschaltest, wartet die Automatik 10 Sekunden.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                     <div class="card-header">
+                        <div class="card-title">💧 Bewässerung</div>
+                    </div>
+                    <div class="card-body">
+                        <p style="color:var(--text-secondary);">Die Pumpe wird aktiviert, wenn die Bodenfeuchte unter den Zielwert fällt.</p>
+                        <ul style="color:var(--text-secondary); padding-left:20px; margin-top:8px;">
+                            <li><strong>Logik:</strong> Feuchte < Zielwert → Pumpe an für X Sekunden.</li>
+                            <li><strong>Pause:</strong> Nach dem Gießen wartet das System 15 Minuten (Einwirkzeit).</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div style="text-align:center; margin-top:32px; opacity:0.5; font-size:12px;">
+                    Local Grow Box Integration v5.0.3
+                </div>
+            </div>
+        `;
     }
 
 }
