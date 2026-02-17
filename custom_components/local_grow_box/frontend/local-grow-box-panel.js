@@ -163,7 +163,8 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                     font-family: 'Roboto', sans-serif;
                     display: block;
-                    background-color: var(--bg-color);
+                    background: linear-gradient(to bottom, rgba(10, 15, 25, 0.85), rgba(5, 10, 20, 0.95)), url('https://images.unsplash.com/photo-1614981880402-23c2a4efd232?q=80&w=2574') no-repeat center center fixed;
+                    background-size: cover;
                     min-height: 100vh;
                     color: var(--text-primary);
                 }
