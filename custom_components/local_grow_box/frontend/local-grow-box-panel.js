@@ -498,6 +498,13 @@ class LocalGrowBoxPanel extends HTMLElement {
             const hum = getVal(device.options.humidity_sensor);
             const vpd = getVal(device.entities.vpd);
 
+            let vpdTarget = null;
+            if (currentPhase === 'seedling') vpdTarget = { min: 0.4, max: 0.8 };
+            else if (currentPhase === 'vegetative') vpdTarget = { min: 0.8, max: 1.2 };
+            else if (currentPhase === 'flowering') vpdTarget = { min: 1.2, max: 1.6 };
+            else if (currentPhase === 'drying') vpdTarget = { min: 0.8, max: 1.0 };
+            else if (currentPhase === 'curing') vpdTarget = { min: 0.5, max: 0.7 };
+
             // Phase Options HTML
             const phaseOptions = PHASES.map(p =>
                 `<option value="${p.id}" ${currentPhase === p.id ? 'selected' : ''}>${p.label}</option>`
@@ -536,7 +543,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 <div class="card-body">
                     ${this._renderStatBar('Temperatur', temp, '°C', 18, 30, '#ef4444', '🌡️')}
                     ${this._renderStatBar('Luftfeuchte', hum, '%', 30, 80, '#3b82f6', '💧')}
-                    ${this._renderStatBar('VPD', vpd, 'kPa', 0.4, 1.6, '#10b981', '🍃')}
+                    ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3.0, '#10b981', '🍃', vpdTarget)}
                     
                     ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6', '🪴') : ''}
                     
@@ -643,10 +650,21 @@ class LocalGrowBoxPanel extends HTMLElement {
         }
     }
 
-    _renderStatBar(label, val, unit, min, max, color) {
+    _renderStatBar(label, val, unit, min, max, color, icon, targetRange) {
         if (val === null) return `<div class="stat-row"><span class="stat-label">${label}</span><span class="stat-value">--</span></div>`;
 
         const pct = Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100));
+
+        // Target Area Rendering
+        let targetArea = '';
+        if (targetRange) {
+            const tMinPct = Math.min(100, Math.max(0, ((targetRange.min - min) / (max - min)) * 100));
+            const tMaxPct = Math.min(100, Math.max(0, ((targetRange.max - min) / (max - min)) * 100));
+            const width = tMaxPct - tMinPct;
+
+            targetArea = `<div style="position:absolute; left:${tMinPct}%; width:${width}%; height:100%; background:rgba(255,255,255,0.3); z-index:1;"></div>`;
+            label += ` <span style="font-size:10px; opacity:0.7;">(Ziel: ${targetRange.min}-${targetRange.max})</span>`;
+        }
 
         return `
             <div style="margin-bottom:12px;">
@@ -654,8 +672,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                     <span class="stat-label">${label}</span>
                     <span class="stat-value">${val} ${unit}</span>
                 </div>
-                <div class="bar-bg">
-                    <div class="bar-fill" style="width:${pct}%; background-color:${color};"></div>
+                <div class="bar-bg" style="position:relative;">
+                    ${targetArea}
+                    <div class="bar-fill" style="width:${pct}%; background-color:${color}; position:relative; z-index:2; opacity:0.8;"></div>
                 </div>
             </div>
         `;
@@ -1009,13 +1028,21 @@ class LocalGrowBoxPanel extends HTMLElement {
     async _renderLog(container) {
         container.innerHTML = '<div style="padding:24px; text-align:center;">Lade Protokoll...</div>';
 
-        // 1. Collect allowed entities
+        // 1. Collect entities and map to devices
         const entities = [];
+        const entityMap = {}; // entity_id -> { devId, type }
+
         this._devices.forEach(d => {
-            if (d.entities.light) entities.push(d.entities.light);
-            if (d.entities.pump) entities.push(d.entities.pump || d.options.pump_entity);
-            if (d.entities.fan) entities.push(d.entities.fan || d.options.fan_entity);
-            if (d.entities.phase) entities.push(d.entities.phase);
+            const add = (eid, type) => {
+                if (eid) {
+                    entities.push(eid);
+                    entityMap[eid] = { devId: d.id, type: type };
+                }
+            };
+            add(d.entities.light, 'light');
+            add(d.entities.pump || d.options.pump_entity, 'pump');
+            add(d.entities.fan || d.options.fan_entity, 'fan');
+            add(d.entities.phase, 'phase');
         });
 
         if (entities.length === 0) {
@@ -1023,96 +1050,137 @@ class LocalGrowBoxPanel extends HTMLElement {
             return;
         }
 
-        // 2. Calculate time range (last 24h)
+        // 2. Fetch
         const end = new Date();
         const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
 
         try {
-            // 3. Fetch Logbook
-            const events = await this._hass.callWS({
+            const rawEvents = await this._hass.callWS({
                 type: 'logbook/get_events',
                 start_time: start.toISOString(),
                 end_time: end.toISOString(),
                 entity_ids: entities
             });
 
-            // 4. Filter & Sort
-            if (!events || events.length === 0) {
+            // 3. Filter Noise
+            const events = (rawEvents || []).filter(e =>
+                e.state !== 'unavailable' && e.state !== 'unknown' && e.state !== '' && e.message !== 'became unavailable'
+            ).sort((a, b) => new Date(b.when) - new Date(a.when));
+
+            if (events.length === 0) {
                 container.innerHTML = '<div style="padding:24px; text-align:center;">Keine Ereignisse in den letzten 24 Stunden.</div>';
                 return;
             }
 
-            // Filter out noise
-            const cleanEvents = events.filter(e =>
-                e.state !== 'unavailable' &&
-                e.state !== 'unknown' &&
-                e.state !== '' &&
-                e.message !== 'became unavailable'
-            );
+            // 4. Render Layout
+            container.innerHTML = '';
 
-            if (cleanEvents.length === 0) {
-                container.innerHTML = '<div style="padding:24px; text-align:center;">Keine relevanten Ereignisse (nur "nicht verfügbar").</div>';
-                return;
-            }
+            const header = document.createElement('div');
+            header.style.cssText = "padding:16px; display:flex; gap:12px; max-width:800px; margin:0 auto; flex-wrap:wrap;";
 
-            cleanEvents.sort((a, b) => new Date(b.when) - new Date(a.when));
+            const createSelect = (opts) => {
+                const s = document.createElement('select');
+                s.style.cssText = "background:var(--card-bg); color:var(--primary-text-color); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); flex:1; min-width:140px; outline:none; cursor:pointer;";
+                s.innerHTML = opts.map(o => `<option value="${o.val}">${o.lbl}</option>`).join('');
+                return s;
+            };
 
-            const list = document.createElement('div');
-            list.className = 'log-list';
-            list.style.maxWidth = '800px';
-            list.style.margin = '0 auto';
+            const devOpts = [{ val: 'all', lbl: 'Alle Boxen' }].concat(this._devices.map(d => ({ val: d.id, lbl: d.name })));
+            const typeOpts = [
+                { val: 'all', lbl: 'Alle Typen' },
+                { val: 'light', lbl: '💡 Licht' },
+                { val: 'pump', lbl: '💧 Wasser' },
+                { val: 'fan', lbl: '🌪️ Luft' },
+                { val: 'phase', lbl: '🌱 Phase' }
+            ];
 
-            cleanEvents.forEach(ev => {
-                const item = document.createElement('div');
-                item.style.cssText = `
-                    background: var(--card-bg);
-                    border-bottom: 1px solid rgba(255,255,255,0.05);
-                    padding: 12px 16px;
-                    display: flex; justify-content: space-between; align-items: center; gap: 12px;
-                `;
+            const devSelect = createSelect(devOpts);
+            const typeSelect = createSelect(typeOpts);
 
-                const time = new Date(ev.when).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            header.appendChild(devSelect);
+            header.appendChild(typeSelect);
+            container.appendChild(header);
 
-                // Determine Icon
-                let icon = '📝';
-                if (ev.domain === 'light') icon = '💡';
-                else if (ev.entity_id.includes('pump')) icon = '💧';
-                else if (ev.entity_id.includes('fan')) icon = '🌪️';
-                else if ((ev.domain === 'sensor' && ev.entity_id.includes('phase')) || ev.entity_id.includes('grow')) icon = '🌱';
+            const listContainer = document.createElement('div');
+            listContainer.style.maxWidth = '800px';
+            listContainer.style.margin = '0 auto';
+            container.appendChild(listContainer);
 
-                // Colorize state
-                let stateColor = 'white';
-                if (ev.state === 'on') stateColor = 'var(--success-color)';
-                if (ev.state === 'off') stateColor = 'var(--text-secondary)';
+            // Render Function
+            const renderList = () => {
+                const devFilter = devSelect.value;
+                const typeFilter = typeSelect.value;
 
-                // Fix Name (Logbook sometimes doesn't send name, fallback to state cache or ID)
-                let name = ev.name;
-                if (!name || name === 'undefined') {
-                    const stateObj = this._hass.states[ev.entity_id];
-                    name = stateObj ? stateObj.attributes.friendly_name : ev.entity_id;
+                listContainer.innerHTML = '';
+
+                const filtered = events.filter(ev => {
+                    const info = entityMap[ev.entity_id];
+                    if (!info) return true;
+
+                    if (devFilter !== 'all' && info.devId !== devFilter) return false;
+                    if (typeFilter !== 'all' && info.type !== typeFilter) return false;
+
+                    return true;
+                });
+
+                if (filtered.length === 0) {
+                    listContainer.innerHTML = '<div style="padding:24px; text-align:center; color:var(--text-secondary);">Keine Einträge für diesen Filter.</div>';
+                    return;
                 }
 
-                item.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:12px; flex:1;">
-                        <span style="color:var(--text-secondary); font-size:14px; width:45px;">${time}</span>
-                        <span style="font-size:20px;">${icon}</span>
-                        <div style="display:flex; flex-direction:column;">
-                            <span style="font-weight:500;">${name}</span>
-                            <span style="font-size:12px; color:var(--text-secondary);">${ev.message || ('Zustand: ' + ev.state)}</span>
-                        </div>
-                    </div>
-                `;
-                list.appendChild(item);
-            });
+                const list = document.createElement('div');
+                list.className = 'log-list';
 
-            container.innerHTML = '';
-            container.appendChild(list);
+                filtered.forEach(ev => {
+                    const item = document.createElement('div');
+                    item.style.cssText = `
+                        background: var(--card-bg);
+                        border-bottom: 1px solid rgba(255,255,255,0.05);
+                        padding: 12px 16px;
+                        display: flex; justify-content: space-between; align-items: center; gap: 12px;
+                    `;
+
+                    const time = new Date(ev.when).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    let icon = '📝';
+                    if (ev.domain === 'light') icon = '💡';
+                    else if (ev.entity_id.includes('pump')) icon = '💧';
+                    else if (ev.entity_id.includes('fan')) icon = '🌪️';
+                    else if ((ev.domain === 'sensor' && ev.entity_id.includes('phase')) || ev.entity_id.includes('grow')) icon = '🌱';
+
+                    let name = ev.name;
+                    if (!name || name === 'undefined') {
+                        const stateObj = this._hass.states[ev.entity_id];
+                        name = stateObj ? stateObj.attributes.friendly_name : ev.entity_id;
+                    }
+
+                    item.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:12px; flex:1;">
+                            <span style="color:var(--text-secondary); font-size:14px; width:45px;">${time}</span>
+                            <span style="font-size:20px;">${icon}</span>
+                            <div style="display:flex; flex-direction:column;">
+                                <span style="font-weight:500;">${name}</span>
+                                <span style="font-size:12px; color:var(--text-secondary);">${ev.message || ('Zustand: ' + ev.state)}</span>
+                            </div>
+                        </div>
+                    `;
+                    list.appendChild(item);
+                });
+
+                listContainer.appendChild(list);
+            };
+
+            devSelect.onchange = renderList;
+            typeSelect.onchange = renderList;
+
+            renderList();
 
         } catch (e) {
             console.error("Log fetch failed", e);
             container.innerHTML = `<div style="color:var(--danger-color); padding:24px;">Fehler beim Laden des Protokolls: ${e.message}</div>`;
         }
     }
+
 }
 
 customElements.define('local-grow-box-panel', LocalGrowBoxPanel);

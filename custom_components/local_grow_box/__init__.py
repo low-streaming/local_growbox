@@ -57,6 +57,7 @@ class GrowBoxManager:
 
         self.vpd = 0.0
         self.pump_start_time = None
+        self.last_pump_stop_time = dt_util.now()
 
     async def async_setup(self):
         """Setup background tasks."""
@@ -171,9 +172,25 @@ class GrowBoxManager:
         is_on = current_state.state == "on"
         
         if is_light_time and not is_on:
+            # Check Manual Override (Debounce 15 mins)
+            last_changed = current_state.last_changed
+            if last_changed:
+                diff = (dt_util.utcnow() - last_changed).total_seconds()
+                if diff < 900:
+                    _LOGGER.info("Light manual override detected (changed %.0fs ago). Skipping auto-control.", diff)
+                    return
+
             _LOGGER.info("Light should be ON. Turning ON.")
             await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": light_entity})
         elif not is_light_time and is_on:
+            # Check Manual Override (Debounce 15 mins)
+            last_changed = current_state.last_changed
+            if last_changed:
+                diff = (dt_util.utcnow() - last_changed).total_seconds()
+                if diff < 900:
+                    _LOGGER.info("Light manual override detected (changed %.0fs ago). Skipping auto-control.", diff)
+                    return
+
             _LOGGER.info("Light should be OFF. Turning OFF.")
             await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": light_entity})
 
@@ -185,45 +202,54 @@ class GrowBoxManager:
         pump_state = self._get_safe_state(pump_entity)
         if not pump_state:
             return
+            
+        if pump_state.state in ["unavailable", "unknown"]:
+            return
 
         is_on = pump_state.state == "on"
         duration = self._get_config_value(CONF_PUMP_DURATION, DEFAULT_PUMP_DURATION, float)
         
         if is_on:
-            # Use state timestamp to handle manual toggles correctly
-            start_time = pump_state.last_changed
-            if start_time:
-                elapsed = (now - start_time).total_seconds()
-                # _LOGGER.debug("Pump ON. Elapsed: %.1f s, Duration: %.1f s", elapsed, duration)
-                if elapsed > duration:
-                     _LOGGER.info("Pump run time exceeded (%.1fs > %.1fs). Turning Off.", elapsed, duration)
-                     await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": pump_entity})
-        else:
-            # PUMP IS OFF
-            # Anti-Short-Cycle / Soaking Logic
-            last_changed = pump_state.last_changed
-            if last_changed:
-                time_off = (now - last_changed).total_seconds()
-                _LOGGER.debug("Pump OFF. Time off: %.1fs. Min Soak: 900s.", time_off)
-                
-                if time_off < 900:
-                    # Prevent turning on
-                    return
-
-            # Check moisture trigger logic (existing)
-            moisture_entity = self.config.get(CONF_MOISTURE_SENSOR)
-            target = self._get_config_value(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE, float)
+            # Start tracking if not already
+            if not self.pump_start_time:
+                 self.pump_start_time = now
             
-            if moisture_entity:
-                state = self._get_safe_state(moisture_entity)
-                if state:
-                    try:
-                        val = float(state.state)
-                        if val < target:
-                            _LOGGER.info("Moisture low (%.1f < %.1f) AND Soak time passed. Pump ON.", val, target)
-                            await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": pump_entity})
-                    except ValueError:
-                        pass
+            elapsed = (now - self.pump_start_time).total_seconds()
+            
+            if elapsed >= duration:
+                 _LOGGER.info("Pump ran for %.1fs. Turning OFF.", elapsed)
+                 await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": pump_entity})
+                 self.last_pump_stop_time = now
+                 self.pump_start_time = None
+        else:
+            # Pump is OFF
+            self.pump_start_time = None
+            
+            # Soak Time Check (15 min)
+            if self.last_pump_stop_time:
+                 time_off = (now - self.last_pump_stop_time).total_seconds()
+                 if time_off < 900: # 900s = 15 min
+                      return
+
+            # Moisture Check
+            moisture_entity = self.config.get(CONF_MOISTURE_SENSOR)
+            if not moisture_entity:
+                return
+                
+            state = self._get_safe_state(moisture_entity)
+            if not state or state.state in ["unavailable", "unknown"]:
+                return
+            
+            try:
+                val = float(state.state)
+                target = self._get_config_value(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE, float)
+                
+                if val < target:
+                     _LOGGER.info("Moisture low (%.1f < %.1f). Starting Pump.", val, target)
+                     await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": pump_entity})
+                     self.pump_start_time = now
+            except ValueError:
+                pass
 
     async def _async_update_climate_logic(self, now: datetime.datetime):
         temp_entity = self.config.get(CONF_TEMP_SENSOR)
@@ -290,7 +316,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.24",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0.28",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 
