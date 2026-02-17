@@ -327,7 +327,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             
             <div class="header">
                 <div style="display:flex; align-items:center; gap:12px;">
-                    <h1 style="display:flex; align-items:center; gap:8px;">🌱 <span>OpenKAIRO</span></h1>
+                    <h1 style="display:flex; align-items:center; gap:8px;">🌱 <span>Grow Room</span></h1>
                 </div>
                 <div class="tabs">
                     <div class="tab active" data-tab="overview">Übersicht</div>
@@ -351,6 +351,10 @@ class LocalGrowBoxPanel extends HTMLElement {
                     <img id="modal-img" src="" style="width:100%; height:auto; display:block; border-radius:8px;">
                     <div id="modal-title" style="margin-top:12px; font-size:16px; font-weight:500; text-align:center;"></div>
                 </div>
+            </div>
+
+            <div style="text-align:center; padding:32px; opacity:0.4; font-size:12px; margin-top:40px;">
+                Powered by <a href="https://openkairo.de" target="_blank" style="color:inherit; text-decoration:none; font-weight:bold; border-bottom:1px solid rgba(255,255,255,0.2);">OpenKAIRO</a>
             </div>
         `;
 
