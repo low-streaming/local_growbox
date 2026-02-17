@@ -16,37 +16,54 @@ Die **Local Grow Box** Integration verwandelt dein Home Assistant in eine vollau
 
 ### 1. **Phasen-Management** 🌱
 Verfolge den Lebenszyklus deiner Pflanze vom Keimling bis zur Veredelung (Curing).
--   **Automatischer Tageszähler:** Setzt sich automatisch auf 0 zurück, wenn du die Phase wechselst.
+-   **Automatischer Tageszähler:** Berechnet den aktuellen Tag basierend auf dem Startdatum.
 -   **Phasen-Profile:** Vorkonfigurierte Lichtstunden für jede Phase (z.B. 18/6 für Wachstum, 12/12 für Blüte).
--   **Eigene Phasen:** Erstelle benutzerdefinierte Phasen mit eigenen Namen und Lichtzeiten.
+-   **Visuelle Timeline:** Sehe auf einen Blick, wo sich deine Pflanze befindet.
 
 ### 2. **Smarter Lichtzyklus** 💡
 -   **Automatische Steuerung:** Schaltet dein Licht basierend auf der aktuellen Phase AN/AUS.
 -   **Flexible Startzeit:** Lege fest, wann der "Tag" beginnt (z.B. 18:00 Uhr), um Stromkosten zu sparen oder Hitze zu vermeiden.
--   **Timer-Anzeige:** Zeigt im Dashboard exakt an, wie lange das Licht noch an bleibt oder wann es wieder angeht.
+-   **Timer-Anzeige:** Zeigt im Dashboard exakt an, wie lange das Licht noch an bleibt.
 
-### 3. **Klima-Kontrolle (VPD)** 🌪️
--   **Vapor Pressure Deficit (VPD):** Berechnet den VPD-Wert in Echtzeit aus Temperatur und Luftfeuchtigkeit.
+### 3. **Klima-Kontrolle & VPD** 🌪️
+-   **VPD-Berechnung:** Berechnet das Vapor Pressure Deficit in Echtzeit aus Temperatur und Luftfeuchtigkeit.
 -   **Smarte Abluft:** Steuert deinen Lüfter automatisch, um optimale Bedingungen zu schaffen.
--   **Visuelles Feedback:** Farbige Balken zeigen sofort, ob sich deine Werte im "grünen Bereich" befinden.
+-   **Info-Tab:** Erklärungen zu idealen VPD-Werten für jede Phase.
 
 ### 4. **Intelligentes Bewässerungssystem** 💧
 -   **Bodenfeuchte-Trigger:** Aktiviert die Pumpe nur, wenn die Erde zu trocken ist.
 -   **Präzise Dosierung:** Die Pumpe läuft für exakt die eingestellte Zeit (z.B. 5 Sekunden).
--   **Anti-Staunässe (Einwirkzeit):** Nach dem Gießen macht das System zwingend **15 Minuten Pause**. Erst wenn das Wasser verteilt ist und der Sensor immer noch "trocken" meldet, wird erneut gegossen.
+-   **Anti-Staunässe (Einwirkzeit):** Nach dem Gießen macht das System zwingend **15 Minuten Pause**, damit sich das Wasser verteilen kann.
 
-### 5. **Kamera Integration** 📷
--   **Live-Ansicht:** Beobachte deine Pflanze direkt im Dashboard.
--   **Zoom-Popup:** Klicke auf das Kamerabild für eine Vollbild-Ansicht.
+### 5. **Kamera & Bild-Upload** 📷
+-   **Live-Kamera:** Binde eine Home Assistant Kamera-Entität ein.
+-   **Bild-Upload:** Kein Live-Stream? Lade einfach ein Foto direkt über das Dashboard hoch. Das Bild wird gespeichert und angezeigt.
+
+### 6. **Master-Steuerung** ⚡
+-   **Master-Switch:** Ein zentraler Schalter, um die gesamte Automatik (Licht, Wasser, Klima) zu aktivieren oder zu pausieren.
 
 ---
 
-## 🚀 Installation & Einrichtung
+## 🚀 Installation
 
-1.  Kopiere den Ordner `custom_components/local_grow_box` in dein Home Assistant `/config/custom_components/` Verzeichnis.
-2.  Starte Home Assistant neu.
-3.  Gehe zu **Einstellungen -> Geräte & Dienste**.
-4.  Klicke auf **Integration hinzufügen** und suche nach **"Local Grow Box"**.
+### Option 1: HACS (Empfohlen)
+1.  Öffne **HACS** in Home Assistant.
+2.  Klicke oben rechts auf das Menü (3 Punkte) -> **Benutzerdefinierte Repositories**.
+3.  Füge diese URL hinzu: `https://github.com/low-streaming/local_growbox`
+4.  Wähle als Kategorie: **Integration**.
+5.  Klicke auf **Hinzufügen** und suche dann nach **"Local Grow Box"**.
+6.  Installieren und Home Assistant **neustarten**.
+
+### Option 2: Manuell
+1.  Lade den Ordner `custom_components/local_grow_box` aus diesem Repository herunter.
+2.  Kopiere ihn in dein Home Assistant Verzeichnis: `/config/custom_components/`.
+3.  Starte Home Assistant neu.
+
+## ⚙️ Einrichtung
+1.  Gehe zu **Einstellungen -> Geräte & Dienste**.
+2.  Klicke auf **Integration hinzufügen**.
+3.  Suche nach **"Local Grow Box"** und wähle es aus.
+4.  Gib deiner Box einen Namen.
 5.  Ein neuer Menüpunkt **"Grow Room"** erscheint in deiner Seitenleiste.
 
 ---
@@ -55,109 +72,112 @@ Verfolge den Lebenszyklus deiner Pflanze vom Keimling bis zur Veredelung (Curing
 
 ### **Übersicht (Overview)**
 Deine Kommandozentrale.
--   **Live Status:** Temperatur, RLF, VPD, Bodenfeuchte und Licht-Status auf einen Blick.
--   **Schnellzugriff:** Manuelles Schalten von Licht, Pumpe oder Lüfter.
--   **Phasen-Wähler:** Ändere die Wachstumsphase direkt über das Dropdown-Menü im Bild.
+-   **Live Status:** Alle Werte (Temp, RLF, VPD, Boden) auf einen Blick.
+-   **Steuerung:** Master-Switch, manuelle Pumpe, Bild-Upload.
+-   **Navigation:** Einfache Tabs (Mobil-optimiert).
 
 ### **Geräte & Config**
-Hier verknüpfst du deine Home Assistant Geräte mit der Box.
--   **Sensoren:** Wähle deine Temperatur-, Feuchte- und Boden-Sensoren.
--   **Aktoren:** Wähle die Schalter (Switch) für Licht, Lüfter und Pumpe.
--   **Einstellungen:** Definiere Ziel-Temperatur, Max-RLF und Pumpdauer.
--   **Licht Startstunde:** Wann soll der Tag beginnen? (z.B. `18` für 18:00 Uhr).
+Hier verknüpfst du deine Home Assistant Geräte.
+-   **Sensoren & Aktoren:** Wähle deine Entitäten (Licht, Lüfter, Sensoren).
+-   **Parameter:** Setze Zielwerte für Temperatur, Feuchtigkeit und Bewässerung.
+-   **Zeitplan:** Stelle die Startstunde für das Licht ein.
 
 ### **Phasen**
-Passe die Lichtdauer für jede Phase an (Standard: 18h Wachstum, 12h Blüte) oder erstelle eigene Phasen.
+Die Timeline deiner Pflanze.
+-   Passe das Startdatum an, um den Tageszähler zu korrigieren.
+-   Wechsle die Phase (z.B. von Wachstum zu Blüte), um den Lichtzyklus automatisch anzupassen.
 
----
-
-## 🛠️ Logik Details
-
--   **Licht:** Prüft jede Minute. Nutzt `Startstunde` und `Phasendauer`. Beispiel: Start 18:00, Dauer 12h -> Licht AN von 18:00 bis 06:00.
--   **Pumpe:** Prüft alle 5 Sekunden. Wenn Feuchtigkeit < Zielwert UND Pumpe war >15 Minuten aus -> Pumpe AN für X Sekunden.
-
-## 🗺️ Roadmap (Geplante Funktionen)
-
--   **Export von Daten:** CSV/Excel Export der Historie.
--   **Benachrichtigungen:** Push-Nachrichten bei kritischen Werten oder Phasenwechsel.
--   **Erweiterte Sensoren:** Unterstützung für CO2, pH und EC Sensoren.
--   **Dynamisches Licht:** Sonnenaufgang/-untergang Simulation.
--   **Multi-Box Support:** Einfache Verwaltung mehrerer Boxen nebeneinander.
+### **Info / Hilfe**
+Nützliche Informationen.
+-   VPD-Tabelle für alle Phasen.
+-   Erklärungen zu den Buttons und Funktionen.
 
 ---
 ---
 
 # 🇬🇧 English
 
-The **Local Grow Box** integration turns your Home Assistant instance into a fully automated Grow Room controller. It manages light cycles, climate (VPD), watering, and tracking of growth phases through a dedicated, beautiful dashboard panel.
+The **Local Grow Box** integration turns your Home Assistant instance into a fully automated Grow Room controller. It manages light cycles, climate (VPD), watering, and tracks growth phases through a sleek, modern dashboard panel.
 
 ## ✨ Key Features
 
 ### 1. **Phase Management** 🌱
 Track your plant's lifecycle from Seedling to Curing.
--   **Automated Day Counter:** Resets automatically when you switch phases.
--   **Phase Profiles:** Pre-configured light hours for each phase (e.g., 18/6 for Veg, 12/12 for Flower).
--   **Custom Phases:** Define your own phases and durations.
+-   **Automated Day Counter:** Calculates the current day based on the start date.
+-   **Phase Profiles:** Pre-configured light schedules (e.g., 18/6 for Veg, 12/12 for Flower).
+-   **Visual Timeline:** See exactly where your plant is in its lifecycle.
 
 ### 2. **Smart Light Cycle** 💡
--   **Automated Control:** Turns your light entity ON/OFF based on the current phase.
--   **Flexible Start Time:** Set a "Start Hour" (e.g., 18:00) so the "Day" aligns with off-peak electricity or your schedule.
--   **Timer Display:** See exactly how long the light will remain ON or when it will turn ON again.
+-   **Automated Control:** Turns your light ON/OFF based on the current phase.
+-   **Flexible Start Time:** Set a "Start Hour" (e.g., 18:00) to shift the "day" to off-peak hours or cooler times.
+-   **Timer Display:** Shows exactly how long the light will remain ON.
 
-### 3. **Climate Control (VPD)** 🌪️
--   **Vapor Pressure Deficit (VPD):** Calculates VPD in real-time based on Temperature and Humidity.
--   **Smart Ventilation:** Automatically controls your exhaust fan to maintain optimal conditions.
--   **Visual Feedback:** Color-coded bars show if your environment is in the "green zone".
+### 3. **Climate Control & VPD** 🌪️
+-   **VPD Calculation:** Real-time Vapor Pressure Deficit calculation based on Temp/Humidity.
+-   **Smart Ventilation:** Controls your exhaust fan to maintain optimal ranges.
+-   **Info Tab:** Reference chart for ideal VPD values.
 
 ### 4. **Intelligent Watering System** 💧
--   **Soil Moisture Trigger:** Activates the pump precisely when the soil is too dry.
+-   **Soil Moisture Trigger:** Activates the pump only when soil is too dry.
 -   **Precision Dosing:** Run the pump for exact seconds (e.g., 5s).
--   **Anti-Short-Cycle (Soak Time):** Prevents overwatering by enforcing a **15-minute wait time** after watering to allow moisture to disperse before re-measuring.
+-   **Soak Time:** Enforces a **15-minute pause** after watering to allow moisture to disperse before re-measuring.
 
-### 5. **Camera Integration** 📷
--   **Live Feed:** View your plant directly in the dashboard.
--   **Zoom Popup:** Click the camera image to view a large, detailed live stream.
+### 5. **Camera & Image Upload** 📷
+-   **Live Feed:** Integrate a Home Assistant camera entity.
+-   **Image Upload:** No camera? Upload a photo directly via the dashboard. It stays saved and displayed.
+
+### 6. **Master Control** ⚡
+-   **Master Switch:** A central switch to toggle the entire automation logic (Light, Water, Climate) ON or OFF.
 
 ---
 
-## ⚙️ Configuration
+## 🚀 Installation
 
+### Option 1: HACS (Recommended)
+1.  Open **HACS** in Home Assistant.
+2.  Click the menu (3 dots) top right -> **Custom repositories**.
+3.  Add this URL: `https://github.com/low-streaming/local_growbox`
+4.  Category: **Integration**.
+5.  Click **Add** and search for **"Local Grow Box"**.
+6.  Install and **Restart** Home Assistant.
+
+### Option 2: Manual
+1.  Download the `custom_components/local_grow_box` folder from this repository.
+2.  Copy it to your Home Assistant directory: `/config/custom_components/`.
+3.  Restart Home Assistant.
+
+## ⚙️ Setup
 1.  Go to **Settings -> Devices & Services**.
-2.  Click **Add Integration** and search for **"Local Grow Box"**.
-3.  Follow the setup wizard to name your box.
-4.  A new item **"Grow Room"** will appear in your sidebar.
+2.  Click **Add Integration**.
+3.  Search for **"Local Grow Box"** and select it.
+4.  Name your box.
+5.  A new item **"Grow Room"** will appear in your sidebar.
 
 ---
 
-## 🖥️ Using the Dashboard
+## 🖥️ The Dashboard
 
-### **Overview Tab**
-This is your main command center.
--   **Live Status:** See Temp, Humidity, VPD, Soil Moisture, and Light status at a glance.
--   **Quick Actions:** Manually toggle Light (Master), Pump, or Fan.
--   **Phase Selector:** Change the current growth phase directly from the dropdown.
+### **Overview**
+Your command center.
+-   **Live Status:** Monitor Temp, Humidity, VPD, Soil Moisture.
+-   **Controls:** Master Switch, Manual Pump, Image Upload.
+-   **Navigation:** Simple, mobile-optimized tabs.
 
-### **Settings Tab**
-Here you map your Home Assistant entities to the Grow Box features.
--   **Sensors:** Select your Temperature, Humidity, and Soil Moisture sensors.
--   **Actuators:** Select your Light Switch, Fan Switch, and Pump Switch.
--   **Settings:** Define Target Temperature, Max Humidity, and Pump Duration.
--   **Light Start Hour:** Define when the "Day" begins (e.g., `18` for 6 PM).
+### **devices & Config**
+Map your hardware.
+-   **Sensors & Actuators:** Select your entities (Light, Fan, Sensors).
+-   **Parameters:** Set target values for climate and watering.
+-   **Schedule:** Define the Light Start Hour.
 
----
+### **Phases**
+The timeline.
+-   Adjust the Start Date to correct the day counter.
+-   Switch phases (e.g., from Veg to Flower) to automatically update the light schedule.
 
-## 🛠️ Logic Details
-
--   **Light Logic:** Checks every minute. Uses your `Start Hour` and `Phase Duration` to calculate if the light should be ON.
--   **Pump Logic:** Checks every 5 seconds. If moisture < target AND pump has been off for >15 minutes -> Turns ON for `Pump Duration` seconds.
-
-## 🗺️ Roadmap (Planned Features)
-
--   **Data Export:** CSV/Excel export of historical data.
--   **Notifications:** Push alerts for critical values or phase changes.
--   **Extended Sensors:** Support for CO2, pH, and EC sensors.
--   **Dynamic Lighting:** Sunrise/Sunset simulation.
--   **Multi-Box Support:** Better UI for managing multiple grow boxes.
+### **Info / Help**
+Useful resources.
+-   VPD Chart for all phases.
+-   Explanations of buttons and logic.
 
 ---
 
