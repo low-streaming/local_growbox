@@ -163,9 +163,13 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                     font-family: 'Roboto', sans-serif;
                     display: block;
-                    background: linear-gradient(to bottom, rgba(10, 15, 30, 0.6), rgba(5, 10, 20, 0.8)), url('https://images.unsplash.com/photo-1603909223429-69bb7df9179c?q=80&w=2072&auto=format&fit=crop');
-                    background-size: cover;
-                    background-position: center;
+                    /* Modern Tech Pattern Background */
+                    background-color: #0b1121;
+                    background-image: 
+                        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%), 
+                        radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.08) 0px, transparent 50%), 
+                        radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+                    background-size: 100% 100%, 100% 100%, 24px 24px;
                     background-attachment: fixed;
                     min-height: 100vh;
                     color: var(--text-primary);
