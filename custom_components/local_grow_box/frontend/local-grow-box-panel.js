@@ -327,7 +327,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             
             <div class="header">
                 <div style="display:flex; align-items:center; gap:12px;">
-                    <h1 style="display:flex; align-items:center; gap:8px;">🌱 <span>Grow Room</span></h1>
+                    <h1 style="display:flex; align-items:center; gap:8px;">🌱 <span>OpenKAIRO</span></h1>
                 </div>
                 <div class="tabs">
                     <div class="tab active" data-tab="overview">Übersicht</div>
@@ -1219,9 +1219,17 @@ class LocalGrowBoxPanel extends HTMLElement {
                                 <td style="padding:8px;">🌿 Wachstum</td>
                                 <td style="padding:8px; color:#4ade80;">0.8 - 1.2</td>
                             </tr>
-                            <tr>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
                                 <td style="padding:8px;">🌸 Blüte</td>
                                 <td style="padding:8px; color:#4ade80;">1.2 - 1.6</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
+                                <td style="padding:8px;">🍂 Trocknen</td>
+                                <td style="padding:8px; color:#4ade80;">0.8 - 1.0</td>
+                            </tr>
+                            <tr>
+                                <td style="padding:8px;">🏺 Veredeln</td>
+                                <td style="padding:8px; color:#4ade80;">0.5 - 0.7</td>
                             </tr>
                         </table>
                     </div>
