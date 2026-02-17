@@ -1065,13 +1065,13 @@ class LocalGrowBoxPanel extends HTMLElement {
 
         // 2. Fetch (Last 48 hours to ensure we see recent events)
         const end = new Date();
-        const start = new Date(end.getTime() - 48 * 60 * 60 * 1000);
+        const start = new Date(end.getTime() - 48 * 60 * 60 * 1000); // 48h
 
         try {
+            // Fix: Remove end_time to implicitly mean "now". Ensure start_time is valid ISO.
             const rawEvents = await this._hass.callWS({
                 type: 'logbook/get_events',
                 start_time: start.toISOString(),
-                end_time: end.toISOString(),
                 entity_ids: entities
             });
 
@@ -1193,6 +1193,12 @@ class LocalGrowBoxPanel extends HTMLElement {
             console.error("Log fetch failed", e);
             container.innerHTML = `<div style="color:var(--danger-color); padding:24px;">Fehler beim Laden des Protokolls: ${e.message}</div>`;
         }
+
+        // Debug Footer
+        const debugDiv = document.createElement('div');
+        debugDiv.style.cssText = "text-align:center; opacity:0.3; font-size:10px; margin-top:20px; color:var(--text-primary);";
+        debugDiv.innerHTML = `Debug: Range ${new Date(end.getTime() - 48 * 3600000).toLocaleString()} - ${end.toLocaleString()} (${entities.length} entities)`;
+        container.appendChild(debugDiv);
     }
 
     _renderInfo(container) {
