@@ -332,6 +332,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     <div class="tab active" data-tab="overview">Übersicht</div>
                     <div class="tab" data-tab="settings">Geräte & Config</div>
                     <div class="tab" data-tab="phases">Phasen</div>
+                    <div class="tab" data-tab="log">Protokoll</div>
                 </div>
             </div>
             
@@ -379,6 +380,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             this._renderSettings(container);
         } else if (this._activeTab === 'phases') {
             this._renderPhases(container);
+        } else if (this._activeTab === 'log') {
+            this._renderLog(container);
         }
     }
 
@@ -1033,22 +1036,33 @@ class LocalGrowBoxPanel extends HTMLElement {
                 entity_ids: entities
             });
 
-            // 4. Render
+            // 4. Filter & Sort
             if (!events || events.length === 0) {
                 container.innerHTML = '<div style="padding:24px; text-align:center;">Keine Ereignisse in den letzten 24 Stunden.</div>';
                 return;
             }
 
-            // Group by device/entity? Or just chronological list?
-            // Reverse chronological (newest first)
-            events.sort((a, b) => new Date(b.when) - new Date(a.when));
+            // Filter out noise
+            const cleanEvents = events.filter(e =>
+                e.state !== 'unavailable' &&
+                e.state !== 'unknown' &&
+                e.state !== '' &&
+                e.message !== 'became unavailable'
+            );
+
+            if (cleanEvents.length === 0) {
+                container.innerHTML = '<div style="padding:24px; text-align:center;">Keine relevanten Ereignisse (nur "nicht verfügbar").</div>';
+                return;
+            }
+
+            cleanEvents.sort((a, b) => new Date(b.when) - new Date(a.when));
 
             const list = document.createElement('div');
             list.className = 'log-list';
             list.style.maxWidth = '800px';
             list.style.margin = '0 auto';
 
-            events.forEach(ev => {
+            cleanEvents.forEach(ev => {
                 const item = document.createElement('div');
                 item.style.cssText = `
                     background: var(--card-bg);
@@ -1058,24 +1072,33 @@ class LocalGrowBoxPanel extends HTMLElement {
                 `;
 
                 const time = new Date(ev.when).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                // Determine Icon
                 let icon = '📝';
                 if (ev.domain === 'light') icon = '💡';
                 else if (ev.entity_id.includes('pump')) icon = '💧';
                 else if (ev.entity_id.includes('fan')) icon = '🌪️';
-                else if (ev.domain === 'sensor' && ev.entity_id.includes('phase')) icon = '🌱';
+                else if ((ev.domain === 'sensor' && ev.entity_id.includes('phase')) || ev.entity_id.includes('grow')) icon = '🌱';
 
                 // Colorize state
                 let stateColor = 'white';
                 if (ev.state === 'on') stateColor = 'var(--success-color)';
                 if (ev.state === 'off') stateColor = 'var(--text-secondary)';
 
+                // Fix Name (Logbook sometimes doesn't send name, fallback to state cache or ID)
+                let name = ev.name;
+                if (!name || name === 'undefined') {
+                    const stateObj = this._hass.states[ev.entity_id];
+                    name = stateObj ? stateObj.attributes.friendly_name : ev.entity_id;
+                }
+
                 item.innerHTML = `
                     <div style="display:flex; align-items:center; gap:12px; flex:1;">
                         <span style="color:var(--text-secondary); font-size:14px; width:45px;">${time}</span>
                         <span style="font-size:20px;">${icon}</span>
                         <div style="display:flex; flex-direction:column;">
-                            <span style="font-weight:500;">${ev.name}</span>
-                            <span style="font-size:12px; color:var(--text-secondary);">${ev.message || ev.state}</span>
+                            <span style="font-weight:500;">${name}</span>
+                            <span style="font-size:12px; color:var(--text-secondary);">${ev.message || ('Zustand: ' + ev.state)}</span>
                         </div>
                     </div>
                 `;
