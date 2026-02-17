@@ -350,6 +350,36 @@ class LocalGrowBoxPanel extends HTMLElement {
                     display: flex; align-items: center; justify-content: center;
                 }
                 .close-modal:hover { background: rgba(255,255,255,0.2); }
+
+                /* Mobile Responsive */
+                @media (max-width: 600px) {
+                    .header {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        gap: 12px;
+                    }
+                    .tabs {
+                        margin-left: 0;
+                        width: 100%;
+                        overflow-x: auto;
+                        justify-content: flex-start;
+                        padding-bottom: 4px; /* Space for scrollbar */
+                        background: transparent;
+                        border: none;
+                        padding: 0;
+                    }
+                    .tab {
+                        flex-shrink: 0;
+                        font-size: 11px;
+                        padding: 8px 12px;
+                        background: rgba(255,255,255,0.05); /* Ensure visibility */
+                        margin-right: 4px;
+                        white-space: nowrap;
+                    }
+                    .tab.active {
+                        background: var(--primary-color);
+                    }
+                }
             </style>
             
             <div class="header">
@@ -1323,7 +1353,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 
                 <div style="text-align:center; margin-top:32px; opacity:0.5; font-size:12px;">
-                    Local Grow Box Integration v1.2.1
+                    Local Grow Box Integration v1.2.2
                 </div>
             </div>
         `;
