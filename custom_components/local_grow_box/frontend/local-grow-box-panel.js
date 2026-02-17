@@ -423,6 +423,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             const currentPhase = device.options.current_phase || this._hass.states[device.entities.phase]?.state || 'vegetative';
 
             // --- Light Timer Logic ---
+            // --- Light Timer Logic ---
             let lightInfo = "Unbekannt";
             // Use ACTUAL state for the icon/visual
             const realLightState = this._hass.states[device.options.light_entity]?.state;
@@ -433,6 +434,13 @@ class LocalGrowBoxPanel extends HTMLElement {
             const startHour = parseInt(device.options.light_start_hour || 18);
             let duration = PHASE_HOURS[currentPhase] || 12;
             if (device.options[`${currentPhase}_hours`]) duration = parseFloat(device.options[`${currentPhase}_hours`]);
+
+            // Format Schedule Display (e.g. 13:00 - 07:00)
+            const endTotal = startHour + duration;
+            const endH = Math.floor(endTotal % 24);
+            const endM = Math.floor((endTotal % 1) * 60);
+            // Simple check: if duration is integer, don't show :00 for end if you want cleaner look, but consistency is good.
+            const fmtSchedule = `${startHour}:00 - ${endH}:${endM.toString().padStart(2, '0')}`;
 
             const now = new Date();
             const start = new Date(now);
@@ -455,9 +463,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
 
                 if (isLightOn) {
-                    lightInfo = `An (noch ${hrs}h ${mins}m)`;
+                    lightInfo = `An (noch ${hrs}h ${mins}m)<br><span style="font-size:10px; opacity:0.7">${fmtSchedule}</span>`;
                 } else {
-                    lightInfo = `Aus (Sollte AN sein)`;
+                    lightInfo = `Aus (Sollte AN sein!)<br><span style="font-size:10px; opacity:0.7">${fmtSchedule}</span>`;
                 }
             } else {
                 let nextStart = startTime + 24 * 3600 * 1000;
@@ -469,9 +477,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const mins = Math.floor((untilStart % (1000 * 60 * 60)) / (1000 * 60));
 
                 if (isLightOn) {
-                    lightInfo = `An (Sollte AUS sein)`;
+                    lightInfo = `An (Sollte AUS sein!)<br><span style="font-size:10px; opacity:0.7">${fmtSchedule}</span>`;
                 } else {
-                    lightInfo = `Aus (an in ${hrs}h ${mins}m)`;
+                    lightInfo = `Aus (Start in ${hrs}h ${mins}m)<br><span style="font-size:10px; opacity:0.7">${fmtSchedule}</span>`;
                 }
             }
 

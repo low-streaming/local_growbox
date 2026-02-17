@@ -194,8 +194,8 @@ class GrowBoxManager:
             last_changed = current_state.last_changed
             if last_changed:
                 diff = (dt_util.utcnow() - last_changed).total_seconds()
-                if diff < 300:
-                    _LOGGER.info("Light manual override detected (changed %.0fs ago). Skipping auto-control (wait 5m).", diff)
+                if diff < 10:
+                    _LOGGER.info("Light manual override detected (changed %.0fs ago). Skipping auto-control.", diff)
                     return
 
             _LOGGER.info("Light should be ON. Turning ON.")
@@ -334,7 +334,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=5.0.1",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=5.0.2",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 
