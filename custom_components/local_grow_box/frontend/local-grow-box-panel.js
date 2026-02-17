@@ -1002,6 +1002,94 @@ class LocalGrowBoxPanel extends HTMLElement {
         };
         input.click();
     }
+
+    async _renderLog(container) {
+        container.innerHTML = '<div style="padding:24px; text-align:center;">Lade Protokoll...</div>';
+
+        // 1. Collect allowed entities
+        const entities = [];
+        this._devices.forEach(d => {
+            if (d.entities.light) entities.push(d.entities.light);
+            if (d.entities.pump) entities.push(d.entities.pump || d.options.pump_entity);
+            if (d.entities.fan) entities.push(d.entities.fan || d.options.fan_entity);
+            if (d.entities.phase) entities.push(d.entities.phase);
+        });
+
+        if (entities.length === 0) {
+            container.innerHTML = '<div style="padding:24px; text-align:center;">Keine Geräte konfiguriert für das Protokoll.</div>';
+            return;
+        }
+
+        // 2. Calculate time range (last 24h)
+        const end = new Date();
+        const start = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+
+        try {
+            // 3. Fetch Logbook
+            const events = await this._hass.callWS({
+                type: 'logbook/get_events',
+                start_time: start.toISOString(),
+                end_time: end.toISOString(),
+                entity_ids: entities
+            });
+
+            // 4. Render
+            if (!events || events.length === 0) {
+                container.innerHTML = '<div style="padding:24px; text-align:center;">Keine Ereignisse in den letzten 24 Stunden.</div>';
+                return;
+            }
+
+            // Group by device/entity? Or just chronological list?
+            // Reverse chronological (newest first)
+            events.sort((a, b) => new Date(b.when) - new Date(a.when));
+
+            const list = document.createElement('div');
+            list.className = 'log-list';
+            list.style.maxWidth = '800px';
+            list.style.margin = '0 auto';
+
+            events.forEach(ev => {
+                const item = document.createElement('div');
+                item.style.cssText = `
+                    background: var(--card-bg);
+                    border-bottom: 1px solid rgba(255,255,255,0.05);
+                    padding: 12px 16px;
+                    display: flex; justify-content: space-between; align-items: center; gap: 12px;
+                `;
+
+                const time = new Date(ev.when).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                let icon = '📝';
+                if (ev.domain === 'light') icon = '💡';
+                else if (ev.entity_id.includes('pump')) icon = '💧';
+                else if (ev.entity_id.includes('fan')) icon = '🌪️';
+                else if (ev.domain === 'sensor' && ev.entity_id.includes('phase')) icon = '🌱';
+
+                // Colorize state
+                let stateColor = 'white';
+                if (ev.state === 'on') stateColor = 'var(--success-color)';
+                if (ev.state === 'off') stateColor = 'var(--text-secondary)';
+
+                item.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:12px; flex:1;">
+                        <span style="color:var(--text-secondary); font-size:14px; width:45px;">${time}</span>
+                        <span style="font-size:20px;">${icon}</span>
+                        <div style="display:flex; flex-direction:column;">
+                            <span style="font-weight:500;">${ev.name}</span>
+                            <span style="font-size:12px; color:var(--text-secondary);">${ev.message || ev.state}</span>
+                        </div>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+
+            container.innerHTML = '';
+            container.appendChild(list);
+
+        } catch (e) {
+            console.error("Log fetch failed", e);
+            container.innerHTML = `<div style="color:var(--danger-color); padding:24px;">Fehler beim Laden des Protokolls: ${e.message}</div>`;
+        }
+    }
 }
 
 customElements.define('local-grow-box-panel', LocalGrowBoxPanel);
