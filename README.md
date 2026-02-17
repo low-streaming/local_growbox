@@ -1,3 +1,7 @@
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
+[![github_release](https://img.shields.io/github/v/release/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/releases)
+[![github_license](https://img.shields.io/github/license/low-streaming/local_growbox?style=for-the-badge)](https://github.com/low-streaming/local_growbox/blob/main/LICENSE)
+
 # Local Grow Box Integration 🌿
 
 **[🇩🇪 Deutsch](#-deutsch) | [🇬🇧 English](#-english)**
@@ -72,6 +76,14 @@ Passe die Lichtdauer für jede Phase an (Standard: 18h Wachstum, 12h Blüte) ode
 -   **Licht:** Prüft jede Minute. Nutzt `Startstunde` und `Phasendauer`. Beispiel: Start 18:00, Dauer 12h -> Licht AN von 18:00 bis 06:00.
 -   **Pumpe:** Prüft alle 5 Sekunden. Wenn Feuchtigkeit < Zielwert UND Pumpe war >15 Minuten aus -> Pumpe AN für X Sekunden.
 
+## 🗺️ Roadmap (Geplante Funktionen)
+
+-   **Export von Daten:** CSV/Excel Export der Historie.
+-   **Benachrichtigungen:** Push-Nachrichten bei kritischen Werten oder Phasenwechsel.
+-   **Erweiterte Sensoren:** Unterstützung für CO2, pH und EC Sensoren.
+-   **Dynamisches Licht:** Sonnenaufgang/-untergang Simulation.
+-   **Multi-Box Support:** Einfache Verwaltung mehrerer Boxen nebeneinander.
+
 ---
 ---
 
@@ -138,6 +150,14 @@ Here you map your Home Assistant entities to the Grow Box features.
 
 -   **Light Logic:** Checks every minute. Uses your `Start Hour` and `Phase Duration` to calculate if the light should be ON.
 -   **Pump Logic:** Checks every 5 seconds. If moisture < target AND pump has been off for >15 minutes -> Turns ON for `Pump Duration` seconds.
+
+## 🗺️ Roadmap (Planned Features)
+
+-   **Data Export:** CSV/Excel export of historical data.
+-   **Notifications:** Push alerts for critical values or phase changes.
+-   **Extended Sensors:** Support for CO2, pH, and EC sensors.
+-   **Dynamic Lighting:** Sunrise/Sunset simulation.
+-   **Multi-Box Support:** Better UI for managing multiple grow boxes.
 
 ---
 
