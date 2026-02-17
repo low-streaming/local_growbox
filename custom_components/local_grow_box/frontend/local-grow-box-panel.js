@@ -163,8 +163,10 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                     font-family: 'Roboto', sans-serif;
                     display: block;
-                    background: linear-gradient(to bottom, rgba(10, 15, 25, 0.85), rgba(5, 10, 20, 0.95)), url('https://images.unsplash.com/photo-1614981880402-23c2a4efd232?q=80&w=2574') no-repeat center center fixed;
+                    background: linear-gradient(to bottom, rgba(10, 15, 30, 0.6), rgba(5, 10, 20, 0.8)), url('https://images.unsplash.com/photo-1603909223429-69bb7df9179c?q=80&w=2072&auto=format&fit=crop');
                     background-size: cover;
+                    background-position: center;
+                    background-attachment: fixed;
                     min-height: 100vh;
                     color: var(--text-primary);
                 }
@@ -491,10 +493,10 @@ class LocalGrowBoxPanel extends HTMLElement {
             }
 
 
-            // Image
-            // Fix: Do not add timestamp query param here to avoid flickering on every state update.
-            // The image should only update when changed via upload or camera entity update.
-            let imgUrl = `/local/local_grow_box_images/${device.id}.jpg`;
+
+            // Image Logic with Cache Busting on Upload
+            const imgVer = (this._imgVersions && this._imgVersions[device.id]) || 0;
+            let imgUrl = `/local/local_grow_box_images/${device.id}.jpg?v=${imgVer}`;
             let isLive = false;
             if (device.options.camera_entity) {
                 const cam = this._hass.states[device.options.camera_entity];
@@ -1032,6 +1034,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                         device_id: deviceId,
                         image: ev.target.result
                     });
+
+                    // Force refresh of this image by updating version
+                    this._imgVersions = this._imgVersions || {};
+                    this._imgVersions[deviceId] = Date.now();
+
                     this._fetchDevices(); // Refresh
                 } catch (err) {
                     alert('Upload fehlgeschlagen');
