@@ -389,7 +389,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 <div class="tabs">
                     <div class="tab active" data-tab="overview">Übersicht</div>
                     <div class="tab" data-tab="settings">Geräte & Config</div>
-                    <div class="tab" data-tab="phasen">Phasen</div>
+                    <div class="tab" data-tab="phases">Phasen</div>
                     <div class="tab" data-tab="info">Info / Hilfe</div>
                 </div>
             </div>
@@ -546,8 +546,8 @@ class LocalGrowBoxPanel extends HTMLElement {
 
 
 
-            // Image Logic with Cache Busting on Upload
-            const imgVer = (this._imgVersions && this._imgVersions[device.id]) || 0;
+            // Image Logic with Cache Busting (Persisted)
+            const imgVer = device.options.image_version || 0;
             let imgUrl = `/local/local_grow_box_images/${device.id}.jpg?v=${imgVer}`;
             let isLive = false;
             if (device.options.camera_entity) {
@@ -1087,10 +1087,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         image: ev.target.result
                     });
 
-                    // Force refresh of this image by updating version
-                    this._imgVersions = this._imgVersions || {};
-                    this._imgVersions[deviceId] = Date.now();
-
+                    // Force refresh handled by config update in backend now
                     this._fetchDevices(); // Refresh
                 } catch (err) {
                     alert('Upload fehlgeschlagen');
@@ -1353,7 +1350,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 
                 <div style="text-align:center; margin-top:32px; opacity:0.5; font-size:12px;">
-                    Local Grow Box Integration v1.2.2
+                    Local Grow Box Integration v1.2.4
                 </div>
             </div>
         `;

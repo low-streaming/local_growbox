@@ -334,7 +334,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=1.2.2",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=1.2.4",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 
@@ -432,6 +432,13 @@ async def ws_upload_image(hass, connection, msg):
                 f.write(decoded)
 
         await hass.async_add_executor_job(_write_file)
+        
+        # Update config entry with version timestamp to bust cache
+        entry = hass.config_entries.async_get_entry(device_id) 
+        if entry:
+            new_opts = {**entry.options, "image_version": int(dt_util.now().timestamp())}
+            hass.config_entries.async_update_entry(entry, options=new_opts)
+            
         connection.send_result(msg["id"], {"path": f"/local/local_grow_box_images/{device_id}.jpg"})
     except Exception as e:
         connection.send_error(msg["id"], "upload_failed", str(e))
