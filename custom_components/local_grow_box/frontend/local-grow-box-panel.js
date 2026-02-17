@@ -423,10 +423,13 @@ class LocalGrowBoxPanel extends HTMLElement {
 
             // --- Light Timer Logic ---
             let lightInfo = "Unbekannt";
-            let lightStatus = "off";
+            // Use ACTUAL state for the icon/visual
+            const realLightState = this._hass.states[device.options.light_entity]?.state;
+            const isLightOn = realLightState === 'on';
+            // Variable used by rendering for Icon/Color
+            let lightStatus = isLightOn ? 'on' : 'off';
+
             const startHour = parseInt(device.options.light_start_hour || 18);
-            // Get duration (checking custom overrides would require more logic, sticking to defaults/options for now)
-            // Ideally read from backend entity if available, but we calculate here for UI speed
             let duration = PHASE_HOURS[currentPhase] || 12;
             if (device.options[`${currentPhase}_hours`]) duration = parseFloat(device.options[`${currentPhase}_hours`]);
 
@@ -434,13 +437,9 @@ class LocalGrowBoxPanel extends HTMLElement {
             const start = new Date(now);
             start.setHours(startHour, 0, 0, 0);
 
-            // Adjust start if needed logic (similar to backend)
-            // Simple approach: Check if we are currently inside the window [start, start+duration]
-            // Handling day wrap
             let startTime = start.getTime();
             let endTime = startTime + (duration * 3600 * 1000);
 
-            // Adjust for "yesterday" start if now < startHour
             if (now.getHours() < startHour) {
                 startTime -= 24 * 3600 * 1000;
                 endTime -= 24 * 3600 * 1000;
@@ -453,31 +452,33 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const remainingMs = endTime - nowTime;
                 const hrs = Math.floor(remainingMs / (1000 * 60 * 60));
                 const mins = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-                lightInfo = `An (noch ${hrs}h ${mins}m)`;
-                lightStatus = "on";
+
+                if (isLightOn) {
+                    lightInfo = `An (noch ${hrs}h ${mins}m)`;
+                } else {
+                    lightInfo = `Aus (Sollte AN sein)`;
+                }
             } else {
-                // Next start
                 let nextStart = startTime + 24 * 3600 * 1000;
-                // If we passed the window but it's still "today" (e.g. cycle 18:00-06:00, now is 07:00), next start is today 18:00.
-                // If cycle was yesterday, next start is today.
-                // Correct logic: find next start point in future
                 if (nowTime > endTime) {
-                    // cycle finished for "today relative", next is +24h from start
-                    // start was "startTime", next is startTime + 24h
                     nextStart = startTime + 24 * 3600 * 1000;
                 }
-
                 const untilStart = nextStart - nowTime;
                 const hrs = Math.floor(untilStart / (1000 * 60 * 60));
                 const mins = Math.floor((untilStart % (1000 * 60 * 60)) / (1000 * 60));
-                lightInfo = `Aus (an in ${hrs}h ${mins}m)`;
-                lightStatus = "off";
+
+                if (isLightOn) {
+                    lightInfo = `An (Sollte AUS sein)`;
+                } else {
+                    lightInfo = `Aus (an in ${hrs}h ${mins}m)`;
+                }
             }
 
 
             // Image
-            const timestamp = new Date().getTime();
-            let imgUrl = `/local/local_grow_box_images/${device.id}.jpg?t=${timestamp}`;
+            // Fix: Do not add timestamp query param here to avoid flickering on every state update.
+            // The image should only update when changed via upload or camera entity update.
+            let imgUrl = `/local/local_grow_box_images/${device.id}.jpg`;
             let isLive = false;
             if (device.options.camera_entity) {
                 const cam = this._hass.states[device.options.camera_entity];
@@ -1140,7 +1141,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                         display: flex; justify-content: space-between; align-items: center; gap: 12px;
                     `;
 
-                    const time = new Date(ev.when).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const dateObj = new Date(ev.when);
+                    const time = dateObj.toLocaleDateString([], { day: '2-digit', month: '2-digit' }) + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
                     let icon = '📝';
                     if (ev.domain === 'light') icon = '💡';
