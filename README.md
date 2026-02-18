@@ -113,6 +113,18 @@ Wir haben Großes vor! Hier ist ein Ausblick auf kommende Features:
 -   **Sonnenaufgangs-Simulation:** Sanftes Dimmen von LED-Panels (PWM/0-10V).
 -   **Hydroponik-Support:** pH- und EC-Wert Überwachung für rezirkulierende Systeme.
 
+### 💛 Support & Spenden
+
+Gefällt dir dieses Projekt? Ich entwickle es in meiner Freizeit.  
+Wenn du mich unterstützen möchtest, freue ich mich über einen Kaffee! ☕
+
+<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=info@low-streaming.de&currency_code=EUR" target="_blank">
+  <img src="https://img.shields.io/badge/Donate-PayPal-blue.svg?style=for-the-badge&logo=paypal" alt="Donate with PayPal" />
+</a>
+
+**PayPal:** info@low-streaming.de
+
+
 ---
 ---
 
@@ -220,6 +232,18 @@ We have big plans! Here is a sneak peek at what's coming:
 -   **CO2 Control:** Integration of CO2 sensors and solenoids.
 -   **Sunrise Simulation:** Smooth dimming for LED panels (PWM/0-10V).
 -   **Hydroponics Support:** pH and EC monitoring for recirculating systems.
+
+### 💛 Support & Donation
+
+Do you like this project? I develop it in my free time.  
+If you want to support me, I'd be happy about a coffee! ☕
+
+<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=info@low-streaming.de&currency_code=EUR" target="_blank">
+  <img src="https://img.shields.io/badge/Donate-PayPal-blue.svg?style=for-the-badge&logo=paypal" alt="Donate with PayPal" />
+</a>
+
+**PayPal:** info@low-streaming.de
+
 
 ---
 

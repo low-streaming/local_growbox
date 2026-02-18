@@ -1358,9 +1358,28 @@ class LocalGrowBoxPanel extends HTMLElement {
                         </ul>
                     </div>
                 </div>
+
+                <div class="card" style="margin-top:24px; border: 1px solid rgba(251, 191, 36, 0.2);">
+                    <div class="card-header">
+                        <div class="card-title" style="color: #fbbf24;">💛 Support & Spenden</div>
+                    </div>
+                    <div class="card-body" style="text-align:center;">
+                        <p style="color:var(--text-secondary); margin-bottom:20px;">
+                            Gefällt dir das Projekt? Unterstütze die Weiterentwicklung mit einer Spende!
+                        </p>
+                        <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=info@low-streaming.de&currency_code=EUR" target="_blank" style="text-decoration:none;">
+                            <button class="btn" style="background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); color: #111827; font-weight:bold; margin:0 auto; width:auto; padding:12px 32px; border:none; box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);">
+                                <span style="font-size:18px; margin-right:8px;">☕</span> Jetzt Spenden
+                            </button>
+                        </a>
+                        <div style="margin-top:16px; font-size:12px; color:var(--text-secondary);">
+                            PayPal: info@low-streaming.de
+                        </div>
+                    </div>
+                </div>
                 
                 <div style="text-align:center; margin-top:32px; opacity:0.5; font-size:12px;">
-                    Local Grow Box Integration v1.2.5
+                    Local Grow Box Integration v1.2.8
                 </div>
             </div>
         `;
