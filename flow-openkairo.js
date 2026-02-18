@@ -12,9 +12,6 @@ class FlowOpenKairo extends HTMLElement {
     }
 
     set hass(hass) {
-        // Debounce simple updates or just render
-        // For performance, we only re-render if values changed significantly
-        // But for simplicity of this "Vanilla" version, we render on update.
         this._hass = hass;
         this.render();
     }
@@ -29,119 +26,156 @@ class FlowOpenKairo extends HTMLElement {
         if (!this.config || !this._hass) return;
 
         const solar = this.getVal(this.config.solar);
-        const battery = this.getVal(this.config.battery); // +/- logic handled visually
-        const grid = this.getVal(this.config.grid);       // +/- logic handled visually
+        const battery = this.getVal(this.config.battery);
+        const grid = this.getVal(this.config.grid);
         const home = this.getVal(this.config.home);
 
-        // Colors
-        const cSolar = this.config.color_solar || '#ffb74d';
-        const cBat = this.config.color_battery || '#00e676'; // heavy neon green
-        const cGrid = this.config.color_grid || '#29b6f6';   // neon blue
-        const cHome = this.config.color_home || '#d500f9';   // neon purple
+        // Neon Palette
+        const cSolar = this.config.color_solar || '#ffcc00'; // Bright Yellow-Orange
+        const cBat = this.config.color_battery || '#00ff66'; // Matrix Green
+        const cGrid = this.config.color_grid || '#00ccff';   // Cyan
+        const cHome = this.config.color_home || '#ff00ff';   // Magenta
 
         // Logic
-        const isSolar = solar > 5;
-        const isBatCharge = battery > 5;
-        const isBatDischarge = battery < -5;
-        const isGridImport = grid > 5;
-        const isGridExport = grid < -5;
-        const isHome = home > 5;
+        const isSolar = solar > 2;
+        const isBatCharge = battery > 2;
+        const isBatDischarge = battery < -2;
+        const isGridImport = grid > 2;
+        const isGridExport = grid < -2;
+        const isHome = home > 2;
 
-        // Abs values for display and speed
         const vBat = Math.abs(battery);
         const vGrid = Math.abs(grid);
-
-        // --- HTML Structure ---
-        // We reuse the Shadow DOM to avoid flickering.
-        // A simple brute-force innerHTML is okay for 1Hz updates, 
-        // but updating just attributes is better. 
-        // To keep this file small and readable, we do full render but check existence first? 
-        // No, full render is fine for V1.
 
         this.shadowRoot.innerHTML = `
             <style>
                 :host { display: block; }
                 .card {
-                    background: rgba(16, 16, 18, 0.95);
-                    border-radius: 16px;
+                    background: radial-gradient(circle at center, #1a1a2e 0%, #0d0d14 100%);
+                    border-radius: 20px;
                     padding: 16px;
-                    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(255,255,255,0.03);
                     color: white;
-                    font-family: sans-serif;
+                    font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
                     position: relative;
-                    height: 320px;
+                    height: 340px;
                     display: flex;
                     justify-content: center;
                     align-items: center;
-                    border: 1px solid #333;
+                    border: 1px solid rgba(255,255,255,0.08);
+                    overflow: hidden;
                 }
+                
+                /* Grid Background Effect */
+                .grid-bg {
+                    position: absolute;
+                    top: 0; left: 0; width: 100%; height: 100%;
+                    background-image: 
+                        linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+                    background-size: 20px 20px;
+                    z-index: 0;
+                    opacity: 0.5;
+                }
+
                 .canvas {
                     position: absolute;
                     top: 0; left: 0; width: 100%; height: 100%;
                     pointer-events: none;
                     z-index: 1;
                 }
+
                 .node {
                     position: absolute;
-                    width: 80px;
+                    width: 90px;
                     text-align: center;
                     z-index: 2;
-                    transition: transform 0.2s;
+                    transition: all 0.3s ease;
                 }
+
                 .icon-box {
-                    width: 50px; height: 50px;
+                    width: 56px; height: 56px;
                     margin: 0 auto;
                     border-radius: 50%;
-                    border: 2px solid #555;
+                    border: 2px solid rgba(255,255,255,0.1);
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    background: #222;
-                    font-size: 24px;
-                    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+                    background: rgba(20,20,30, 0.8);
+                    font-size: 28px;
+                    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+                    backdrop-filter: blur(5px);
+                    transition: all 0.3s ease;
+                    position: relative;
                 }
+
+                /* Active Glow Effect */
                 .node[active="true"] .icon-box {
-                    box-shadow: 0 0 20px var(--glow-color);
                     border-color: var(--glow-color);
+                    box-shadow: 0 0 25px var(--glow-color), inset 0 0 10px var(--glow-color);
                     color: white;
+                    animation: pulse 2s infinite;
                 }
-                .text { margin-top: 5px; }
-                .val { font-weight: bold; font-size: 14px; }
-                .lbl { font-size: 10px; opacity: 0.7; text-transform: uppercase; }
+
+                .node[active="true"] .icon-box::after {
+                    content: '';
+                    position: absolute;
+                    top: -5px; left: -5px; right: -5px; bottom: -5px;
+                    border-radius: 50%;
+                    border: 2px solid var(--glow-color);
+                    opacity: 0;
+                    animation: ripple 1.5s infinite;
+                }
+
+                @keyframes pulse {
+                    0% { box-shadow: 0 0 15px var(--glow-color); }
+                    50% { box-shadow: 0 0 30px var(--glow-color); }
+                    100% { box-shadow: 0 0 15px var(--glow-color); }
+                }
+
+                @keyframes ripple {
+                    0% { transform: scale(0.9); opacity: 1; }
+                    100% { transform: scale(1.5); opacity: 0; }
+                }
+
+                .text { margin-top: 8px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+                .val { font-weight: 800; font-size: 16px; letter-spacing: 0.5px; }
+                .lbl { font-size: 11px; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
 
                 /* Positions */
-                .pos-solar { top: 20px; left: 50%; transform: translateX(-50%); }
-                .pos-bat   { top: 50%; left: 20px; transform: translateY(-50%); }
-                .pos-grid  { top: 50%; right: 20px; transform: translateY(-50%); }
-                .pos-home  { bottom: 20px; left: 50%; transform: translateX(-50%); }
+                .pos-solar { top: 25px; left: 50%; transform: translateX(-50%); }
+                .pos-bat   { top: 50%; left: 25px; transform: translateY(-50%); }
+                .pos-grid  { top: 50%; right: 25px; transform: translateY(-50%); }
+                .pos-home  { bottom: 25px; left: 50%; transform: translateX(-50%); }
+
+                /* Flow Path Styling */
+                path {
+                    filter: drop-shadow(0 0 3px currentColor);
+                }
             </style>
 
             <div class="card">
+                <div class="grid-bg"></div>
+                
                 <!-- SVG Canvas for flows -->
-                <svg class="canvas" viewBox="0 0 300 300">
+                <svg class="canvas" viewBox="0 0 320 340">
                     <defs>
-                        <marker id="dot-s" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6">
-                            <circle cx="5" cy="5" r="5" fill="${cSolar}" />
-                        </marker>
-                        <marker id="dot-b" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6">
-                            <circle cx="5" cy="5" r="5" fill="${cBat}" />
-                        </marker>
-                        <marker id="dot-g" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6">
-                            <circle cx="5" cy="5" r="5" fill="${cGrid}" />
-                        </marker>
+                        <!-- Gradients for lines -->
+                        <linearGradient id="grad-solar" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="100%">
+                            <stop offset="0%" stop-color="${cSolar}" stop-opacity="0.8"/>
+                            <stop offset="100%" stop-color="${cSolar}" stop-opacity="0.1"/>
+                        </linearGradient>
                     </defs>
 
-                    <!-- Flows -->
-                    ${isSolar ? this.makeFlow(150, 60, 150, 240, solar, cSolar) : ''}          <!-- Solar->Home -->
-                    ${isBatCharge ? this.makeFlow(150, 60, 40, 150, solar, cSolar) : ''}       <!-- Solar->Bat -->
-                    ${isBatDischarge ? this.makeFlow(40, 150, 150, 240, vBat, cBat) : ''}      <!-- Bat->Home -->
-                    ${isGridImport ? this.makeFlow(260, 150, 150, 240, vGrid, cGrid) : ''}     <!-- Grid->Home -->
-                    ${isGridExport && isSolar ? this.makeFlow(150, 60, 260, 150, vGrid, cSolar) : ''} <!-- Solar->Export -->
+                    ${isSolar ? this.makeFlow(160, 80, 160, 260, solar, cSolar) : ''}          <!-- Solar->Home -->
+                    ${isBatCharge ? this.makeFlow(160, 80, 60, 170, solar, cSolar) : ''}       <!-- Solar->Bat -->
+                    ${isBatDischarge ? this.makeFlow(60, 170, 160, 260, vBat, cBat) : ''}      <!-- Bat->Home -->
+                    ${isGridImport ? this.makeFlow(260, 170, 160, 260, vGrid, cGrid) : ''}     <!-- Grid->Home -->
+                    ${isGridExport && isSolar ? this.makeFlow(160, 80, 260, 170, vGrid, cSolar) : ''} <!-- Solar->Export -->
                 </svg>
 
-                <!-- Nodes -->
                 ${this.makeNode('solar', solar, '☀️', 'Solar', 'pos-solar', cSolar, isSolar)}
-                ${this.makeNode('bat', vBat, '🔋', 'Bat ' + (isBatCharge ? '+' : (isBatDischarge ? '-' : '')), 'pos-bat', cBat, isBatCharge || isBatDischarge)}
+                ${this.makeNode('bat', vBat, '🔋', 'Storage', 'pos-bat', cBat, isBatCharge || isBatDischarge)}
                 ${this.makeNode('grid', vGrid, '⚡', 'Grid', 'pos-grid', cGrid, isGridImport || isGridExport)}
                 ${this.makeNode('home', home, '🏠', 'Home', 'pos-home', cHome, isHome)}
             </div>
@@ -151,9 +185,9 @@ class FlowOpenKairo extends HTMLElement {
     makeNode(id, val, icon, label, posClass, color, active) {
         return `
         <div class="node ${posClass}" active="${active}" style="--glow-color: ${color}">
-            <div class="icon-box" style="color: ${color}">${icon}</div>
+            <div class="icon-box" style="color: ${active ? 'white' : color}">${icon}</div>
             <div class="text">
-                <div class="val">${Math.round(val)} W</div>
+                <div class="val" style="color: ${active ? color : '#aaa'}">${Math.round(val)} W</div>
                 <div class="lbl">${label}</div>
             </div>
         </div>
@@ -161,22 +195,30 @@ class FlowOpenKairo extends HTMLElement {
     }
 
     makeFlow(x1, y1, x2, y2, watts, color) {
-        // Simple straight line flow
-        // Animation speed calculation: 
-        // 5000W = 0.5s, 0W = 10s?
         if (watts < 1) return '';
-        const dur = Math.max(0.5, 3 - (watts / 2000));
+        // Faster animation for higher watts
+        // Cap at 0.5s for very high power, 4s for very low
+        const dur = Math.max(0.6, 4 - (Math.log(watts + 1) / 2));
 
         return `
-            <path d="M${x1},${y1} L${x2},${y2}" stroke="${color}" stroke-opacity="0.2" stroke-width="2" fill="none" />
-            <circle r="4" fill="${color}">
-                <animateMotion dur="${dur}s" repeatCount="indefinite" path="M${x1},${y1} L${x2},${y2}" />
+            <!-- Background faint line -->
+            <path d="M${x1},${y1} L${x2},${y2}" stroke="${color}" stroke-opacity="0.1" stroke-width="4" fill="none" />
+            
+            <!-- Moving particle -->
+            <circle r="5" fill="${color}" filter="drop-shadow(0 0 4px ${color})">
+                <animateMotion dur="${dur}s" repeatCount="indefinite" path="M${x1},${y1} L${x2},${y2}" calcMode="linear" />
             </circle>
+            
+            <!-- Second particle for high power -->
+            ${watts > 800 ? `
+            <circle r="3" fill="${color}" opacity="0.7">
+                <animateMotion dur="${dur}s" begin="${dur / 2}s" repeatCount="indefinite" path="M${x1},${y1} L${x2},${y2}" calcMode="linear" />
+            </circle>` : ''}
         `;
     }
 
     getCardSize() {
-        return 4;
+        return 5;
     }
 }
 
