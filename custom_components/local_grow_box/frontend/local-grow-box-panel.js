@@ -975,38 +975,49 @@ class LocalGrowBoxPanel extends HTMLElement {
             const section = document.createElement('div');
             section.className = 'settings-section';
 
-            const renderInput = (label, configKey, val) => `
-                <div class="form-group">
-                    <label class="form-label">${label}</label>
-                    <input type="number" value="${val}" data-key="${configKey}" data-entry="${device.entryId}">
+            const renderPhaseRow = (label, sub, icon, configKey, val) => `
+                <div style="
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: space-between; 
+                    background: rgba(255,255,255,0.03); 
+                    border: 1px solid rgba(255,255,255,0.05);
+                    border-radius: 8px; 
+                    padding: 12px 16px; 
+                    margin-bottom: 8px;
+                ">
+                    <div style="display:flex; align-items:center; gap:16px;">
+                        <span style="font-size:24px;">${icon}</span>
+                        <div>
+                            <div style="font-weight:500; font-size:14px;">${label}</div>
+                            <div style="font-size:11px; color:var(--text-secondary);">${sub}</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="number" value="${val}" data-key="${configKey}" data-entry="${device.entryId}" 
+                            style="width:70px; text-align:center; font-weight:bold; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:6px;">
+                        <span style="font-size:12px; color:var(--text-secondary); width:50px;">Std.</span>
+                    </div>
                 </div>
             `;
 
             section.innerHTML = `
-                <div class="section-title">${device.name} - Phasen Zeiten (Stunden)</div>
-                <div class="form-grid">
-                    ${renderInput('Keimling', 'phase_seedling_hours', device.options.phase_seedling_hours || 18)}
-                    ${renderInput('Wachstum', 'phase_vegetative_hours', device.options.phase_vegetative_hours || 18)}
-                    ${renderInput('Blüte', 'phase_flowering_hours', device.options.phase_flowering_hours || 12)}
-                    ${renderInput('Trocknen', 'phase_drying_hours', device.options.phase_drying_hours || 0)}
-                    ${renderInput('Veredelung', 'phase_curing_hours', device.options.phase_curing_hours || 0)}
+                <div class="section-title">${device.name} - Phasen Management</div>
+                <p style="color:var(--text-secondary); margin-bottom:24px; font-size:13px; line-height:1.5;">
+                    Definiere hier die tägliche Beleuchtungsdauer für jede Wachstumsphase. 
+                    <br>Das System schaltet basierend auf der aktuellen Phase automatisch um.
+                </p>
+
+                <div style="display:flex; flex-direction:column; gap:8px; max-width:600px;">
+                    ${renderPhaseRow('Keimling', 'Startphase, hohe Luftfeuchte', '🌱', 'phase_seedling_hours', device.options.phase_seedling_hours !== undefined ? device.options.phase_seedling_hours : 18)}
+                    ${renderPhaseRow('Wachstum', 'Vegetative Phase', '🌿', 'phase_vegetative_hours', device.options.phase_vegetative_hours !== undefined ? device.options.phase_vegetative_hours : 18)}
+                    ${renderPhaseRow('Blüte', 'Generative Phase (12/12)', '🌸', 'phase_flowering_hours', device.options.phase_flowering_hours !== undefined ? device.options.phase_flowering_hours : 12)}
+                    ${renderPhaseRow('Trocknen', 'Nach der Ernte', '🍂', 'phase_drying_hours', device.options.phase_drying_hours !== undefined ? device.options.phase_drying_hours : 0)}
+                    ${renderPhaseRow('Veredelung', 'Curing im Glas', '🏺', 'phase_curing_hours', device.options.phase_curing_hours !== undefined ? device.options.phase_curing_hours : 0)}
                 </div>
                 
-                <h4 style="margin:24px 0 16px 0; color:var(--text-secondary);">Benutzerdefinierte Phasen (Name | Stunden)</h4>
-                
-                <div class="form-grid">
-                     <div class="form-group">
-                        <label class="form-label">Custom 1 Name</label>
-                        <input type="text" value="${device.options.custom1_phase_name || ''}" data-key="custom1_phase_name" data-entry="${device.entryId}">
-                     </div>
-                     <div class="form-group">
-                        <label class="form-label">Stunden</label>
-                        <input type="number" value="${device.options.custom1_phase_hours || 0}" data-key="custom1_phase_hours" data-entry="${device.entryId}">
-                     </div>
-                </div>
-                
-                 <div style="margin-top:24px; text-align:right;">
-                    <button class="btn active" id="save-p-${device.id}" style="width:auto; display:inline-flex; padding:12px 24px;">
+                 <div style="margin-top:24px; max-width:600px; display:flex; justify-content:flex-end;">
+                    <button class="btn active" id="save-p-${device.id}" style="width:auto; display:inline-flex; padding:12px 32px;">
                         Speichern
                     </button>
                 </div>
@@ -1393,7 +1404,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 
                 <div style="text-align:center; margin-top:32px; opacity:0.5; font-size:12px;">
-                    Local Grow Box Integration v1.2.9
+                    Local Grow Box Integration v1.2.10
                 </div>
             </div>
         `;
