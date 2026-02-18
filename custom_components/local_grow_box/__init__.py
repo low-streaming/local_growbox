@@ -334,7 +334,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=1.2.11",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=1.2.12",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 
@@ -412,12 +412,14 @@ async def ws_update_config(hass, connection, msg):
 @websocket_api.websocket_command({
     vol.Required("type"): "local_grow_box/upload_image",
     vol.Required("device_id"): str,
+    vol.Optional("entry_id"): str,
     vol.Required("image"): str, # Base64 encoded
 })
 @websocket_api.async_response
 async def ws_upload_image(hass, connection, msg):
     """Handle image upload."""
     device_id = msg["device_id"]
+    entry_id = msg.get("entry_id")
     image_data = msg["image"]
     
     if "," in image_data:
@@ -436,18 +438,25 @@ async def ws_upload_image(hass, connection, msg):
         # Update config entry with version timestamp to bust cache
         try:
             timestamp = int(dt_util.now().timestamp())
-            entry = hass.config_entries.async_get_entry(device_id) 
+            entry = None
+            if entry_id:
+                entry = hass.config_entries.async_get_entry(entry_id)
+            
+            # Fallback (though device_id is likely not the entry_id)
+            if not entry:
+                entry = hass.config_entries.async_get_entry(device_id)
+
             if entry:
                 new_opts = {**entry.options, "image_version": timestamp}
                 hass.config_entries.async_update_entry(entry, options=new_opts)
                 
                 # Update running manager immediately to avoid race condition
-                if DOMAIN in hass.data and device_id in hass.data[DOMAIN]:
-                    manager = hass.data[DOMAIN][device_id]
+                if DOMAIN in hass.data and entry.entry_id in hass.data[DOMAIN]:
+                    manager = hass.data[DOMAIN][entry.entry_id]
                     if hasattr(manager, 'config'):
                         manager.config["image_version"] = timestamp
             else:
-                _LOGGER.warning("Upload: No entry found for device_id %s", device_id)
+                _LOGGER.warning("Upload: No entry found for device_id %s / entry_id %s", device_id, entry_id)
         except Exception as err:
             _LOGGER.error("Error updating config entry during upload: %s", err)
             # Default to current time if config update fails, so frontend at least tries to refresh

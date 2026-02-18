@@ -1106,15 +1106,16 @@ class LocalGrowBoxPanel extends HTMLElement {
             const reader = new FileReader();
             reader.onload = async (ev) => {
                 try {
-                    await this._hass.callWS({
+                    const device = this._devices.find(d => d.id === deviceId);
+                    const result = await this._hass.callWS({
                         type: 'local_grow_box/upload_image',
                         device_id: deviceId,
+                        entry_id: device ? device.entryId : null,
                         image: ev.target.result
                     });
 
                     // Update local state immediately with returned version
                     if (result && result.version) {
-                        const device = this._devices.find(d => d.id === deviceId);
                         if (device) {
                             if (!device.options) device.options = {};
                             device.options.image_version = result.version;
@@ -1125,7 +1126,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                     // And refresh from backend to be sure
                     setTimeout(() => this._fetchDevices(), 1000);
                 } catch (err) {
-                    alert('Upload fehlgeschlagen');
+                    console.error("Upload error:", err);
+                    alert('Upload fehlgeschlagen: ' + (err.message || err));
                 }
             };
             reader.readAsDataURL(file);
@@ -1404,7 +1406,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 
                 <div style="text-align:center; margin-top:32px; opacity:0.5; font-size:12px;">
-                    Local Grow Box Integration v1.2.11
+                    Local Grow Box Integration v1.2.12
                 </div>
             </div>
         `;
