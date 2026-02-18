@@ -626,7 +626,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 
                 <div class="card-body">
-                    ${this._renderStatBar('Temperatur', temp, '°C', 18, 30, '#ef4444', '🌡️')}
+                    ${this._renderStatBar('Temperatur', temp, '°C', 10, 45, '#ef4444', '🌡️')}
                     ${this._renderStatBar('Luftfeuchte', hum, '%', 30, 80, '#3b82f6', '💧')}
                     ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3.0, '#10b981', '🍃', vpdTarget)}
                     
@@ -1406,7 +1406,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 
                 <div style="text-align:center; margin-top:32px; opacity:0.5; font-size:12px;">
-                    Local Grow Box Integration v1.2.12
+                    Local Grow Box Integration v1.2.13
                 </div>
             </div>
         `;
