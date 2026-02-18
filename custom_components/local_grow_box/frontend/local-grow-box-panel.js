@@ -409,8 +409,22 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
             </div>
 
-            <div style="text-align:center; padding:32px; opacity:0.4; font-size:12px; margin-top:40px;">
-                Powered by <a href="https://openkairo.de" target="_blank" style="color:inherit; text-decoration:none; font-weight:bold; border-bottom:1px solid rgba(255,255,255,0.2);">OpenKAIRO</a>
+            <div style="text-align:center; padding:32px; margin-top:40px; border-top: 1px solid rgba(255,255,255,0.1);">
+                <span style="font-size:14px; opacity:0.8; letter-spacing: 0.5px; color:var(--text-secondary);">Powered by</span>
+                <a href="https://openkairo.de" target="_blank" style="
+                    display: inline-block;
+                    margin-left: 8px;
+                    color: #38bdf8; /* Bright Cyan/Blue */
+                    text-decoration: none;
+                    font-weight: 900;
+                    font-size: 16px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    text-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+                    transition: all 0.3s ease;
+                ">
+                    OpenKAIRO
+                </a>
             </div>
         `;
 
