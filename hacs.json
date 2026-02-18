@@ -1,6 +1,0 @@
-{
-    "name": "Flow OpenKairo",
-    "render_readme": true,
-    "filename": "flow-openkairo.js",
-    "dashboard": "lovelace"
-}
