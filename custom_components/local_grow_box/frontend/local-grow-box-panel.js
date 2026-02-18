@@ -1009,11 +1009,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </p>
 
                 <div style="display:flex; flex-direction:column; gap:8px; max-width:600px;">
-                    ${renderPhaseRow('Keimling', 'Startphase, hohe Luftfeuchte', '🌱', 'phase_seedling_hours', device.options.phase_seedling_hours !== undefined ? device.options.phase_seedling_hours : 18)}
-                    ${renderPhaseRow('Wachstum', 'Vegetative Phase', '🌿', 'phase_vegetative_hours', device.options.phase_vegetative_hours !== undefined ? device.options.phase_vegetative_hours : 18)}
-                    ${renderPhaseRow('Blüte', 'Generative Phase (12/12)', '🌸', 'phase_flowering_hours', device.options.phase_flowering_hours !== undefined ? device.options.phase_flowering_hours : 12)}
-                    ${renderPhaseRow('Trocknen', 'Nach der Ernte', '🍂', 'phase_drying_hours', device.options.phase_drying_hours !== undefined ? device.options.phase_drying_hours : 0)}
-                    ${renderPhaseRow('Veredelung', 'Curing im Glas', '🏺', 'phase_curing_hours', device.options.phase_curing_hours !== undefined ? device.options.phase_curing_hours : 0)}
+                    ${renderPhaseRow('Keimling', 'Hohe Luftfeuchte (65-80%), 20-25°C, sanftes Licht', '🌱', 'phase_seedling_hours', device.options.phase_seedling_hours !== undefined ? device.options.phase_seedling_hours : 18)}
+                    ${renderPhaseRow('Wachstum', 'Viel Stickstoff, 18h Licht, RLF 50-70%', '🌿', 'phase_vegetative_hours', device.options.phase_vegetative_hours !== undefined ? device.options.phase_vegetative_hours : 18)}
+                    ${renderPhaseRow('Blüte', '12h Licht zwingend, RLF <50% (Schimmelgefahr!), P-K Dünger', '🌸', 'phase_flowering_hours', device.options.phase_flowering_hours !== undefined ? device.options.phase_flowering_hours : 12)}
+                    ${renderPhaseRow('Trocknen', 'Dunkel & Kühl (18-20°C), 50-60% RLF, 10-14 Tage', '🍂', 'phase_drying_hours', device.options.phase_drying_hours !== undefined ? device.options.phase_drying_hours : 0)}
+                    ${renderPhaseRow('Veredelung', 'Im Glas/Bag, RLF stabil bei 58-62% halten', '🏺', 'phase_curing_hours', device.options.phase_curing_hours !== undefined ? device.options.phase_curing_hours : 0)}
                 </div>
                 
                  <div style="margin-top:24px; max-width:600px; display:flex; justify-content:flex-end;">
@@ -1404,7 +1404,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 
                 <div style="text-align:center; margin-top:32px; opacity:0.5; font-size:12px;">
-                    Local Grow Box Integration v1.2.10
+                    Local Grow Box Integration v1.2.11
                 </div>
             </div>
         `;
