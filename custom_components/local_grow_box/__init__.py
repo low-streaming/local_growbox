@@ -123,6 +123,72 @@ class GrowBoxManager:
         except Exception as e:
             _LOGGER.error("Error in Water Logic: %s", e)
 
+        # Update Display Logic
+        try:
+            await self._async_update_display_logic()
+        except Exception as e:
+            _LOGGER.error("Error in Display Logic: %s", e)
+
+    async def _async_update_display_logic(self):
+        """Send current state to ESPHome Display"""
+        # Dynamically discover the service so it is 100% Plug & Play for every customer
+        # We look for any service in esphome that contains 'growbox_display' and ends with '_update_room_1'
+        esphome_services = self.hass.services.async_services().get("esphome", {})
+        target_services = [s for s in esphome_services if "growbox_display" in s and s.endswith("_update_room_1")]
+        
+        if not target_services:
+             return
+             
+        # Gather all current data
+        # Use the name the user gave this Grow Box integration instance
+        name = self.entry.title if self.entry and self.entry.title else "Grow Box"
+        if len(name) > 13:
+            name = name[:10] + "..."
+
+        # Temp
+        temp_entity = self.config.get(CONF_TEMP_SENSOR)
+        temp_state = self._get_safe_state(temp_entity)
+        temp_val = str(temp_state.state) if temp_state else "--.-"
+        if len(temp_val) > 4 and "." in temp_val: # Trim long floats
+            temp_val = temp_val[:4]
+
+        # Hum
+        hum_entity = self.config.get(CONF_HUMIDITY_SENSOR)
+        hum_state = self._get_safe_state(hum_entity)
+        hum_val = str(hum_state.state) if hum_state else "--"
+        if hum_val.endswith(".0"):
+            hum_val = hum_val[:-2]
+
+        # Soil
+        soil_entity = self.config.get(CONF_MOISTURE_SENSOR)
+        soil_state = self._get_safe_state(soil_entity)
+        soil_val = str(soil_state.state) if soil_state else "--"
+        if soil_val.endswith(".0"):
+            soil_val = soil_val[:-2]
+
+        # VPD is calculated globally in manager
+        vpd_val = f"{self.vpd:.2f}" if self.vpd > 0 else "-.--"
+
+        # Light
+        light_entity = self.config.get(CONF_LIGHT_ENTITY)
+        light_state = self._get_safe_state(light_entity)
+        light_str = "Aus"
+        if light_state and light_state.state == "on":
+            light_str = "An"
+
+        display_data = {
+            "name": name,
+            "temp": temp_val,
+            "hum": hum_val,
+            "soil": soil_val,
+            "vpd": vpd_val,
+            "light_state": f"{light_str} ({self.current_phase})"
+        }
+
+        # Fire and forget updating all connected screens
+        for service_name in target_services:
+            await self.hass.services.async_call("esphome", service_name, display_data)
+
     async def _async_update_light_logic(self, now: datetime.datetime):
         light_entity = self.config.get(CONF_LIGHT_ENTITY)
         if not light_entity:
