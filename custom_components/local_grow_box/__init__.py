@@ -131,17 +131,41 @@ class GrowBoxManager:
 
     async def _async_update_display_logic(self):
         """Send current state to ESPHome Display"""
-        # Dynamically discover the service so it is 100% Plug & Play for every customer
-        # We look for any service in esphome that contains 'growbox_display' and ends with '_update_room_1'
+        # Find all display services available
         esphome_services = self.hass.services.async_services().get("esphome", {})
-        target_services = [s for s in esphome_services if "growbox_display" in s and s.endswith("_update_room_1")]
         
-        if not target_services:
+        # We look for the base service name of ANY connected display (ignoring the _update_room_X suffix)
+        basenames = set()
+        for s in esphome_services:
+            if "growbox_display" in s and "_update_room_" in s:
+                basename = s.rsplit("_update_room_", 1)[0]
+                basenames.add(basename)
+                
+        if not basenames:
              return
+             
+        # Determine the "Room ID" (1 to 5) for THIS specific Grow Box instance
+        # We do this by sorting all configured Local Grow Box entries by their creation/ID
+        # so they always get the same slot on the display
+        all_entries = self.hass.config_entries.async_entries(DOMAIN)
+        # Sort by entry_id to keep the assignment semi-stable
+        all_entries.sort(key=lambda x: x.entry_id)
+        
+        room_index = 1
+        for i, entry in enumerate(all_entries):
+            if entry.entry_id == self.entry.entry_id:
+                room_index = i + 1
+                break
+                
+        # If a user has more than 5 boxes, cap it at 5 since our display only supports 5 pages
+        if room_index > 5:
+            room_index = 5
+            
+        target_service_suffix = f"_update_room_{room_index}"
              
         # Gather all current data
         # Use the name the user gave this Grow Box integration instance
-        name = self.entry.title if self.entry and self.entry.title else "Grow Box"
+        name = self.entry.title if self.entry and self.entry.title else f"Grow Box {room_index}"
         if len(name) > 13:
             name = name[:10] + "..."
 
@@ -186,7 +210,8 @@ class GrowBoxManager:
         }
 
         # Fire and forget updating all connected screens
-        for service_name in target_services:
+        for basename in basenames:
+            service_name = f"{basename}{target_service_suffix}"
             await self.hass.services.async_call("esphome", service_name, display_data)
 
     async def _async_update_light_logic(self, now: datetime.datetime):
