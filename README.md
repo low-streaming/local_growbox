@@ -39,7 +39,17 @@ Verfolge den Lebenszyklus deiner Pflanze vom Keimling bis zur Veredelung (Curing
 -   **Live-Kamera:** Binde eine Home Assistant Kamera-Entität ein.
 -   **Bild-Upload:** Kein Live-Stream? Lade einfach ein Foto direkt über das Dashboard hoch. Das Bild wird gespeichert und angezeigt.
 
-### 6. **Master-Steuerung** ⚡
+### 6. **Multi-Box Support (Neu in v2.0!)** 📦
+Verwalte mehrere Zelte oder Boxen in einer einzigen Home Assistant Instanz.
+- Einfach weitere "Local Grow Box" Integrationen über die Weboberfläche hinzufügen.
+- Jede Box hat ihr eigenes Dashboard, eigene Sensoren und eigenen Namen.
+
+### 7. **Plug & Play ESPHome Display (Neu in v2.0!)** 📺
+-   **Zero-Config:** Die Integration sucht im Netzwerk automatisch nach passenden ESPHome Displays.
+-   **Auto-Rotation:** Das Display wechselt automatisch alle 10 Sekunden durch bis zu 5 verbundene Growboxen!
+-   **Live-Telemetrie:** Zeigt Temperatur, Luftfeuchte, Bodenfeuchte, VPD, Licht-Status und den Abluft-Lüfter direkt am Zelt an.
+
+### 8. **Master-Steuerung** ⚡
 -   **Master-Switch:** Ein zentraler Schalter, um die gesamte Automatik (Licht, Wasser, Klima) zu aktivieren oder zu pausieren.
 
 ---
@@ -159,7 +169,17 @@ Track your plant's lifecycle from Seedling to Curing.
 -   **Live Feed:** Integrate a Home Assistant camera entity.
 -   **Image Upload:** No camera? Upload a photo directly via the dashboard. It stays saved and displayed.
 
-### 6. **Master Control** ⚡
+### 6. **Multi-Box Support (New in v2.0!)** 📦
+Manage multiple tents or boxes within a single Home Assistant instance.
+-   Simply add another "Local Grow Box" integration via the UI.
+-   Each box gets its own isolated dashboard, sensors, and configuration.
+
+### 7. **Plug & Play ESPHome Display (New in v2.0!)** 📺
+-   **Zero-Config:** The integration automatically discovers compatible ESPHome displays on the network.
+-   **Auto-Rotation:** The display automatically cycles through up to 5 connected grow boxes every 10 seconds!
+-   **Live Telemetry:** Shows Temperature, Humidity, Soil Moisture, VPD, Light status, and Exhaust Fan status right at your tent.
+
+### 8. **Master Control** ⚡
 -   **Master Switch:** A central switch to toggle the entire automation logic (Light, Water, Climate) ON or OFF.
 
 ---
