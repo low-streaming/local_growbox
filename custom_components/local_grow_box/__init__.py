@@ -199,6 +199,13 @@ class GrowBoxManager:
         light_str = "Aus"
         if light_state and light_state.state == "on":
             light_str = "An"
+            
+        # Fan
+        fan_entity = self.config.get(CONF_FAN_ENTITY)
+        fan_state_obj = self._get_safe_state(fan_entity)
+        fan_str = "Aus"
+        if fan_state_obj and fan_state_obj.state == "on":
+            fan_str = "An"
 
         display_data = {
             "name": name,
@@ -206,7 +213,8 @@ class GrowBoxManager:
             "hum": hum_val,
             "soil": soil_val,
             "vpd": vpd_val,
-            "light_state": f"{light_str} ({self.current_phase})"
+            "light_state": f"{light_str} ({self.current_phase})",
+            "fan_state": fan_str
         }
 
         # Fire and forget updating all connected screens
