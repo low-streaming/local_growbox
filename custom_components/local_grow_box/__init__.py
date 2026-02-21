@@ -172,23 +172,34 @@ class GrowBoxManager:
         # Temp
         temp_entity = self.config.get(CONF_TEMP_SENSOR)
         temp_state = self._get_safe_state(temp_entity)
-        temp_val = str(temp_state.state) if temp_state else "--.-"
-        if len(temp_val) > 4 and "." in temp_val: # Trim long floats
-            temp_val = temp_val[:4]
+        temp_val = "--.-"
+        if temp_state:
+            try:
+                temp_val = f"{float(temp_state.state):.1f}"
+            except ValueError:
+                temp_val = str(temp_state.state)
 
         # Hum
         hum_entity = self.config.get(CONF_HUMIDITY_SENSOR)
         hum_state = self._get_safe_state(hum_entity)
-        hum_val = str(hum_state.state) if hum_state else "--"
-        if hum_val.endswith(".0"):
-            hum_val = hum_val[:-2]
+        hum_val = "--"
+        if hum_state:
+            try:
+                hum_val = f"{float(hum_state.state):.1f}"
+                if hum_val.endswith(".0"):
+                    hum_val = hum_val[:-2]
+            except ValueError:
+                hum_val = str(hum_state.state)
 
         # Soil
         soil_entity = self.config.get(CONF_MOISTURE_SENSOR)
         soil_state = self._get_safe_state(soil_entity)
-        soil_val = str(soil_state.state) if soil_state else "--"
-        if soil_val.endswith(".0"):
-            soil_val = soil_val[:-2]
+        soil_val = "--"
+        if soil_state:
+            try:
+                soil_val = f"{float(soil_state.state):.0f}"
+            except ValueError:
+                soil_val = str(soil_state.state)
 
         # VPD is calculated globally in manager
         vpd_val = f"{self.vpd:.2f}" if self.vpd > 0 else "-.--"
