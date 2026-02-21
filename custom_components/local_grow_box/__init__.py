@@ -5,6 +5,7 @@ import logging
 import datetime
 import math
 import os
+import json
 import base64
 import voluptuous as vol
 from datetime import timedelta
@@ -58,14 +59,58 @@ class GrowBoxManager:
         self.vpd = 0.0
         self.pump_start_time = None
         self.last_pump_stop_time = dt_util.now()
+        
         self.logs = []
+        self._last_log_state = {}
+        self._log_file_path = hass.config.path(f".storage", f"local_grow_box_logs_{self.entry.entry_id}.json")
+        self._load_logs()
+
+    def _load_logs(self):
+        """Load logs from file."""
+        if os.path.exists(self._log_file_path):
+            try:
+                with open(self._log_file_path, "r", encoding="utf-8") as f:
+                    self.logs = json.load(f)
+                    
+                    # Reconstruct last state from history
+                    # We reverse so we process oldest -> newest (self.logs has newest at index 0)
+                    for log in reversed(self.logs):
+                        try:
+                            msg = log.split("] ", 1)[-1]
+                            prefix = msg.split(" (")[0]
+                            category = prefix.split(" ")[0]
+                            self._last_log_state[category] = prefix
+                        except Exception:
+                            pass
+            except Exception as e:
+                _LOGGER.error("Failed to load Local Grow Box logs: %s", e)
+
+    def _save_logs(self):
+        """Save logs to file."""
+        try:
+            with open(self._log_file_path, "w", encoding="utf-8") as f:
+                json.dump(self.logs, f)
+        except Exception as e:
+            pass # avoid spamming if permissions fail
 
     def add_log(self, message: str):
         """Add a log entry with timestamp."""
+        prefix = message.split(" (")[0]
+        category = prefix.split(" ")[0]
+        
+        # Deduplication check
+        if self._last_log_state.get(category) == prefix:
+            return  # Same action already logged recently
+            
+        self._last_log_state[category] = prefix
+
         timestamp = dt_util.now().strftime("%d.%m.%Y %H:%M:%S")
         self.logs.insert(0, f"[{timestamp}] {message}")
-        if len(self.logs) > 50:
-            self.logs.pop()
+        
+        if len(self.logs) > 1000:
+            self.logs = self.logs[:1000]
+            
+        self.hass.async_create_task(self.hass.async_add_executor_job(self._save_logs))
 
     async def async_setup(self):
         """Setup background tasks."""
