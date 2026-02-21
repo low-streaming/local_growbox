@@ -114,9 +114,9 @@ class GrowBoxManager:
 
     async def async_setup(self):
         """Setup background tasks."""
-        # Check more frequently (5s) to handle pump duration accurately
+        # Check more frequently (1s) to handle pump duration accurately
         self._remove_update_listener = async_track_time_interval(
-            self.hass, self._async_update_logic, timedelta(seconds=5)
+            self.hass, self._async_update_logic, timedelta(seconds=1)
         )
         self.hass.async_create_task(self._async_update_logic(dt_util.now()))
 
