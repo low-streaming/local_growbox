@@ -359,13 +359,14 @@ class LocalGrowBoxPanel extends HTMLElement {
                         flex-direction: column;
                         align-items: flex-start;
                         gap: 12px;
+                        padding: 12px 16px;
                     }
                     .tabs {
                         margin-left: 0;
                         width: 100%;
                         overflow-x: auto;
                         justify-content: flex-start;
-                        padding-bottom: 4px; /* Space for scrollbar */
+                        padding-bottom: 8px; /* Space for scrollbar */
                         background: transparent;
                         border: none;
                         padding: 0;
@@ -374,12 +375,18 @@ class LocalGrowBoxPanel extends HTMLElement {
                         flex-shrink: 0;
                         font-size: 11px;
                         padding: 8px 12px;
-                        background: rgba(255,255,255,0.05); /* Ensure visibility */
-                        margin-right: 4px;
+                        background: rgba(255,255,255,0.08); /* Ensure visibility */
+                        margin-right: 6px;
                         white-space: nowrap;
                     }
                     .tab.active {
                         background: var(--primary-color);
+                    }
+                    .content { padding: 12px; }
+                    .card-body { padding: 12px; }
+                    .controls {
+                        grid-template-columns: 1fr;
+                        gap: 8px;
                     }
                 }
             </style>
