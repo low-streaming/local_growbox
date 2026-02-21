@@ -108,7 +108,7 @@ class GrowBoxManager:
         self.logs.insert(0, f"[{timestamp}] {message}")
         
         if len(self.logs) > 1000:
-            self.logs = self.logs[:1000]
+            self.logs.pop()
             
         self.hass.async_create_task(self.hass.async_add_executor_job(self._save_logs))
 
@@ -503,7 +503,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=2.1",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=2.2",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 

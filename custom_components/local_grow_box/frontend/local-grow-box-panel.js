@@ -1175,34 +1175,72 @@ class LocalGrowBoxPanel extends HTMLElement {
             listContainer.style.border = '1px solid rgba(255,255,255,0.05)';
             listContainer.style.overflow = 'hidden';
 
+            // Sort combined logs chronologically (newest first)
+            allLogs.sort((a, b) => {
+                const parseDate = (str) => {
+                    const match = str.match(/^\[(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2}):(\d{2})\]/);
+                    if (!match) return 0;
+                    return new Date(`${match[3]}-${match[2]}-${match[1]}T${match[4]}:${match[5]}:${match[6]}`).getTime();
+                };
+                return parseDate(b.line) - parseDate(a.line);
+            });
+
             const header = document.createElement('div');
-            header.style.cssText = "padding:16px; font-size:18px; font-weight:500; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--primary-color);";
-            header.innerText = " Letzte Ereignisse";
+            header.style.cssText = "padding:16px 20px; font-size:16px; font-weight:600; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--text-primary); display:flex; align-items:center; gap:10px;";
+            header.innerHTML = '<span style="font-size:22px; opacity:0.9;">📋</span> <span>Protokoll-Historie</span>';
             listContainer.appendChild(header);
 
             if (allLogs.length === 0) {
                 const empty = document.createElement('div');
-                empty.style.cssText = "padding:24px; text-align:center; color:var(--text-secondary);";
+                empty.style.cssText = "padding:32px; text-align:center; color:var(--text-secondary);";
                 empty.innerText = "Bisher keine Ereignisse protokolliert.";
                 listContainer.appendChild(empty);
             } else {
-                // sort chronologically? No, logs are already newest first per device
-                // just show them as they are or do basic sort by parsing date string inside "[DD.MM.YYYY HH:MM:SS]"
-                // For simplicity, just render.
                 for (const entry of allLogs) {
                     const item = document.createElement('div');
-                    item.style.cssText = "padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.02); display:flex; flex-direction:column; gap:4px;";
+                    item.style.cssText = "padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.02); display:flex; align-items:center; gap:16px; transition:background 0.2s;";
+                    item.onmouseenter = () => item.style.background = 'rgba(255,255,255,0.02)';
+                    item.onmouseleave = () => item.style.background = 'transparent';
 
-                    const boxTag = document.createElement('span');
-                    boxTag.style.cssText = "font-size:11px; font-weight:600; color:#38bdf8; text-transform:uppercase;";
-                    boxTag.innerText = entry.devName;
+                    let timeStr = "";
+                    let msgStr = entry.line;
 
-                    const textTag = document.createElement('span');
-                    textTag.style.cssText = "font-size:14px; color:var(--text-primary);";
-                    textTag.innerText = entry.line;
+                    const match = entry.line.match(/^\[(.*?)\]\s+(.*)$/);
+                    if (match) {
+                        timeStr = match[1];
+                        msgStr = match[2];
+                    }
 
-                    item.appendChild(boxTag);
-                    item.appendChild(textTag);
+                    // Choose icon based on content
+                    let icon = '📝';
+                    if (msgStr.includes('Licht')) icon = '💡';
+                    else if (msgStr.includes('Pumpe')) icon = '💧';
+                    else if (msgStr.includes('Abluft')) icon = '🌪️';
+
+                    // Highlight keywords playfully
+                    if (msgStr.includes('eingeschaltet')) {
+                        msgStr = msgStr.replace('eingeschaltet', '<span style="color:#10b981; font-weight:600;">eingeschaltet</span>');
+                    }
+                    if (msgStr.includes('ausgeschaltet')) {
+                        msgStr = msgStr.replace('ausgeschaltet', '<span style="color:#ef4444; font-weight:600;">ausgeschaltet</span>');
+                    }
+
+                    item.innerHTML = `
+                        <div style="color:var(--text-secondary); font-size:12px; min-width:130px; text-align:right; font-variant-numeric: tabular-nums;">
+                            ${timeStr}
+                        </div>
+                        <div style="font-size:20px; line-height:1; min-width:24px; text-align:center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                            ${icon}
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:2px; flex:1;">
+                            <span style="font-size:10px; font-weight:700; color:#38bdf8; text-transform:uppercase; letter-spacing:0.5px;">
+                                ${entry.devName}
+                            </span>
+                            <span style="font-size:14px; color:var(--text-primary);">
+                                ${msgStr}
+                            </span>
+                        </div>
+                    `;
                     listContainer.appendChild(item);
                 }
             }
