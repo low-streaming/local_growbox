@@ -390,6 +390,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     <div class="tab active" data-tab="overview">Übersicht</div>
                     <div class="tab" data-tab="settings">Geräte & Config</div>
                     <div class="tab" data-tab="phases">Phasen</div>
+                    <div class="tab" data-tab="logs">Protokoll</div>
                     <div class="tab" data-tab="info">Info / Hilfe</div>
                 </div>
             </div>
@@ -456,6 +457,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             this._renderSettings(container);
         } else if (this._activeTab === 'phases') {
             this._renderPhases(container);
+        } else if (this._activeTab === 'logs') {
+            this._renderLogs(container);
         } else if (this._activeTab === 'info') {
             this._renderInfo(container);
         }
@@ -1135,167 +1138,81 @@ class LocalGrowBoxPanel extends HTMLElement {
         input.click();
     }
 
-    async _renderLog(container) {
-        container.innerHTML = '<div style="padding:24px; text-align:center;">Lade Protokoll...</div>';
-
-        // 1. Collect entities and map to devices
-        const entities = [];
-        const entityMap = {}; // entity_id -> { devId, type }
-
-        this._devices.forEach(d => {
-            const add = (eid, type) => {
-                if (eid) {
-                    entities.push(eid);
-                    entityMap[eid] = { devId: d.id, type: type };
-                }
-            };
-            add(d.entities.light, 'light');
-            add(d.entities.pump || d.options.pump_entity, 'pump');
-            add(d.entities.fan || d.options.fan_entity, 'fan');
-            add(d.entities.phase, 'phase');
-        });
-
-        if (entities.length === 0) {
-            container.innerHTML = '<div style="padding:24px; text-align:center;">Keine Geräte konfiguriert für das Protokoll.</div>';
+    async _renderLogs(container) {
+        if (this._devices.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Keine Grow Box gefunden.</div>';
             return;
         }
 
-        // 2. Fetch (Last 48 hours to ensure we see recent events)
-        const end = new Date();
-        const start = new Date(end.getTime() - 48 * 60 * 60 * 1000); // 48h
+        container.innerHTML = '<div style="padding:24px; text-align:center;">Lade Protokoll...</div>';
 
         try {
-            // Fix: Remove end_time to implicitly mean "now". Ensure start_time is valid ISO.
-            const rawEvents = await this._hass.callWS({
-                type: 'logbook/get_events',
-                start_time: start.toISOString(),
-                entity_ids: entities
-            });
-
-            // 3. Filter Noise
-            const events = (rawEvents || []).filter(e =>
-                e.state !== 'unavailable' && e.state !== 'unknown' && e.state !== '' && e.message !== 'became unavailable'
-            ).sort((a, b) => new Date(b.when) - new Date(a.when));
-
-            if (events.length === 0) {
-                container.innerHTML = '<div style="padding:24px; text-align:center;">Keine Ereignisse in den letzten 24 Stunden.</div>';
-                return;
+            // Fetch logs for all devices
+            let allLogs = [];
+            for (const device of this._devices) {
+                if (!device.entryId) continue;
+                try {
+                    const result = await this._hass.callWS({
+                        type: 'local_grow_box/get_logs',
+                        entry_id: device.entryId
+                    });
+                    if (result && result.logs) {
+                        result.logs.forEach(logLine => {
+                            allLogs.push({ devName: device.name, line: logLine });
+                        });
+                    }
+                } catch (err) {
+                    console.warn("Could not fetch logs for " + device.name, err);
+                }
             }
 
-            // 4. Render Layout
             container.innerHTML = '';
-
-            const header = document.createElement('div');
-            header.style.cssText = "padding:16px; display:flex; gap:12px; max-width:800px; margin:0 auto; flex-wrap:wrap;";
-
-            const createSelect = (opts) => {
-                const s = document.createElement('select');
-                s.style.cssText = "background:var(--card-bg); color:var(--primary-text-color); padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); flex:1; min-width:140px; outline:none; cursor:pointer;";
-                s.innerHTML = opts.map(o => `<option value="${o.val}">${o.lbl}</option>`).join('');
-                return s;
-            };
-
-            const devOpts = [{ val: 'all', lbl: 'Alle Boxen' }].concat(this._devices.map(d => ({ val: d.id, lbl: d.name })));
-            const typeOpts = [
-                { val: 'all', lbl: 'Alle Typen' },
-                { val: 'light', lbl: '💡 Licht' },
-                { val: 'pump', lbl: '💧 Wasser' },
-                { val: 'fan', lbl: '🌪️ Luft' },
-                { val: 'phase', lbl: '🌱 Phase' }
-            ];
-
-            const devSelect = createSelect(devOpts);
-            const typeSelect = createSelect(typeOpts);
-
-            header.appendChild(devSelect);
-            header.appendChild(typeSelect);
-            container.appendChild(header);
-
             const listContainer = document.createElement('div');
             listContainer.style.maxWidth = '800px';
             listContainer.style.margin = '0 auto';
-            container.appendChild(listContainer);
+            listContainer.style.background = 'var(--card-bg)';
+            listContainer.style.borderRadius = '12px';
+            listContainer.style.border = '1px solid rgba(255,255,255,0.05)';
+            listContainer.style.overflow = 'hidden';
 
-            // Render Function
-            const renderList = () => {
-                const devFilter = devSelect.value;
-                const typeFilter = typeSelect.value;
+            const header = document.createElement('div');
+            header.style.cssText = "padding:16px; font-size:18px; font-weight:500; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--primary-color);";
+            header.innerText = " Letzte Ereignisse";
+            listContainer.appendChild(header);
 
-                listContainer.innerHTML = '';
-
-                const filtered = events.filter(ev => {
-                    const info = entityMap[ev.entity_id];
-                    if (!info) return true;
-
-                    if (devFilter !== 'all' && info.devId !== devFilter) return false;
-                    if (typeFilter !== 'all' && info.type !== typeFilter) return false;
-
-                    return true;
-                });
-
-                if (filtered.length === 0) {
-                    listContainer.innerHTML = '<div style="padding:24px; text-align:center; color:var(--text-secondary);">Keine Einträge für diesen Filter.</div>';
-                    return;
-                }
-
-                const list = document.createElement('div');
-                list.className = 'log-list';
-
-                filtered.forEach(ev => {
+            if (allLogs.length === 0) {
+                const empty = document.createElement('div');
+                empty.style.cssText = "padding:24px; text-align:center; color:var(--text-secondary);";
+                empty.innerText = "Bisher keine Ereignisse protokolliert.";
+                listContainer.appendChild(empty);
+            } else {
+                // sort chronologically? No, logs are already newest first per device
+                // just show them as they are or do basic sort by parsing date string inside "[DD.MM.YYYY HH:MM:SS]"
+                // For simplicity, just render.
+                for (const entry of allLogs) {
                     const item = document.createElement('div');
-                    item.style.cssText = `
-                        background: var(--card-bg);
-                        border-bottom: 1px solid rgba(255,255,255,0.05);
-                        padding: 12px 16px;
-                        display: flex; justify-content: space-between; align-items: center; gap: 12px;
-                    `;
+                    item.style.cssText = "padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.02); display:flex; flex-direction:column; gap:4px;";
 
-                    const dateObj = new Date(ev.when);
-                    const time = dateObj.toLocaleDateString([], { day: '2-digit', month: '2-digit' }) + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const boxTag = document.createElement('span');
+                    boxTag.style.cssText = "font-size:11px; font-weight:600; color:#38bdf8; text-transform:uppercase;";
+                    boxTag.innerText = entry.devName;
 
-                    let icon = '📝';
-                    if (ev.domain === 'light') icon = '💡';
-                    else if (ev.entity_id.includes('pump')) icon = '💧';
-                    else if (ev.entity_id.includes('fan')) icon = '🌪️';
-                    else if ((ev.domain === 'sensor' && ev.entity_id.includes('phase')) || ev.entity_id.includes('grow')) icon = '🌱';
+                    const textTag = document.createElement('span');
+                    textTag.style.cssText = "font-size:14px; color:var(--text-primary);";
+                    textTag.innerText = entry.line;
 
-                    let name = ev.name;
-                    if (!name || name === 'undefined') {
-                        const stateObj = this._hass.states[ev.entity_id];
-                        name = stateObj ? stateObj.attributes.friendly_name : ev.entity_id;
-                    }
+                    item.appendChild(boxTag);
+                    item.appendChild(textTag);
+                    listContainer.appendChild(item);
+                }
+            }
 
-                    item.innerHTML = `
-                        <div style="display:flex; align-items:center; gap:12px; flex:1;">
-                            <span style="color:var(--text-secondary); font-size:14px; width:45px;">${time}</span>
-                            <span style="font-size:20px;">${icon}</span>
-                            <div style="display:flex; flex-direction:column;">
-                                <span style="font-weight:500;">${name}</span>
-                                <span style="font-size:12px; color:var(--text-secondary);">${ev.message || ('Zustand: ' + ev.state)}</span>
-                            </div>
-                        </div>
-                    `;
-                    list.appendChild(item);
-                });
-
-                listContainer.appendChild(list);
-            };
-
-            devSelect.onchange = renderList;
-            typeSelect.onchange = renderList;
-
-            renderList();
+            container.appendChild(listContainer);
 
         } catch (e) {
             console.error("Log fetch failed", e);
             container.innerHTML = `<div style="color:var(--danger-color); padding:24px;">Fehler beim Laden des Protokolls: ${e.message}</div>`;
         }
-
-        // Debug Footer
-        const debugDiv = document.createElement('div');
-        debugDiv.style.cssText = "text-align:center; opacity:0.3; font-size:10px; margin-top:20px; color:var(--text-primary);";
-        debugDiv.innerHTML = `Debug: Range ${new Date(end.getTime() - 48 * 3600000).toLocaleString()} - ${end.toLocaleString()} (${entities.length} entities)`;
-        container.appendChild(debugDiv);
     }
 
     _renderInfo(container) {
@@ -1406,7 +1323,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 
                 <div style="text-align:center; margin-top:32px; opacity:0.5; font-size:12px;">
-                    Local Grow Box Integration v2.0
+                    Local Grow Box Integration v2.1
                 </div>
             </div>
         `;

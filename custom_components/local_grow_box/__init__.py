@@ -58,6 +58,14 @@ class GrowBoxManager:
         self.vpd = 0.0
         self.pump_start_time = None
         self.last_pump_stop_time = dt_util.now()
+        self.logs = []
+
+    def add_log(self, message: str):
+        """Add a log entry with timestamp."""
+        timestamp = dt_util.now().strftime("%d.%m.%Y %H:%M:%S")
+        self.logs.insert(0, f"[{timestamp}] {message}")
+        if len(self.logs) > 50:
+            self.logs.pop()
 
     async def async_setup(self):
         """Setup background tasks."""
@@ -309,6 +317,7 @@ class GrowBoxManager:
                     return
 
             _LOGGER.info("Light should be ON. Turning ON.")
+            self.add_log("Licht eingeschaltet (Automatik)")
             await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": light_entity})
         elif not is_light_time and is_on:
             # Check Manual Override (Debounce 15 mins)
@@ -320,6 +329,7 @@ class GrowBoxManager:
                     return
 
             _LOGGER.info("Light should be OFF. Turning OFF.")
+            self.add_log("Licht ausgeschaltet (Automatik)")
             await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": light_entity})
 
     async def _async_update_water_logic(self, now: datetime.datetime):
@@ -346,6 +356,7 @@ class GrowBoxManager:
             
             if elapsed >= duration:
                  _LOGGER.info("Pump ran for %.1fs. Turning OFF.", elapsed)
+                 self.add_log(f"Pumpe ausgeschaltet (Lief {elapsed:.1f}s)")
                  await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": pump_entity})
                  self.last_pump_stop_time = now
                  self.pump_start_time = None
@@ -374,6 +385,7 @@ class GrowBoxManager:
                 
                 if val < target:
                      _LOGGER.info("Moisture low (%.1f < %.1f). Starting Pump.", val, target)
+                     self.add_log(f"Pumpe eingeschaltet (Bodenfeuchte {val}% < {target}%)")
                      await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": pump_entity})
                      self.pump_start_time = now
             except ValueError:
@@ -423,8 +435,10 @@ class GrowBoxManager:
              should_fan_on = is_fan_on
 
         if should_fan_on and not is_fan_on:
+             self.add_log(f"Abluft eingeschaltet (T={current_temp}°, H={current_humid}%)")
              await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": fan_entity})
         elif not should_fan_on and is_fan_on:
+             self.add_log(f"Abluft ausgeschaltet (T={current_temp}°, H={current_humid}%)")
              await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": fan_entity})
 
     def set_master_switch(self, state: bool):
@@ -444,7 +458,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         os.makedirs(img_path)
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
-        module_url="/local_grow_box/local-grow-box-panel.js?v=2.0",
+        module_url="/local_grow_box/local-grow-box-panel.js?v=2.1",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
 
@@ -454,6 +468,7 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         websocket_api.async_register_command(hass, ws_upload_image)
         websocket_api.async_register_command(hass, ws_update_config)
         websocket_api.async_register_command(hass, ws_get_config)
+        websocket_api.async_register_command(hass, ws_get_logs)
     except Exception as e:
         _LOGGER.warning("Failed to register websocket commands in async_setup (might be duplicate): %s", e)
     
@@ -467,6 +482,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         websocket_api.async_register_command(hass, ws_upload_image)
         websocket_api.async_register_command(hass, ws_update_config)
         websocket_api.async_register_command(hass, ws_get_config)
+        websocket_api.async_register_command(hass, ws_get_logs)
     except Exception:
         pass # Expected if already registered
 
@@ -596,3 +612,17 @@ async def ws_get_config(hass, connection, msg):
 
     data = {**entry.data, **entry.options}
     connection.send_result(msg["id"], {"config": data})
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/get_logs",
+    vol.Required("entry_id"): str,
+})
+@websocket_api.async_response
+async def ws_get_logs(hass, connection, msg):
+    """Handle get logs."""
+    entry_id = msg["entry_id"]
+    manager = hass.data[DOMAIN].get(entry_id)
+    if manager:
+        connection.send_result(msg["id"], {"logs": manager.logs})
+    else:
+        connection.send_result(msg["id"], {"logs": []})
