@@ -579,7 +579,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             const getVal = (entity) => {
                 if (!entity) return null;
                 const s = this._hass.states[entity];
-                return s && !isNaN(s.state) ? parseFloat(s.state) : null;
+                return s && !isNaN(s.state) ? Math.round(parseFloat(s.state) * 100) / 100 : null;
             }
 
             const temp = getVal(device.options.temp_sensor);
