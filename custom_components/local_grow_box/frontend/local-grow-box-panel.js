@@ -3,8 +3,10 @@ class LocalGrowBoxPanel extends HTMLElement {
         super();
         this.attachShadow({ mode: 'open' });
         this._initialized = false;
-        this._activeTab = 'overview'; // 'overview', 'settings', 'phases'
+        this._activeTab = 'overview'; // 'overview', 'statistics', 'settings', 'phases'
         this._draft = {}; // entryId -> { key: value }
+        this.historyData = {};
+        this.fetchingHistory = {};
     }
 
     set hass(hass) {
@@ -388,6 +390,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 <div class="tabs">
                     <div class="tab active" data-tab="overview">Übersicht</div>
+                    <div class="tab" data-tab="statistics">Statistiken</div>
                     <div class="tab" data-tab="settings">Geräte & Config</div>
                     <div class="tab" data-tab="phases">Phasen</div>
                     <div class="tab" data-tab="logs">Protokoll</div>
@@ -453,6 +456,8 @@ class LocalGrowBoxPanel extends HTMLElement {
 
         if (this._activeTab === 'overview') {
             this._renderOverview(container);
+        } else if (this._activeTab === 'statistics') {
+            this._renderStatistics(container);
         } else if (this._activeTab === 'settings') {
             this._renderSettings(container);
         } else if (this._activeTab === 'phases') {
@@ -567,10 +572,11 @@ class LocalGrowBoxPanel extends HTMLElement {
             const imgVer = device.options.image_version || 0;
             let imgUrl = `/local/local_grow_box_images/${device.id}.jpg?v=${imgVer}`;
             let isLive = false;
+            let camStateObj = null;
             if (device.options.camera_entity) {
-                const cam = this._hass.states[device.options.camera_entity];
-                if (cam) {
-                    imgUrl = cam.attributes.entity_picture;
+                camStateObj = this._hass.states[device.options.camera_entity];
+                if (camStateObj) {
+                    imgUrl = camStateObj.attributes.entity_picture;
                     isLive = true;
                 }
             }
@@ -685,8 +691,24 @@ class LocalGrowBoxPanel extends HTMLElement {
             q('.card-image').onclick = (e) => {
                 // Prevent click if clicking the select or badge
                 if (e.target.tagName === 'SELECT' || e.target.closest('.phase-select')) return;
-                this._openCameraModal(imgUrl, device.name);
+                this._openCameraModal(imgUrl, device.name, camStateObj);
             };
+
+            // Inject Livestream into Card if Live
+            if (isLive && camStateObj) {
+                const imgContainer = q('.card-image');
+                const oldImg = q('img');
+                if (oldImg) oldImg.style.display = 'none';
+
+                const stream = document.createElement('ha-camera-stream');
+                stream.hass = this._hass;
+                stream.stateObj = camStateObj;
+                stream.muted = true;
+                stream.allowExoplayer = true;
+                stream.style.cssText = "width:100%; height:100%; object-fit:cover; display:block; pointer-events:none; position:absolute; top:0; left:0; opacity:0.8;";
+
+                imgContainer.insertBefore(stream, imgContainer.firstChild);
+            }
 
             // Phase Change Event
             const phaseSelect = q(`#phase-select-${device.id}`);
@@ -718,23 +740,48 @@ class LocalGrowBoxPanel extends HTMLElement {
         container.appendChild(grid);
     }
 
-    _openCameraModal(url, title) {
+    _openCameraModal(url, title, camStateObj = null) {
         const modal = this.shadowRoot.getElementById('camera-modal');
-        const img = this.shadowRoot.getElementById('modal-img');
+        const content = modal.querySelector('.modal-content');
         const txt = this.shadowRoot.getElementById('modal-title');
 
-        // Refresh image to ensure live content
-        const freshUrl = url.includes('?') ? url + '&t=' + Date.now() : url + '?t=' + Date.now();
-        img.src = freshUrl;
+        // Remove old media
+        const oldImg = this.shadowRoot.getElementById('modal-img');
+        if (oldImg) oldImg.remove();
+        const oldStream = this.shadowRoot.getElementById('modal-stream');
+        if (oldStream) oldStream.remove();
+
+        if (camStateObj) {
+            const stream = document.createElement('ha-camera-stream');
+            stream.id = 'modal-stream';
+            stream.hass = this._hass;
+            stream.stateObj = camStateObj;
+            stream.muted = true;
+            stream.controls = true;
+            stream.allowExoplayer = true;
+            stream.style.cssText = "width:100%; height:auto; display:block; border-radius:8px;";
+            content.insertBefore(stream, txt);
+        } else {
+            const img = document.createElement('img');
+            img.id = 'modal-img';
+            img.style.cssText = "width:100%; height:auto; display:block; border-radius:8px;";
+            img.src = url.includes('?') ? url + '&t=' + Date.now() : url + '?t=' + Date.now();
+            content.insertBefore(img, txt);
+        }
 
         txt.innerText = title;
         modal.classList.add('visible');
 
-        // Close logic
+        const cleanup = () => {
+            modal.classList.remove('visible');
+            const toRemove = this.shadowRoot.getElementById('modal-stream');
+            if (toRemove) toRemove.remove(); // Stop stream on close
+        };
+
         const close = modal.querySelector('.close-modal');
-        close.onclick = () => modal.classList.remove('visible');
+        close.onclick = cleanup;
         modal.onclick = (e) => {
-            if (e.target === modal) modal.classList.remove('visible');
+            if (e.target === modal) cleanup();
         }
     }
 
@@ -1367,6 +1414,181 @@ class LocalGrowBoxPanel extends HTMLElement {
         `;
     }
 
+    async fetchHistoryData(entityId) {
+        if (!this._hass || !entityId) return;
+        const now = new Date();
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const startStr = yesterday.toISOString();
+
+        try {
+            const response = await this._hass.callApi('GET', `history/period/${startStr}?filter_entity_id=${entityId}&minimal_response`);
+            if (response && response.length > 0) {
+                this.historyData = { ...this.historyData, [entityId]: response[0] };
+            } else {
+                this.historyData = { ...this.historyData, [entityId]: [] };
+            }
+        } catch (e) {
+            console.error("Failed to fetch history for " + entityId, e);
+            this.historyData = { ...this.historyData, [entityId]: [] };
+        } finally {
+            this.fetchingHistory[entityId] = false;
+            if (this._activeTab === 'statistics') {
+                this._updateContent();
+            }
+        }
+    }
+
+    _showMoreInfo(entityId) {
+        if (!entityId) return;
+        const event = new Event('hass-more-info', { bubbles: true, composed: true });
+        event.detail = { entityId: entityId };
+        this.dispatchEvent(event);
+    }
+
+    _renderChart(entityId, colorHex, label, unit) {
+        if (!this.historyData[entityId] && !this.fetchingHistory[entityId]) {
+            this.fetchingHistory[entityId] = true;
+            this.fetchHistoryData(entityId);
+            return '<div style="height: 150px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px;">Lade ' + label + '...</div>';
+        }
+
+        const data = this.historyData[entityId] || [];
+        const currentState = this._hass && this._hass.states[entityId] ? this._hass.states[entityId].state : '-';
+
+        if (data.length === 0 || data.filter(d => !isNaN(parseFloat(d.state))).length === 0) {
+            return `
+                <div class="chart-row" data-entity="${entityId}" style="margin-bottom: 20px; text-align: left; cursor: pointer;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
+                        <h4 style="color: ${colorHex}; margin: 0; font-size: 1.0em; text-transform: uppercase;">${label}</h4>
+                        <span style="color: #fff; font-size: 1.1em; font-weight: bold;">${currentState} ${unit}</span>
+                    </div>
+                    <div style="height: 120px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">Keine Verlaufsdaten für ${label} gefunden.</div>
+                </div>
+            `;
+        }
+
+        const validData = data.filter(d => !isNaN(parseFloat(d.state)));
+        const values = validData.map(d => parseFloat(d.state));
+        const times = validData.map(d => new Date(d.last_changed).getTime());
+
+        const minVal = Math.min(...values);
+        let maxVal = Math.max(...values);
+        if (minVal === maxVal) maxVal = minVal + 1;
+        const minTime = Math.min(...times);
+        let maxTime = Math.max(...times);
+        if (minTime === maxTime) maxTime = minTime + 1000;
+
+        const rangeY = maxVal - minVal;
+        const rangeX = maxTime - minTime;
+        const width = 600;
+        const height = 120;
+        const padding = 20;
+
+        const points = validData.map(d => {
+            const x = ((new Date(d.last_changed).getTime() - minTime) / rangeX) * width;
+            const y = height - (((parseFloat(d.state) - minVal) / rangeY) * height);
+            return `${x},${y}`;
+        });
+
+        const pathData = `M ${points[0]} L ${points.join(' L ')}`;
+        const fillPathData = `M ${points[0].split(',')[0]},${height} L ${points.join(' L ')} L ${points[points.length - 1].split(',')[0]},${height} Z`;
+        const safeId = entityId.replace(/\./g, '_');
+
+        const lastState = validData[validData.length - 1].state;
+
+        return `
+            <div class="chart-row" data-entity="${entityId}" style="margin-bottom: 20px; text-align: left; cursor: pointer;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
+                    <h4 style="color: ${colorHex}; margin: 0; font-size: 1.0em; text-transform: uppercase;">${label}</h4>
+                    <span style="color: #fff; font-size: 1.1em; font-weight: bold;">
+                        ${lastState} ${unit}
+                    </span>
+                </div>
+                <div style="position: relative; height: ${height + padding * 2}px; border-radius: 8px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+                    <svg viewBox="0 -${padding} ${width} ${height + padding * 2}" preserveAspectRatio="none" style="width: 100%; height: 100%; display: block;">
+                        <defs>
+                            <linearGradient id="grad_${safeId}" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:${colorHex};stop-opacity:0.4" />
+                                <stop offset="100%" style="stop-color:${colorHex};stop-opacity:0.0" />
+                            </linearGradient>
+                        </defs>
+                        <path d="${fillPathData}" fill="url(#grad_${safeId})" />
+                        <path d="${pathData}" fill="none" stroke="${colorHex}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
+                    </svg>
+                    <div style="position: absolute; top: 10px; left: 10px; color: rgba(255,255,255,0.8); font-size: 0.8em; font-weight: bold;">
+                        MAX: ${maxVal.toFixed(2)}
+                    </div>
+                    <div style="position: absolute; bottom: 10px; left: 10px; color: rgba(255,255,255,0.4); font-size: 0.8em;">
+                        MIN: ${minVal.toFixed(2)}
+                    </div>
+                </div>
+            </div >
+            `;
+    }
+
+    _renderStatistics(container) {
+        if (!this._devices || this._devices.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Keine Grow Box gefunden. Bitte Integration hinzufügen.</div>';
+            return;
+        }
+
+        const statsDiv = document.createElement('div');
+        statsDiv.innerHTML = `
+            <div style="max-width:1200px; margin:0 auto; padding:16px;">
+                <h2 style="color:var(--text-primary); margin-bottom:12px;">📊 Statistiken & Graphen</h2>
+                <p style="color:var(--text-secondary); margin-bottom:24px;">Übersicht über die Messwerte deiner Growbox im zeitlichen Verlauf (24h).</p>
+                <div class="grid" id="stats-grid"></div>
+            </div>
+        `;
+
+        const grid = statsDiv.querySelector('#stats-grid');
+
+        this._devices.forEach(device => {
+            const tempSensor = device.options.temp_sensor;
+            const humSensor = device.options.humidity_sensor;
+            const vpdSensor = device.entities.vpd;
+            const moistSensor = device.options.moisture_sensor;
+
+            if (!tempSensor && !humSensor && !vpdSensor && !moistSensor) {
+                return;
+            }
+
+            const getUnit = (entityId, deflt) => {
+                if (!entityId || !this._hass || !this._hass.states[entityId]) return deflt;
+                return this._hass.states[entityId].attributes.unit_of_measurement || deflt;
+            };
+
+            const cardWrapper = document.createElement('div');
+            cardWrapper.className = 'card';
+            cardWrapper.style.padding = '24px';
+            cardWrapper.style.display = 'block';
+
+            cardWrapper.innerHTML = `
+                <div style="border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
+                    <h3 style="margin:0; font-size:20px; color:#38bdf8;">${device.name}</h3>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    ${tempSensor ? this._renderChart(tempSensor, '#ef4444', '🌡️ Temperatur', getUnit(tempSensor, '°C')) : ''}
+                    ${humSensor ? this._renderChart(humSensor, '#3b82f6', '💧 Luftfeuchte', getUnit(humSensor, '%')) : ''}
+                    ${vpdSensor ? this._renderChart(vpdSensor, '#10b981', '🍃 VPD', getUnit(vpdSensor, 'kPa')) : ''}
+                    ${moistSensor ? this._renderChart(moistSensor, '#8b5cf6', '🪴 Bodenfeuchte', getUnit(moistSensor, '%')) : ''}
+                </div>
+                <div style="margin-top: 20px; text-align: left; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                    <h4 style="margin: 0; color: var(--text-secondary); font-size: 0.85em;">Klicke auf einen Graphen, um die detaillierte Ansicht von Home Assistant zu öffnen.</h4>
+                </div>
+            `;
+
+            // Attach listeners
+            const charts = cardWrapper.querySelectorAll('.chart-row');
+            charts.forEach(c => {
+                c.onclick = () => this._showMoreInfo(c.dataset.entity);
+            });
+
+            grid.appendChild(cardWrapper);
+        });
+
+        container.appendChild(statsDiv);
+    }
 }
 
 customElements.define('local-grow-box-panel', LocalGrowBoxPanel);
