@@ -17,6 +17,7 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.components import panel_custom, websocket_api
+from homeassistant.exceptions import HomeAssistantError
 
 from .const import (
     DOMAIN, CONF_LIGHT_ENTITY, CONF_FAN_ENTITY, CONF_TEMP_SENSOR, CONF_HUMIDITY_SENSOR,
@@ -64,6 +65,7 @@ class GrowBoxManager:
         self._last_log_state = {}
         self._log_file_path = hass.config.path(f".storage", f"local_grow_box_logs_{self.entry.entry_id}.json")
         self._load_logs()
+        self._last_display_update = None
 
     def _load_logs(self):
         """Load logs from file."""
@@ -176,9 +178,12 @@ class GrowBoxManager:
         except Exception as e:
             _LOGGER.error("Error in Water Logic: %s", e)
 
-        # Update Display Logic
+        # Update Display Logic - Throttle to every 5 seconds
         try:
-            await self._async_update_display_logic()
+            now_utc = dt_util.utcnow()
+            if self._last_display_update is None or (now_utc - self._last_display_update).total_seconds() >= 5:
+                await self._async_update_display_logic()
+                self._last_display_update = now_utc
         except Exception as e:
             _LOGGER.error("Error in Display Logic: %s", e)
 
@@ -284,7 +289,12 @@ class GrowBoxManager:
         # Fire and forget updating all connected screens
         for basename in basenames:
             service_name = f"{basename}{target_service_suffix}"
-            await self.hass.services.async_call("esphome", service_name, display_data)
+            try:
+                await self.hass.services.async_call("esphome", service_name, display_data)
+            except HomeAssistantError as err:
+                _LOGGER.debug("Failed to update display %s: %s", service_name, err)
+            except Exception as err:
+                _LOGGER.error("Unexpected error updating display %s: %s", service_name, err)
 
     async def _async_update_light_logic(self, now: datetime.datetime):
         light_entity = self.config.get(CONF_LIGHT_ENTITY)
