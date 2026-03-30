@@ -945,17 +945,10 @@ class LocalGrowBoxPanel extends HTMLElement {
             const appendSelector = (parent, label, configKey, domain) => {
                 const group = document.createElement('div');
                 group.className = 'form-group';
-
-                // Label is handled by ha-selector usually, but we keep our layout
-                // const lbl = document.createElement('label');
-                // lbl.className = 'form-label';
-                // lbl.innerText = label;
-                // group.appendChild(lbl);
+                group.style.marginBottom = '12px';
 
                 const selector = document.createElement('ha-selector');
-                selector.label = label; // HA Selector handles label internally well
-
-                // Config
+                selector.label = label;
                 const entryId = device.entryId;
                 const draftVal = this._draft[entryId] && this._draft[entryId][configKey];
                 const storedVal = device.options[configKey];
@@ -966,20 +959,10 @@ class LocalGrowBoxPanel extends HTMLElement {
                 selector.value = finalVal;
                 selector.required = false;
 
-                console.log(`[SELECTOR] Created for ${configKey}, value: ${finalVal}`);
-
                 selector.addEventListener('value-changed', (ev) => {
                     const v = ev.detail?.value;
-                    // console.log(`[SELECTOR] ${configKey} changed to:`, v);
-
                     if (!this._draft[entryId]) this._draft[entryId] = {};
-
-                    // IF v is undefined/null/empty, we save '' to draft to CLEAR stored val
-                    if (v === undefined || v === null || v === '') {
-                        this._draft[entryId][configKey] = '';
-                    } else {
-                        this._draft[entryId][configKey] = v;
-                    }
+                    this._draft[entryId][configKey] = (v === undefined || v === null || v === '') ? '' : v;
                 });
 
                 group.appendChild(selector);
@@ -987,30 +970,29 @@ class LocalGrowBoxPanel extends HTMLElement {
             };
 
             // DOM-based Helper for Input
-            const appendInput = (parent, label, configKey, type = 'text') => {
+            const appendInput = (parent, label, configKey, type = 'text', icon = '') => {
                 const group = document.createElement('div');
                 group.className = 'form-group';
+                group.style.marginBottom = '12px';
 
                 const lbl = document.createElement('label');
                 lbl.className = 'form-label';
-                lbl.innerText = label;
+                lbl.style.display = 'flex';
+                lbl.style.alignItems = 'center';
+                lbl.style.gap = '8px';
+                lbl.innerHTML = `${icon ? `<span style="font-size:16px;">${icon}</span>` : ''} ${label}`;
                 group.appendChild(lbl);
 
                 const input = document.createElement('input');
                 input.type = type;
+                input.style.marginTop = '4px';
 
-                // Draft logic: Check draft first, then stored option
                 const draftVal = this._draft[device.entryId] && this._draft[device.entryId][configKey];
                 const storedVal = device.options[configKey] !== undefined ? device.options[configKey] : '';
                 input.value = (draftVal !== undefined) ? draftVal : storedVal;
 
-                input.dataset.key = configKey; // For saving
-
-                // Save to draft on input
                 input.addEventListener('input', (e) => {
-                    if (!this._draft[device.entryId]) {
-                        this._draft[device.entryId] = {};
-                    }
+                    if (!this._draft[device.entryId]) this._draft[device.entryId] = {};
                     this._draft[device.entryId][configKey] = e.target.value;
                 });
 
@@ -1018,50 +1000,75 @@ class LocalGrowBoxPanel extends HTMLElement {
                 parent.appendChild(group);
             };
 
-            // Col 1
-            appendSelector(col1, 'Temp. Sensor', 'temp_sensor', ['sensor']);
-            appendSelector(col1, 'Luftfeuchte Sensor', 'humidity_sensor', ['sensor']);
-            appendSelector(col1, 'Abluft Ventilator', 'fan_entity', ['switch', 'fan', 'input_boolean']);
-            appendSelector(col1, 'Luftbefeuchter', 'humidifier_entity', ['switch', 'input_boolean', 'humidifier']);
-            appendInput(col1, 'Ziel Temperatur (°C)', 'target_temp', 'number');
-            appendInput(col1, 'Min. Feuchte (%)', 'min_humidity', 'number');
-            appendInput(col1, 'Max. Feuchte (%)', 'max_humidity', 'number');
-            appendInput(col1, 'Befeuchter Dauer (s)', 'humidifier_duration', 'number');
+            // NEW: Card Helper
+            const createCard = (title, icon) => {
+                const card = document.createElement('div');
+                card.style.cssText = "background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 4px;";
+                
+                const header = document.createElement('div');
+                header.style.cssText = "display: flex; align-items: center; gap: 10px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;";
+                header.innerHTML = `<span style="font-size: 20px;">${icon}</span> <span style="font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary-color);">${title}</span>`;
+                card.appendChild(header);
 
-            // Col 2
-            appendSelector(col2, 'Licht Quelle', 'light_entity', ['switch', 'light', 'input_boolean']);
-            appendInput(col2, 'Licht Start (Stunde)', 'light_start_hour', 'number');
+                const body = document.createElement('div');
+                body.style.display = 'flex';
+                body.style.flexDirection = 'column';
+                body.style.gap = '8px';
+                card.appendChild(body);
 
-            appendSelector(col2, 'Wasserpumpe', 'pump_entity', ['switch', 'input_boolean']);
-            appendSelector(col2, 'Bodenfeuchte Sensor', 'moisture_sensor', ['sensor']);
-            appendInput(col2, 'Ziel Bodenfeuchte (%)', 'target_moisture', 'number');
-            appendInput(col2, 'Pumpen Dauer (s)', 'pump_duration', 'number');
+                return { card, body };
+            };
 
-            // Col 3
-            appendSelector(col3, 'Kamera', 'camera_entity', ['camera']);
-            appendInput(col3, 'Phasen Startdatum', 'phase_start_date', 'date');
+            const settingsGrid = document.createElement('div');
+            settingsGrid.style.cssText = "display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; width: 100%;";
 
-            grid.appendChild(col1);
-            grid.appendChild(col2);
-            grid.appendChild(col3);
-            section.appendChild(grid);
+            // Card 1: Klima & Geräte
+            const cardKlimaEntities = createCard('Klima & Geräte', '🌪️');
+            appendSelector(cardKlimaEntities.body, 'Temperatur Sensor', 'temp_sensor', ['sensor']);
+            appendSelector(cardKlimaEntities.body, 'Feuchtigkeits Sensor', 'humidity_sensor', ['sensor']);
+            appendSelector(cardKlimaEntities.body, 'Abluft Ventilator', 'fan_entity', ['switch', 'fan', 'input_boolean']);
+            appendSelector(cardKlimaEntities.body, 'Luftbefeuchter', 'humidifier_entity', ['switch', 'input_boolean', 'humidifier']);
+            settingsGrid.appendChild(cardKlimaEntities.card);
+
+            // Card 2: Klima-Sollwerte
+            const cardKlimaValues = createCard('Klima-Sollwerte', '🎯');
+            appendInput(cardKlimaValues.body, 'Ziel Temperatur (°C)', 'target_temp', 'number', '🌡️');
+            appendInput(cardKlimaValues.body, 'Min. Feuchte (%) (Start)', 'min_humidity', 'number', '💧');
+            appendInput(cardKlimaValues.body, 'Max. Feuchte (%) (Stop)', 'max_humidity', 'number', '🔥');
+            appendInput(cardKlimaValues.body, 'Befeuchter Laufzeit (Sek)', 'humidifier_duration', 'number', '⏱️');
+            settingsGrid.appendChild(cardKlimaValues.card);
+
+            // Card 3: Bewässerung & Licht
+            const cardWaterLight = createCard('Bewässerung & Licht', '💧');
+            appendSelector(cardWaterLight.body, 'Licht Quelle', 'light_entity', ['switch', 'light', 'input_boolean']);
+            appendSelector(cardWaterLight.body, 'Bodenfeuchte Sensor', 'moisture_sensor', ['sensor']);
+            appendSelector(cardWaterLight.body, 'Wasserpumpe', 'pump_entity', ['switch', 'input_boolean']);
+            appendInput(cardWaterLight.body, 'Ziel Bodenfeuchte (%)', 'target_moisture', 'number', '🌱');
+            appendInput(cardWaterLight.body, 'Pumpen Dauer (Sek)', 'pump_duration', 'number', '⏲️');
+            settingsGrid.appendChild(cardWaterLight.card);
+
+            // Card 4: Zeitplan & Erweitert
+            const cardAdvanced = createCard('Zeitplan & Erweitert', '📅');
+            appendInput(cardAdvanced.body, 'Licht Start (Stunde 0-23)', 'light_start_hour', 'number', '☀️');
+            appendInput(cardAdvanced.body, 'Phasen Startdatum', 'phase_start_date', 'date', '🏁');
+            appendSelector(cardAdvanced.body, 'Kamera', 'camera_entity', ['camera']);
+            settingsGrid.appendChild(cardAdvanced.card);
+
+            section.appendChild(settingsGrid);
 
             // Save Button
             const btnDiv = document.createElement('div');
-            btnDiv.style.cssText = "margin-top:24px; text-align:right;";
+            btnDiv.style.cssText = "margin-top:32px; text-align:right;";
             const btn = document.createElement('button');
             btn.className = 'btn active';
-            btn.style.cssText = "width:auto; display:inline-flex; padding:12px 24px;";
-            btn.id = `save-${device.id}`; // Add ID for consistency
-            btn.innerText = 'Speichern';
+            btn.style.cssText = "width:auto; display:inline-flex; padding:12px 32px; font-weight:700;";
+            btn.id = `save-${device.id}`;
+            btn.innerText = 'Einstellungen Speichern';
             btn.onclick = () => this._saveConfig_V2(section, device.entryId);
             btnDiv.appendChild(btn);
 
             section.appendChild(btnDiv);
-
             container.appendChild(section);
-
-
         });
     }
 
