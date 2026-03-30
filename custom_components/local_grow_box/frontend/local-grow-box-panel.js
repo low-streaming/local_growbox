@@ -37,7 +37,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         if (this._devices) {
             // If we are in Settings or Phases, DO NOT blow away the DOM on every state update.
             // The user is likely typing or selecting.
-            if (this._activeTab === 'settings' || this._activeTab === 'phases') {
+            if (this._activeTab === 'settings' || this._activeTab === 'phases' || this._activeTab === 'logs') {
                 // But we MUST update the hass object on pickers so they can search
                 if (this.shadowRoot) {
                     this.shadowRoot.querySelectorAll('ha-entity-picker').forEach(picker => {
@@ -1236,7 +1236,13 @@ class LocalGrowBoxPanel extends HTMLElement {
             return;
         }
 
-        container.innerHTML = '<div style="padding:24px; text-align:center;">Lade Protokoll...</div>';
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; color: var(--text-secondary);">
+                <div style="font-size: 32px; margin-bottom: 16px; animation: pulse 1.5s infinite;">🔄</div>
+                <div>Lade Protokoll...</div>
+            </div>
+            <style>@keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }</style>
+        `;
 
         try {
             // Fetch logs for all devices
@@ -1278,8 +1284,16 @@ class LocalGrowBoxPanel extends HTMLElement {
             });
 
             const header = document.createElement('div');
-            header.style.cssText = "padding:16px 20px; font-size:16px; font-weight:600; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--text-primary); display:flex; align-items:center; gap:10px;";
-            header.innerHTML = '<span style="font-size:22px; opacity:0.9;">📋</span> <span>Protokoll-Historie</span>';
+            header.style.cssText = "padding:16px 20px; font-size:16px; font-weight:600; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--text-primary); display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.2);";
+            header.innerHTML = `
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:22px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));">📋</span> 
+                    <span>Protokoll-Historie</span>
+                </div>
+                <button class="btn" id="btn-refresh-logs" style="padding: 6px 16px; font-size: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);">
+                    🔄 Aktualisieren
+                </button>
+            `;
             listContainer.appendChild(header);
 
             if (allLogs.length === 0) {
@@ -1308,6 +1322,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     if (msgStr.includes('Licht')) icon = '💡';
                     else if (msgStr.includes('Pumpe')) icon = '💧';
                     else if (msgStr.includes('Abluft')) icon = '🌪️';
+                    else if (msgStr.includes('Befeuchter')) icon = '💦';
 
                     // Highlight keywords playfully
                     if (msgStr.includes('eingeschaltet')) {
@@ -1318,17 +1333,19 @@ class LocalGrowBoxPanel extends HTMLElement {
                     }
 
                     item.innerHTML = `
-                        <div style="color:var(--text-secondary); font-size:12px; min-width:130px; text-align:right; font-variant-numeric: tabular-nums;">
+                        <div style="color:var(--text-secondary); font-size:12px; min-width:80px; text-align:right; font-variant-numeric: tabular-nums; opacity:0.8;">
                             ${timeStr}
                         </div>
-                        <div style="font-size:20px; line-height:1; min-width:24px; text-align:center; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
-                            ${icon}
+                        <div style="display:flex; align-items:center; justify-content:center; position:relative; width: 32px; height: 32px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 50%;">
+                            <div style="font-size:16px; line-height:1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                                ${icon}
+                            </div>
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:2px; flex:1;">
-                            <span style="font-size:10px; font-weight:700; color:#38bdf8; text-transform:uppercase; letter-spacing:0.5px;">
+                        <div style="display:flex; flex-direction:column; justify-content: center; gap:4px; flex:1;">
+                            <span style="font-size:10px; font-weight:700; color:#3bacf6; letter-spacing:1px; text-transform:uppercase; background: rgba(59, 172, 246, 0.1); padding: 2px 6px; border-radius: 4px; display: inline-block; width: max-content;">
                                 ${entry.devName}
                             </span>
-                            <span style="font-size:14px; color:var(--text-primary);">
+                            <span style="font-size:14px; color:var(--text-primary); margin-top: 2px; line-height: 1.4;">
                                 ${msgStr}
                             </span>
                         </div>
@@ -1338,6 +1355,12 @@ class LocalGrowBoxPanel extends HTMLElement {
             }
 
             container.appendChild(listContainer);
+            
+            // Attach refresh event AFTER appending to DOM
+            setTimeout(() => {
+                const btn = document.getElementById('btn-refresh-logs');
+                if (btn) btn.onclick = () => this._renderLogs(container);
+            }, 0);
 
         } catch (e) {
             console.error("Log fetch failed", e);
