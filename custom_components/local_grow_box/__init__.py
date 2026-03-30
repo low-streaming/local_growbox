@@ -61,10 +61,11 @@ class GrowBoxManager:
 
         self.vpd = 0.0
         self.pump_start_time = None
-        self.last_pump_stop_time = dt_util.now()
+        # Initialize timers in the past so devices can start immediately on restart if needed
+        self.last_pump_stop_time = dt_util.now() - timedelta(hours=1)
         
         self.humidifier_start_time = None
-        self.last_humidifier_stop_time = dt_util.now()
+        self.last_humidifier_stop_time = dt_util.now() - timedelta(hours=1)
         
         self.logs = []
         self._last_log_state = {}
@@ -478,29 +479,25 @@ class GrowBoxManager:
         svp = 0.61078 * math.exp((17.27 * current_temp) / (current_temp + 237.3))
         self.vpd = svp * (1 - current_humid / 100)
 
-        if not fan_entity:
-            return
-            
-        fan_state = self._get_safe_state(fan_entity)
-        if not fan_state:
-            return
+        if fan_entity:
+            fan_state = self._get_safe_state(fan_entity)
+            if fan_state:
+                is_fan_on = fan_state.state == "on"
+                should_fan_on = False
 
-        is_fan_on = fan_state.state == "on"
-        should_fan_on = False
+                if current_temp > target_temp or current_humid > max_humidity:
+                    should_fan_on = True
+                elif current_temp < (target_temp - 1.0) and current_humid < (max_humidity - 2.0):
+                     should_fan_on = False
+                else:
+                     should_fan_on = is_fan_on
 
-        if current_temp > target_temp or current_humid > max_humidity:
-            should_fan_on = True
-        elif current_temp < (target_temp - 1.0) and current_humid < (max_humidity - 2.0):
-             should_fan_on = False
-        else:
-             should_fan_on = is_fan_on
-
-        if should_fan_on and not is_fan_on:
-             self.add_log(f"Abluft eingeschaltet (T={current_temp}°, H={current_humid}%)")
-             await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": fan_entity})
-        elif not should_fan_on and is_fan_on:
-             self.add_log(f"Abluft ausgeschaltet (T={current_temp}°, H={current_humid}%)")
-             await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": fan_entity})
+                if should_fan_on and not is_fan_on:
+                     self.add_log(f"Abluft eingeschaltet (T={current_temp}°, H={current_humid}%)")
+                     await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": fan_entity})
+                elif not should_fan_on and is_fan_on:
+                     self.add_log(f"Abluft ausgeschaltet (T={current_temp}°, H={current_humid}%)")
+                     await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": fan_entity})
 
         # Humidifier Pulse Logic
         if not humidifier_entity:
