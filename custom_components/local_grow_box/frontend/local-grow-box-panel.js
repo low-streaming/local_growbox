@@ -600,9 +600,15 @@ class LocalGrowBoxPanel extends HTMLElement {
             const hum = getVal(device.options.humidity_sensor);
             const vpd = getVal(device.entities.vpd);
 
-            const minHum = parseFloat(device.options.min_humidity || 40);
-            const maxHum = parseFloat(device.options.max_humidity || 60);
-            const humTarget = { min: minHum, max: maxHum };
+            const targetHum = parseFloat(device.options.target_humidity || 65);
+            const hysteresis = parseFloat(device.options.humidity_hysteresis || 2);
+            const maxHum = parseFloat(device.options.max_humidity || 70);
+            
+            // The "Green/Target Range" for the bar is now between (Target - Hysteresis) and (Max)
+            // or just (Target - Hysteresis) and (Target)? 
+            // Usually, the plant likes the target. Let's show the range [Target-Hyst, Target] as inner target?
+            // Actually, humTarget is used for the color highlight.
+            const humTarget = { min: targetHum - hysteresis, max: targetHum };
 
             let vpdTarget = null;
             if (currentPhase === 'seedling') vpdTarget = { min: 0.4, max: 0.8 };
@@ -1033,9 +1039,9 @@ class LocalGrowBoxPanel extends HTMLElement {
             // Card 2: Klima-Sollwerte
             const cardKlimaValues = createCard('Klima-Sollwerte', '🎯');
             appendInput(cardKlimaValues.body, 'Ziel Temperatur (°C)', 'target_temp', 'number', '🌡️');
-            appendInput(cardKlimaValues.body, 'Min. Feuchte (%) (Start)', 'min_humidity', 'number', '💧');
-            appendInput(cardKlimaValues.body, 'Max. Feuchte (%) (Stop)', 'max_humidity', 'number', '🔥');
-            appendInput(cardKlimaValues.body, 'Ziel Feuchte (%) (Stop)', 'target_humidity', 'number', '🎯');
+            appendInput(cardKlimaValues.body, 'Ziel Feuchte (%)', 'target_humidity', 'number', '🎯');
+            appendInput(cardKlimaValues.body, 'Feuchte Hysterese (%)', 'humidity_hysteresis', 'number', '🔄');
+            appendInput(cardKlimaValues.body, 'Abluft-Limit (Max %)', 'max_humidity', 'number', '🌪️');
             settingsGrid.appendChild(cardKlimaValues.card);
 
             // Card 3: Bewässerung & Licht
