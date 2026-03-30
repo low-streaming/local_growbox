@@ -1035,7 +1035,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             appendInput(cardKlimaValues.body, 'Ziel Temperatur (°C)', 'target_temp', 'number', '🌡️');
             appendInput(cardKlimaValues.body, 'Min. Feuchte (%) (Start)', 'min_humidity', 'number', '💧');
             appendInput(cardKlimaValues.body, 'Max. Feuchte (%) (Stop)', 'max_humidity', 'number', '🔥');
-            appendInput(cardKlimaValues.body, 'Befeuchter Laufzeit (Sek)', 'humidifier_duration', 'number', '⏱️');
+            appendInput(cardKlimaValues.body, 'Ziel Feuchte (%) (Stop)', 'target_humidity', 'number', '🎯');
             settingsGrid.appendChild(cardKlimaValues.card);
 
             // Card 3: Bewässerung & Licht
