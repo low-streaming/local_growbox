@@ -1026,6 +1026,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             appendInput(col1, 'Ziel Temperatur (°C)', 'target_temp', 'number');
             appendInput(col1, 'Min. Feuchte (%)', 'min_humidity', 'number');
             appendInput(col1, 'Max. Feuchte (%)', 'max_humidity', 'number');
+            appendInput(col1, 'Befeuchter Dauer (s)', 'humidifier_duration', 'number');
 
             // Col 2
             appendSelector(col2, 'Licht Quelle', 'light_entity', ['switch', 'light', 'input_boolean']);
