@@ -111,6 +111,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         master: findEntity('_master_switch'),
                         vpd: findEntity('_vpd'),
                         pump: findEntity('_water_pump'),
+                        humidifier: findEntity('_humidifier_switch'),
                         days: findEntity('_days_in_phase'),
                     }
                 };
@@ -263,7 +264,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     padding: 16px; 
                     background: rgba(0,0,0,0.2); 
                     display: grid; 
-                    grid-template-columns: 1fr 1fr 1fr; 
+                    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); 
                     gap: 12px; 
                     border-top: 1px solid rgba(255,255,255,0.05);
                 }
@@ -599,6 +600,10 @@ class LocalGrowBoxPanel extends HTMLElement {
             const hum = getVal(device.options.humidity_sensor);
             const vpd = getVal(device.entities.vpd);
 
+            const minHum = parseFloat(device.options.min_humidity || 40);
+            const maxHum = parseFloat(device.options.max_humidity || 60);
+            const humTarget = { min: minHum, max: maxHum };
+
             let vpdTarget = null;
             if (currentPhase === 'seedling') vpdTarget = { min: 0.4, max: 0.8 };
             else if (currentPhase === 'vegetative') vpdTarget = { min: 0.8, max: 1.2 };
@@ -643,7 +648,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 
                 <div class="card-body">
                     ${this._renderStatBar('Temperatur', temp, '°C', 10, 45, '#ef4444', '🌡️')}
-                    ${this._renderStatBar('Luftfeuchte', hum, '%', 30, 80, '#3b82f6', '💧')}
+                    ${this._renderStatBar('Luftfeuchte', hum, '%', 30, 80, '#3b82f6', '💧', humTarget)}
                     ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3.0, '#10b981', '🍃', vpdTarget)}
                     
                     ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6', '🪴') : ''}
@@ -676,13 +681,23 @@ class LocalGrowBoxPanel extends HTMLElement {
                         </div>
                         ` : ''}
 
-                         <div class="info-box" ${!device.options.humidifier_entity ? 'style="opacity:0.4;"' : ''}>
+                        ${device.options.humidifier_entity ? `
+                         <div class="info-box">
                             <div class="info-icon">${this._hass.states[device.options.humidifier_entity]?.state === 'on' ? '💦' : '🌫️'}</div>
                             <div class="info-content">
                                 <div class="info-label">Befeuchter</div>
                                 <div class="info-val">${this._hass.states[device.options.humidifier_entity]?.state === 'on' ? 'An' : 'Aus'}</div>
                             </div>
                         </div>
+                        ` : `
+                        <div class="info-box" style="opacity:0.4;">
+                            <div class="info-icon">🌫️</div>
+                            <div class="info-content">
+                                <div class="info-label">Befeuchter</div>
+                                <div class="info-val">Nicht konfiguriert</div>
+                            </div>
+                        </div>
+                        `}
                     </div>
                 </div>
                 
@@ -695,6 +710,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                         💧 Pumpe
                     </button>
                     ` : ''}
+                    ${device.options.humidifier_entity ? `
+                    <button class="btn ${this._hass.states[device.options.humidifier_entity]?.state === 'on' ? 'active' : ''}" id="btn-humid-${device.id}">
+                        💦 Befeuchter
+                    </button>
+                    ` : ''}
                     <button class="btn" id="btn-upload-${device.id}">
                         📷 Bild
                     </button>
@@ -705,7 +725,9 @@ class LocalGrowBoxPanel extends HTMLElement {
             const q = s => card.querySelector(s);
             q(`#btn-master-${device.id}`).onclick = () => this._toggle(device.entities.master);
             const btnPump = q(`#btn-pump-${device.id}`);
-            if (btnPump) btnPump.onclick = () => this._hass.callService('homeassistant', 'toggle', { entity_id: device.entities.pump || device.options.pump_entity });
+            if (btnPump) btnPump.onclick = () => this._toggle(device.entities.pump || device.options.pump_entity);
+            const btnHumid = q(`#btn-humid-${device.id}`);
+            if (btnHumid) btnHumid.onclick = () => this._toggle(device.entities.humidifier || device.options.humidifier_entity);
             q(`#btn-upload-${device.id}`).onclick = () => this._triggerUpload(device.id);
             q('.card-image').style.cursor = 'pointer';
             q('.card-image').onclick = (e) => {

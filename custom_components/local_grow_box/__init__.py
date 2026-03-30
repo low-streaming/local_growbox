@@ -507,7 +507,8 @@ class GrowBoxManager:
         if not humidifier_state:
             return
 
-        is_humidifier_on = humidifier_state.state == "on"
+        # More robust check for "on" state (handles humidifier domain and other toggleable entities)
+        is_humidifier_on = humidifier_state.state not in ["off", "unavailable", "unknown"]
         should_humidifier_on = False
 
         if current_humid < min_humidity:
@@ -518,9 +519,11 @@ class GrowBoxManager:
             should_humidifier_on = is_humidifier_on
 
         if should_humidifier_on and not is_humidifier_on:
+            _LOGGER.info("Humidity low (%.1f < %.1f). Turning ON Humidifier.", current_humid, min_humidity)
             self.add_log(f"Luftbefeuchter eingeschaltet (H={current_humid}%)")
             await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": humidifier_entity})
         elif not should_humidifier_on and is_humidifier_on:
+            _LOGGER.info("Humidity high (%.1f > %.1f). Turning OFF Humidifier.", current_humid, min_humidity + 5.0)
             self.add_log(f"Luftbefeuchter ausgeschaltet (H={current_humid}%)")
             await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": humidifier_entity})
 
