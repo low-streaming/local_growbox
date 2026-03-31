@@ -28,10 +28,10 @@ Verfolge den Lebenszyklus deiner Pflanze präzise.
 -   **Phasen-Profile:** Vorkonfigurierte Lichtstunden (Keimling, Wachstum, Blüte, Trocknen, Veredeln).
 -   **Automatischer Tageszähler:** Berechnet seit dem Startdatum exakt den aktuellen Tag des Grows.
 -   **Manueller Phasenwechsel:** Phase direkt im Dashboard ändern, die Automatik passt sich sofort an.
-
+-   **Anpassbare Hysteresen (Neu in 2.1.8):** Volle Kontrolle über Schalt-Schwellen für Temperatur (Lüfter), Feuchtigkeit (Befeuchter) und Abluft-Stopp.
+-   **Visuelle Zielzonen (Neu in 2.1.8):** Das Dashboard zeigt nun grafisch den optimalen Klima-Bereich basierend auf deinen eingestellten **individuellen Hysteresen (+/-)** direkt in den Balken an.
 -   **Smarte Abluft:** Steuert den Lüfter basierend auf Schwellenwerten für Temperatur und Feuchtigkeit.
 -   **Intelligenter Befeuchter-Impuls:** Konfigurierbare Laufzeit mit automatischer **10 Minuten Pause** zur optimalen Feuchtigkeitsverteilung (verhindert Sensor-Lag-Probleme).
--   **Visuelle Zielzonen (Neu in 2.1.8):** Das Dashboard zeigt nun grafisch den optimalen Feuchtigkeitsbereich basierend auf deiner eingestellten **Hysterese (+/-)** direkt im Balken an.
 
 ### 4. **Smarte Bewässerung & Bodenfeuchte** 💧
 -   **Bodenfeuchte-Logik:** Die Pumpe startet automatisch, wenn der eingestellte Mindestwert unterschritten wird.
@@ -57,9 +57,13 @@ Verwalte mehrere Zelte oder Boxen gleichzeitig.
 -   **24h-Graphen:** Verfolge Temperatur, Feuchtigkeit und VPD im zeitlichen Verlauf direkt im Dashboard.
 -   **Ereignis-Protokoll:** Ein flackerfreies Log-Design mit manuellem Refresh-Button und Smart-Icons.
 
-### 9. **Dashboard-Stabilität & Performance (Neu in v2.1.6/2.1.7)** 🛡️
+### 9. **Dashboard-Stabilität & Performance** 🛡️
 -   **Optimiertes Rendering:** Das Dashboard rechnet nun deutlich effizienter. Statische Tabs (wie Hilfe oder Einstellungen) werden nicht mehr bei jedem Sensor-Update im Hintergrund neu aufgebaut.
 -   **Fix für Panel-Abstürze:** Behebt das Problem, bei dem das Dashboard nach längerer Laufzeit im Browser "verschwinden" konnte.
+
+### 10. **Maximale Konfigurationsfreiheit (Neu in 2.1.8)** ⚙️
+-   **Sollwert-Sync:** Alle Ziele und Hysteresen sind nun sowohl im Dashboard als auch in den nativen Home Assistant Einstellungen synchron verfügbar.
+-   **Logische UI:** Einstellungen im Dashboard sind nun intuitiv nach Klima-Typen gruppiert.
 
 ---
 
@@ -131,9 +135,13 @@ Manage multiple grow tents in one place.
 -   **History Charts:** 24-hour graphs for all critical telemetry.
 -   **Action Log:** A flicker-free, redesigned log tab with manual refresh and distinct activity icons.
 
-### 9. **Stability & Performance (New in 2.1.6/2.1.7)** 🛡️
+### 9. **Stability & Performance** 🛡️
 -   **Smart Rendering:** Improved efficiency by preventing background re-renders of static tabs (Settings, Info, etc.).
--   **Persistence Fix:** Resolves the UI "disappearing" bug caused by excessive DOM updates over long periods.
+-   **Persistence Fix:** Resolves the UI "disappearing" bug.
+
+### 10. **Full Configuration Control (New in 2.1.8)** ⚙️
+-   **Universal Hysteresis:** Individual settings for Temperature, Humidity, and Exhaust fan.
+-   **Logical UI:** Dashboard settings are now grouped by category (Target + Hysteresis).
 
 ---
 
