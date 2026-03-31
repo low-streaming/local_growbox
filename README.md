@@ -2,7 +2,7 @@
 [![github_release](https://img.shields.io/github/v/release/openkairo/GrowRoom_Local?style=for-the-badge)](https://github.com/openkairo/GrowRoom_Local/releases)
 [![github_license](https://img.shields.io/github/license/openkairo/GrowRoom_Local?style=for-the-badge)](https://github.com/openkairo/GrowRoom_Local/blob/main/LICENSE)
 
-# Local Grow Box Integration 🌿 (v2.1.7)
+# Local Grow Box Integration 🌿 (v2.1.8)
 
 <img width="1024" height="1536" alt="localgrow" src="https://github.com/user-attachments/assets/87bc7e9b-7643-4085-a9df-32111ebdaa5b" />
 
@@ -14,7 +14,7 @@
 
 Die **Local Grow Box** Integration verwandelt dein Home Assistant in eine vollautomatische Grow-Room-Steuerung. Sie verwaltet Lichtzyklen, Klima (VPD), Bewässerung und verfolgt die Wachstumsphasen über ein schickes, modernes Dashboard.
 
-## ✨ Hauptfunktionen (v2.1.7)
+## ✨ Hauptfunktionen (v2.1.8)
 
 ### 1. **Modernes Dashboard (Neu!)** 🖥️
 Ein komplett überarbeitetes, dunkles Dashboard im Tech-Design.
@@ -30,8 +30,8 @@ Verfolge den Lebenszyklus deiner Pflanze präzise.
 -   **Manueller Phasenwechsel:** Phase direkt im Dashboard ändern, die Automatik passt sich sofort an.
 
 -   **Smarte Abluft:** Steuert den Lüfter basierend auf Schwellenwerten für Temperatur und Feuchtigkeit.
--   **Intelligenter Befeuchter-Impuls (Neu in v2.1.5):** Konfigurierbare Laufzeit mit automatischer **10 Minuten Pause** zur optimalen Feuchtigkeitsverteilung (verhindert Sensor-Lag-Probleme).
--   **Visuelle Zielzonen:** Das Dashboard zeigt nun grafisch den optimalen Feuchtigkeitsbereich (+/- 5%) direkt im Balken an.
+-   **Intelligenter Befeuchter-Impuls:** Konfigurierbare Laufzeit mit automatischer **10 Minuten Pause** zur optimalen Feuchtigkeitsverteilung (verhindert Sensor-Lag-Probleme).
+-   **Visuelle Zielzonen (Neu in 2.1.8):** Das Dashboard zeigt nun grafisch den optimalen Feuchtigkeitsbereich basierend auf deiner eingestellten **Hysterese (+/-)** direkt im Balken an.
 
 ### 4. **Smarte Bewässerung & Bodenfeuchte** 💧
 -   **Bodenfeuchte-Logik:** Die Pumpe startet automatisch, wenn der eingestellte Mindestwert unterschritten wird.
@@ -89,7 +89,7 @@ Verwalte mehrere Zelte oder Boxen gleichzeitig.
 
 The **Local Grow Box** integration turns your Home Assistant instance into a fully automated Grow Room controller. It manages light cycles, climate (VPD), watering, and tracks growth phases through a sleek, modern dashboard panel.
 
-## ✨ Key Features (v2.1.7)
+## ✨ Key Features (v2.1.8)
 
 ### 1. **Modern Dashboard (Improved!)** 🖥️
 A completely redesigned, dark-themed tech dashboard.
@@ -105,8 +105,8 @@ Precision-track your plant's lifecycle.
 -   **Instant Phase Switch:** Change phases directly from the UI, automation updates immediately.
 
 -   **Intelligent Ventilation:** Controls your exhaust fan based on temperature and humidity thresholds.
--   **Smart Humidifier Pulse (New in v2.1.5):** Set a specific run duration followed by a **10-minute soak period** for perfect moisture distribution and sensor stability.
--   **Target Visualization:** The UI now highlights the optimal humidity range (+/- 5%) directly on the status bar.
+-   **Smart Humidifier Pulse:** Set a specific run duration followed by a **10-minute soak period** for perfect moisture distribution and sensor stability.
+-   **Target Visualization (New in 2.1.8):** The UI now highlights the optimal humidity range based on your current **hysteresis (+/-)** directly on the status bar.
 
 ### 4. **Smart Irrigation** 💧
 -   **Moisture Trigger:** Pump starts automatically when soil moisture drops below your target.
