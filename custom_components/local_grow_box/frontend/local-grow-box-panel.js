@@ -1040,9 +1040,9 @@ class LocalGrowBoxPanel extends HTMLElement {
             // Card 2: Klima-Sollwerte
             const cardKlimaValues = createCard('Klima-Sollwerte', '🎯');
             appendInput(cardKlimaValues.body, 'Ziel Temperatur (°C)', 'target_temp', 'number', '🌡️');
+            appendInput(cardKlimaValues.body, 'Temp Hysterese (Lüfter °C)', 'temp_hysteresis', 'number', '🌡️');
             appendInput(cardKlimaValues.body, 'Ziel Feuchte (%)', 'target_humidity', 'number', '🎯');
             appendInput(cardKlimaValues.body, 'Feuchte Hysterese (Befeuchter %)', 'humidity_hysteresis', 'number', '🔄');
-            appendInput(cardKlimaValues.body, 'Temp Hysterese (Lüfter °C)', 'temp_hysteresis', 'number', '🌡️');
             appendInput(cardKlimaValues.body, 'Abluft-Limit (Max %)', 'max_humidity', 'number', '🌪️');
             appendInput(cardKlimaValues.body, 'Abluft Hysterese (%)', 'fan_hysteresis', 'number', '💨');
             settingsGrid.appendChild(cardKlimaValues.card);
