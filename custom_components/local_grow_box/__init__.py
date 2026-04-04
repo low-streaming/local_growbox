@@ -369,6 +369,22 @@ class GrowBoxManager:
                 await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": entity_id})
 
     async def _async_update_logic(self, now: datetime.datetime):
+        # 0. Global Sensor Calculations (Always run)
+        temp_entity = self.config.get(CONF_TEMP_SENSOR)
+        humid_entity = self.config.get(CONF_HUMIDITY_SENSOR)
+        temp_state = self._get_safe_state(temp_entity)
+        humid_state = self._get_safe_state(humid_entity)
+        
+        if temp_state and humid_state:
+            try:
+                current_temp = float(temp_state.state)
+                current_humid = float(humid_state.state)
+                # Calculate saturated vapor pressure (kPa) and VPD
+                svp = 0.61078 * math.exp((17.27 * current_temp) / (current_temp + 237.3))
+                self.vpd = svp * (1 - current_humid / 100)
+            except ValueError:
+                pass
+
         # 1. Metrics Tracking (Runs independently of Master Switch and Sensors)
         current_time = now
         if not hasattr(self, "_last_metrics_tracking") or (current_time - self._last_metrics_tracking).total_seconds() >= 60:
@@ -721,9 +737,6 @@ class GrowBoxManager:
             current_humid = float(humid_state.state)
         except ValueError:
             return
-
-        svp = 0.61078 * math.exp((17.27 * current_temp) / (current_temp + 237.3))
-        self.vpd = svp * (1 - current_humid / 100)
 
         if fan_entity:
             fan_state = self._get_safe_state(fan_entity)
