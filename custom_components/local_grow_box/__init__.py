@@ -933,6 +933,7 @@ async def ws_get_grows(hass, connection, msg):
     vol.Required("entry_id"): str,
     vol.Required("name"): str,
     vol.Optional("strain", default=""): str,
+    vol.Optional("expected_weeks", default=8): int,
 })
 @websocket_api.async_response
 async def ws_start_grow(hass, connection, msg):
@@ -940,7 +941,7 @@ async def ws_start_grow(hass, connection, msg):
     entry_id = msg["entry_id"]
     manager = hass.data[DOMAIN].get(entry_id)
     if manager:
-        manager.start_grow(msg["name"], msg["strain"])
+        manager.start_grow(msg["name"], msg["strain"], msg["expected_weeks"])
         connection.send_result(msg["id"], {"success": True, "grows": manager.grows})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")
