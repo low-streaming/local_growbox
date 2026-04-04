@@ -984,7 +984,7 @@ async def ws_start_grow(hass, connection, msg):
     manager = hass.data[DOMAIN].get(entry_id)
     if manager:
         manager.start_grow(msg["name"], msg["strain"], msg["expected_weeks"])
-        connection.send_result(msg["id"], {"success": True, "grows": manager.grows})
+        connection.send_result(msg["id"], {"grows": manager.grows})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")
 
@@ -1000,7 +1000,7 @@ async def ws_stop_grow(hass, connection, msg):
     manager = hass.data[DOMAIN].get(entry_id)
     if manager:
         manager.stop_grow(msg["grow_id"])
-        connection.send_result(msg["id"], {"success": True, "grows": manager.grows})
+        connection.send_result(msg["id"], {"grows": manager.grows})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")
 
@@ -1017,7 +1017,7 @@ async def ws_update_grow(hass, connection, msg):
     manager = hass.data[DOMAIN].get(entry_id)
     if manager:
         manager.update_grow(msg["grow_id"], msg["updates"])
-        connection.send_result(msg["id"], {"status": "success", "grows": manager.grows})
+        connection.send_result(msg["id"], {"grows": manager.grows})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")
 
@@ -1033,7 +1033,7 @@ async def ws_delete_grow(hass, connection, msg):
     manager = hass.data[DOMAIN].get(entry_id)
     if manager:
         manager.delete_grow(msg["grow_id"])
-        connection.send_result(msg["id"], {"success": True, "grows": manager.grows})
+        connection.send_result(msg["id"], {"grows": manager.grows})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")
 
@@ -1049,7 +1049,7 @@ async def ws_reset_grow_energy(hass, connection, msg):
     manager = hass.data[DOMAIN].get(entry_id)
     if manager:
         manager.reset_grow_energy(msg["grow_id"])
-        connection.send_result(msg["id"], {"status": "success", "grows": manager.grows})
+        connection.send_result(msg["id"], {"grows": manager.grows})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")
 
@@ -1067,6 +1067,6 @@ async def ws_add_grow_event(hass, connection, msg):
     manager = hass.data[DOMAIN].get(entry_id)
     if manager:
         manager.add_grow_event(msg["grow_id"], msg["event_type"], msg["note"])
-        connection.send_result(msg["id"], {"success": True, "grows": manager.grows})
+        connection.send_result(msg["id"], {"grows": manager.grows})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")

@@ -2033,7 +2033,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 entry_id: entryId,
                 grow_id: growId
             });
-            this._fetchGrows();
+            this._updateContent();
         } catch (err) {
             alert("Fehler: " + err.message);
         }
@@ -2053,7 +2053,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 event_type: type,
                 note: note || ""
             });
-            this._fetchGrows();
+            this._updateContent();
         } catch (err) {
             alert("Fehler: " + err.message);
         }
@@ -2074,7 +2074,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 strain: strain,
                 expected_weeks: parseInt(weeks) || 8
             });
-            this._fetchGrows();
+            this._updateContent();
         } catch (err) {
             alert("Fehler beim Starten: " + err.message);
         }
