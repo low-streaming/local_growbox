@@ -404,6 +404,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     <div class="tab" data-tab="settings">Geräte & Config</div>
                     <div class="tab" data-tab="phases">Phasen</div>
                     <div class="tab" data-tab="logs">Protokoll</div>
+                    <div class="tab" data-tab="diary">Tagebuch</div>
                     <div class="tab" data-tab="info">Info / Hilfe</div>
                 </div>
             </div>
@@ -474,6 +475,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             this._renderPhases(container);
         } else if (this._activeTab === 'logs') {
             this._renderLogs(container);
+        } else if (this._activeTab === 'diary') {
+            this._renderDiary(container);
         } else if (this._activeTab === 'info') {
             this._renderInfo(container);
         }
@@ -1035,6 +1038,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             appendSelector(cardKlimaEntities.body, 'Feuchtigkeits Sensor', 'humidity_sensor', ['sensor']);
             appendSelector(cardKlimaEntities.body, 'Abluft Ventilator', 'fan_entity', ['switch', 'fan', 'input_boolean']);
             appendSelector(cardKlimaEntities.body, 'Luftbefeuchter', 'humidifier_entity', ['switch', 'input_boolean', 'humidifier']);
+            appendSelector(cardKlimaEntities.body, 'Stromzähler (kWh)', 'energy_sensor', ['sensor']);
+            appendSelector(cardKlimaEntities.body, 'Leistungssensor (W)', 'power_sensor', ['sensor']);
             settingsGrid.appendChild(cardKlimaEntities.card);
 
             // Card 2: Klima-Sollwerte
@@ -1685,6 +1690,225 @@ class LocalGrowBoxPanel extends HTMLElement {
         });
 
         container.appendChild(statsDiv);
+    }
+
+    async _renderDiary(container) {
+        if (this._devices.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Keine Grow Box gefunden.</div>';
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; color: var(--text-secondary);">
+                <div style="font-size: 32px; margin-bottom: 16px; animation: pulse 1.5s infinite;">📖</div>
+                <div>Lade Tagebuch...</div>
+            </div>
+        `;
+
+        try {
+            for (const device of this._devices) {
+                const res = await this._hass.callWS({
+                    type: 'local_grow_box/get_grows',
+                    entry_id: device.entryId
+                });
+                device.grows = res.grows || [];
+            }
+
+            container.innerHTML = '';
+            
+            this._devices.forEach(device => {
+                const section = document.createElement('div');
+                section.className = 'settings-section';
+                section.style.marginBottom = '40px';
+                
+                const title = document.createElement('div');
+                title.className = 'section-title';
+                title.style.display = 'flex';
+                title.style.justifyContent = 'space-between';
+                title.style.alignItems = 'center';
+                title.innerHTML = `
+                    <span>📖 ${device.name} - Tagebuch</span>
+                    <button class="btn active" style="width:auto; padding:8px 16px; font-size:12px;" id="start-grow-${device.id}">
+                        ➕ Neuer Grow
+                    </button>
+                `;
+                section.appendChild(title);
+
+                const activeGrow = device.grows.find(g => g.status === 'active');
+                
+                if (activeGrow) {
+                    const activeCard = document.createElement('div');
+                    activeCard.style.cssText = "background: linear-gradient(135deg, rgba(3, 169, 244, 0.1) 0%, rgba(3, 169, 244, 0.02) 100%); border: 1px solid rgba(3, 169, 244, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px; position:relative; overflow:hidden;";
+                    
+                    const startDate = new Date(activeGrow.start_date);
+                    const days = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
+                    
+                    // Power Calculation
+                    let powerInfo = "Kein Sensor konfiguriert";
+                    if (device.options.energy_sensor) {
+                        const energyState = this._hass.states[device.options.energy_sensor];
+                        if (energyState && !isNaN(energyState.state)) {
+                            const currentEnergy = parseFloat(energyState.state);
+                            const consumed = Math.max(0, currentEnergy - (activeGrow.start_energy || 0));
+                            powerInfo = `${consumed.toFixed(2)} kWh verbraucht`;
+                        } else {
+                            powerInfo = "Warte auf Daten...";
+                        }
+                    }
+
+                    activeCard.innerHTML = `
+                        <div style="position:absolute; top:-10px; right:-10px; font-size:80px; opacity:0.05; pointer-events:none;">🌿</div>
+                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px;">
+                            <div>
+                                <div style="font-size:12px; color:var(--primary-color); text-transform:uppercase; font-weight:700; letter-spacing:1px;">Aktueller Grow</div>
+                                <div style="font-size:24px; font-weight:800; margin:4px 0;">${activeGrow.name}</div>
+                                <div style="color:var(--text-secondary); font-size:14px;">${activeGrow.strain || 'Unbekannte Sorte'}</div>
+                            </div>
+                            <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px;">
+                                <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Dauer</div>
+                                <div style="font-size:28px; font-weight:800; color:#4ade80;">Tag ${days}</div>
+                                <div style="font-size:11px; opacity:0.7;">Seit ${startDate.toLocaleDateString()}</div>
+                            </div>
+                            <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px;">
+                                <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Verbrauch</div>
+                                <div style="font-size:24px; font-weight:800; color:#fbbf24;">${powerInfo.split(' ')[0]} <span style="font-size:14px;">kWh</span></div>
+                                <div style="font-size:11px; opacity:0.7;">${this._hass.states[device.options.power_sensor]?.state || '0'} W aktuell</div>
+                            </div>
+                            <div style="display:flex; flex-direction:column; justify-content:center; gap:8px;">
+                                <button class="btn" style="background:#ef4444; color:white; border:none;" id="stop-grow-${activeGrow.id}">🚀 Grow beenden</button>
+                                <button class="btn" id="edit-grow-${activeGrow.id}">📝 Notizen</button>
+                            </div>
+                        </div>
+                    `;
+                    section.appendChild(activeCard);
+                    
+                    setTimeout(() => {
+                        section.querySelector(`#stop-grow-${activeGrow.id}`).onclick = () => this._stopGrow(device.entryId, activeGrow.id);
+                        section.querySelector(`#edit-grow-${activeGrow.id}`).onclick = () => this._editGrow(device.entryId, activeGrow);
+                    }, 0);
+                }
+
+                // History
+                const historyTable = document.createElement('div');
+                historyTable.style.background = 'rgba(0,0,0,0.2)';
+                historyTable.style.borderRadius = '8px';
+                historyTable.style.overflow = 'hidden';
+                
+                let rows = '';
+                device.grows.filter(g => g.status === 'finished').forEach(g => {
+                    const duration = Math.floor((new Date(g.end_date) - new Date(g.start_date)) / (1000 * 60 * 60 * 24));
+                    const energy = (g.end_energy !== null && g.start_energy !== null) ? (g.end_energy - g.start_energy).toFixed(2) : '--';
+                    
+                    rows += `
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding:12px;">${g.name}<br><small style="opacity:0.6;">${g.strain || ''}</small></td>
+                            <td style="padding:12px;">${new Date(g.start_date).toLocaleDateString()}</td>
+                            <td style="padding:12px; text-align:center;">${duration} Tage</td>
+                            <td style="padding:12px; text-align:center; color:#fbbf24;">${energy} kWh</td>
+                            <td style="padding:12px; text-align:right;">
+                                <button class="btn" style="padding:4px 8px; font-size:10px;" id="del-grow-${g.id}">🗑️</button>
+                                <button class="btn" style="padding:4px 8px; font-size:10px; margin-left:4px;" id="edit-hist-${g.id}">📝</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                historyTable.innerHTML = `
+                    <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                        <thead>
+                            <tr style="background:rgba(255,255,255,0.05); color:var(--primary-color);">
+                                <th style="padding:12px; text-align:left;">Name / Sorte</th>
+                                <th style="padding:12px; text-align:left;">Start</th>
+                                <th style="padding:12px; text-align:center;">Dauer</th>
+                                <th style="padding:12px; text-align:center;">Verbrauch</th>
+                                <th style="padding:12px; text-align:right;">Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows || '<tr><td colspan="5" style="padding:32px; text-align:center; color:var(--text-secondary);">Noch keine abgeschlossenen Grows.</td></tr>'}
+                        </tbody>
+                    </table>
+                `;
+                section.appendChild(historyTable);
+                
+                setTimeout(() => {
+                    section.querySelector(`#start-grow-${device.id}`).onclick = () => this._startGrowDialog(device.entryId);
+                    device.grows.filter(g => g.status === 'finished').forEach(g => {
+                        const btnDel = section.querySelector(`#del-grow-${g.id}`);
+                        if (btnDel) btnDel.onclick = () => this._deleteGrow(device.entryId, g.id);
+                        const btnEdit = section.querySelector(`#edit-hist-${g.id}`);
+                        if (btnEdit) btnEdit.onclick = () => this._editGrow(device.entryId, g);
+                    });
+                }, 0);
+
+                container.appendChild(section);
+            });
+        } catch (err) {
+            container.innerHTML = `<div style="color:#ef4444; padding:20px;">Fehler: ${err.message}</div>`;
+        }
+    }
+
+    async _startGrowDialog(entryId) {
+        const name = prompt("Name für den neuen Grow:", "Mein Grow " + new Date().toLocaleDateString());
+        if (!name) return;
+        const strain = prompt("Sorte (optional):", "");
+        
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/start_grow',
+                entry_id: entryId,
+                name: name,
+                strain: strain
+            });
+            this._updateContent();
+        } catch (err) {
+            alert("Fehler beim Starten: " + err.message);
+        }
+    }
+
+    async _stopGrow(entryId, growId) {
+        if (!confirm("Möchtest du diesen Grow wirklich beenden? Der aktuelle Stromzählerstand wird gespeichert.")) return;
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/stop_grow',
+                entry_id: entryId,
+                grow_id: growId
+            });
+            this._updateContent();
+        } catch (err) {
+            alert("Fehler beim Beenden: " + err.message);
+        }
+    }
+
+    async _deleteGrow(entryId, growId) {
+        if (!confirm("Eintrag unwiderruflich löschen?")) return;
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/delete_grow',
+                entry_id: entryId,
+                grow_id: growId
+            });
+            this._updateContent();
+        } catch (err) {
+            alert("Fehler beim Löschen: " + err.message);
+        }
+    }
+
+    async _editGrow(entryId, grow) {
+        const notes = prompt("Notizen / Ertrag / Fazit:", grow.notes || "");
+        if (notes === null) return;
+        
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/update_grow',
+                entry_id: entryId,
+                grow_id: grow.id,
+                updates: { notes: notes }
+            });
+            this._updateContent();
+        } catch (err) {
+            alert("Fehler beim Speichern: " + err.message);
+        }
     }
 }
 

@@ -35,6 +35,7 @@ from .const import (
     CONF_TEMP_HYSTERESIS, DEFAULT_TEMP_HYSTERESIS,
     CONF_FAN_HYSTERESIS, DEFAULT_FAN_HYSTERESIS,
     DEFAULT_LIGHT_START_HOUR, DEFAULT_TARGET_MOISTURE,
+    CONF_ENERGY_SENSOR, CONF_POWER_SENSOR,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -75,6 +76,11 @@ class GrowBoxManager:
         self._last_log_state = {}
         self._log_file_path = hass.config.path(f".storage", f"local_grow_box_logs_{self.entry.entry_id}.json")
         self._load_logs()
+        
+        self.grows = []
+        self._grows_file_path = hass.config.path(".storage", f"local_grow_box_grows_{self.entry.entry_id}.json")
+        self._load_grows()
+
         self._last_display_update = None
 
     def _load_logs(self):
@@ -104,6 +110,94 @@ class GrowBoxManager:
                 json.dump(self.logs, f)
         except Exception as e:
             pass # avoid spamming if permissions fail
+
+    def _load_grows(self):
+        """Load grows history from file."""
+        if os.path.exists(self._grows_file_path):
+            try:
+                with open(self._grows_file_path, "r", encoding="utf-8") as f:
+                    self.grows = json.load(f)
+            except Exception as e:
+                _LOGGER.error("Failed to load Local Grow Box grows: %s", e)
+
+    def _save_grows(self):
+        """Save grows history to file."""
+        try:
+            with open(self._grows_file_path, "w", encoding="utf-8") as f:
+                json.dump(self.grows, f)
+        except Exception as e:
+            _LOGGER.error("Failed to save Local Grow Box grows: %s", e)
+
+    def start_grow(self, name, strain=""):
+        """Start a new grow cycle."""
+        # Archive any currently active grow if needed, or just allow multiple?
+        # Typically one grow per box, so let's check for an 'active' one.
+        for g in self.grows:
+            if g.get("status") == "active":
+                g["status"] = "finished"
+                g["end_date"] = dt_util.now().isoformat()
+        
+        start_energy = 0
+        energy_entity = self.config.get(CONF_ENERGY_SENSOR)
+        if energy_entity:
+            state = self.hass.states.get(energy_entity)
+            if state and state.state not in ["unavailable", "unknown"]:
+                try:
+                    start_energy = float(state.state)
+                except ValueError:
+                    pass
+
+        new_grow = {
+            "id": f"grow_{int(dt_util.now().timestamp())}",
+            "name": name,
+            "strain": strain,
+            "start_date": dt_util.now().isoformat(),
+            "end_date": None,
+            "start_energy": start_energy,
+            "end_energy": None,
+            "status": "active",
+            "notes": ""
+        }
+        self.grows.insert(0, new_grow)
+        self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
+        self.add_log(f"Neuer Grow gestartet: {name}")
+
+    def stop_grow(self, grow_id):
+        """Finish a grow cycle."""
+        end_energy = 0
+        energy_entity = self.config.get(CONF_ENERGY_SENSOR)
+        if energy_entity:
+            state = self.hass.states.get(energy_entity)
+            if state and state.state not in ["unavailable", "unknown"]:
+                try:
+                    end_energy = float(state.state)
+                except ValueError:
+                    pass
+
+        for g in self.grows:
+            if g["id"] == grow_id:
+                g["status"] = "finished"
+                g["end_date"] = dt_util.now().isoformat()
+                g["end_energy"] = end_energy
+                self.add_log(f"Grow beendet: {g['name']}")
+                break
+        
+        self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
+
+    def update_grow(self, grow_id, updates):
+        """Update grow details."""
+        for g in self.grows:
+            if g["id"] == grow_id:
+                for k, v in updates.items():
+                    if k in g:
+                        g[k] = v
+                break
+        self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
+
+    def delete_grow(self, grow_id):
+        """Remove a grow entry."""
+        self.grows = [g for g in self.grows if g["id"] != grow_id]
+        self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
 
     def add_log(self, message: str):
         """Add a log entry with timestamp."""
@@ -608,6 +702,11 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
         websocket_api.async_register_command(hass, ws_update_config)
         websocket_api.async_register_command(hass, ws_get_config)
         websocket_api.async_register_command(hass, ws_get_logs)
+        websocket_api.async_register_command(hass, ws_get_grows)
+        websocket_api.async_register_command(hass, ws_start_grow)
+        websocket_api.async_register_command(hass, ws_stop_grow)
+        websocket_api.async_register_command(hass, ws_update_grow)
+        websocket_api.async_register_command(hass, ws_delete_grow)
     except Exception as e:
         _LOGGER.warning("Failed to register websocket commands in async_setup (might be duplicate): %s", e)
     
@@ -622,6 +721,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         websocket_api.async_register_command(hass, ws_update_config)
         websocket_api.async_register_command(hass, ws_get_config)
         websocket_api.async_register_command(hass, ws_get_logs)
+        websocket_api.async_register_command(hass, ws_get_grows)
+        websocket_api.async_register_command(hass, ws_start_grow)
+        websocket_api.async_register_command(hass, ws_stop_grow)
+        websocket_api.async_register_command(hass, ws_update_grow)
+        websocket_api.async_register_command(hass, ws_delete_grow)
     except Exception:
         pass # Expected if already registered
 
@@ -765,3 +869,83 @@ async def ws_get_logs(hass, connection, msg):
         connection.send_result(msg["id"], {"logs": manager.logs})
     else:
         connection.send_result(msg["id"], {"logs": []})
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/get_grows",
+    vol.Required("entry_id"): str,
+})
+@websocket_api.async_response
+async def ws_get_grows(hass, connection, msg):
+    """Handle get grows."""
+    entry_id = msg["entry_id"]
+    manager = hass.data[DOMAIN].get(entry_id)
+    if manager:
+        connection.send_result(msg["id"], {"grows": manager.grows})
+    else:
+        connection.send_result(msg["id"], {"grows": []})
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/start_grow",
+    vol.Required("entry_id"): str,
+    vol.Required("name"): str,
+    vol.Optional("strain", default=""): str,
+})
+@websocket_api.async_response
+async def ws_start_grow(hass, connection, msg):
+    """Handle start grow."""
+    entry_id = msg["entry_id"]
+    manager = hass.data[DOMAIN].get(entry_id)
+    if manager:
+        manager.start_grow(msg["name"], msg["strain"])
+        connection.send_result(msg["id"], {"success": True, "grows": manager.grows})
+    else:
+        connection.send_error(msg["id"], "not_found", "Manager not found")
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/stop_grow",
+    vol.Required("entry_id"): str,
+    vol.Required("grow_id"): str,
+})
+@websocket_api.async_response
+async def ws_stop_grow(hass, connection, msg):
+    """Handle stop grow."""
+    entry_id = msg["entry_id"]
+    manager = hass.data[DOMAIN].get(entry_id)
+    if manager:
+        manager.stop_grow(msg["grow_id"])
+        connection.send_result(msg["id"], {"success": True, "grows": manager.grows})
+    else:
+        connection.send_error(msg["id"], "not_found", "Manager not found")
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/update_grow",
+    vol.Required("entry_id"): str,
+    vol.Required("grow_id"): str,
+    vol.Required("updates"): dict,
+})
+@websocket_api.async_response
+async def ws_update_grow(hass, connection, msg):
+    """Handle update grow."""
+    entry_id = msg["entry_id"]
+    manager = hass.data[DOMAIN].get(entry_id)
+    if manager:
+        manager.update_grow(msg["grow_id"], msg["updates"])
+        connection.send_result(msg["id"], {"status": "success", "grows": manager.grows})
+    else:
+        connection.send_error(msg["id"], "not_found", "Manager not found")
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/delete_grow",
+    vol.Required("entry_id"): str,
+    vol.Required("grow_id"): str,
+})
+@websocket_api.async_response
+async def ws_delete_grow(hass, connection, msg):
+    """Handle delete grow."""
+    entry_id = msg["entry_id"]
+    manager = hass.data[DOMAIN].get(entry_id)
+    if manager:
+        manager.delete_grow(msg["grow_id"])
+        connection.send_result(msg["id"], {"success": True, "grows": manager.grows})
+    else:
+        connection.send_error(msg["id"], "not_found", "Manager not found")

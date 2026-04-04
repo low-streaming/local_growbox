@@ -19,6 +19,8 @@ from .const import (
     CONF_CAMERA_ENTITY,
     CONF_TEMP_SENSOR,
     CONF_HUMIDITY_SENSOR,
+    CONF_ENERGY_SENSOR,
+    CONF_POWER_SENSOR,
     CONF_MOISTURE_SENSOR,
     CONF_HUMIDIFIER_ENTITY,
     CONF_TARGET_TEMP,
@@ -56,6 +58,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ),
                     vol.Optional(CONF_HUMIDITY_SENSOR): selector.EntitySelector(
                         selector.EntitySelectorConfig(domain="sensor")
+                    ),
+                    vol.Optional(CONF_ENERGY_SENSOR): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+                    ),
+                    vol.Optional(CONF_POWER_SENSOR): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="sensor", device_class="power")
                     ),
                     
                     # Controls
@@ -126,6 +134,12 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             ),
             vol.Optional(CONF_HUMIDITY_SENSOR, description={"suggested_value": get_val(CONF_HUMIDITY_SENSOR)}): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
+            ),
+            vol.Optional(CONF_ENERGY_SENSOR, description={"suggested_value": get_val(CONF_ENERGY_SENSOR)}): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+            ),
+            vol.Optional(CONF_POWER_SENSOR, description={"suggested_value": get_val(CONF_POWER_SENSOR)}): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor", device_class="power")
             ),
             vol.Optional(CONF_LIGHT_ENTITY, description={"suggested_value": get_val(CONF_LIGHT_ENTITY)}): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["switch", "light", "input_boolean"])
