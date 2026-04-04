@@ -153,6 +153,14 @@ class LocalGrowBoxPanel extends HTMLElement {
                     entry_id: device.entryId
                 });
                 device.grows = res.grows || [];
+                
+                // Also fetch VPD history for the active grow if in diary tab
+                if (this._activeTab === 'diary') {
+                    const active = device.grows.find(g => g.status === 'active');
+                    if (active && device.entities.vpd) {
+                        this._fetchHistory(device, device.entities.vpd);
+                    }
+                }
             }
             if (this._activeTab === 'diary') {
                 this._renderDiary(this.shadowRoot.getElementById('main-content'));
@@ -160,6 +168,70 @@ class LocalGrowBoxPanel extends HTMLElement {
         } catch (e) {
             console.error("Fetch grows error:", e);
         }
+    }
+
+    async _fetchHistory(device, entityId) {
+        if (this.fetchingHistory[entityId]) return;
+        this.fetchingHistory[entityId] = true;
+        
+        try {
+            const start = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+            const url = `history/period/${start}?filter_entity_id=${entityId}&minimal_response&no_attributes`;
+            const result = await this._hass.callApi("GET", url);
+            
+            if (result && result.length > 0 && result[0].length > 0) {
+                const points = result[0].map(s => ({
+                    x: new Date(s.last_changed).getTime(),
+                    y: parseFloat(s.state)
+                })).filter(p => !isNaN(p.y));
+                
+                this.historyData[entityId] = points;
+                
+                // Re-render sparkline if it's already in the DOM
+                const svg = this.shadowRoot.getElementById(`vpd-sparkline-${device.id}`);
+                if (svg) this._renderSparkline(svg, points, 0.8, 1.2);
+            }
+        } catch (e) {
+            console.warn("Error fetching history for", entityId, e);
+        } finally {
+            this.fetchingHistory[entityId] = false;
+        }
+    }
+
+    _renderSparkline(svg, data, minTarget, maxTarget) {
+        if (!data || data.length < 2) return;
+        
+        const width = 100;
+        const height = 40;
+        const padding = 2;
+        
+        const xMin = data[0].x;
+        const xMax = data[data.length-1].x;
+        const yMin = 0;
+        const yMax = Math.max(2.5, ...data.map(p => p.y));
+        
+        const getX = (val) => ((val - xMin) / (xMax - xMin)) * (width - 2 * padding) + padding;
+        const getY = (val) => height - (((val - yMin) / (yMax - yMin)) * (height - 2 * padding) + padding);
+        
+        // Background target zone
+        const targetTop = getY(maxTarget);
+        const targetBottom = getY(minTarget);
+        
+        let html = `
+            <rect x="0" y="${targetTop}" width="${width}" height="${targetBottom - targetTop}" fill="rgba(16, 185, 129, 0.15)" />
+            <line x1="0" y1="${targetTop}" x2="${width}" y2="${targetTop}" stroke="rgba(16, 185, 129, 0.3)" stroke-width="0.5" stroke-dasharray="2,2" />
+            <line x1="0" y1="${targetBottom}" x2="${width}" y2="${targetBottom}" stroke="rgba(16, 185, 129, 0.3)" stroke-width="0.5" stroke-dasharray="2,2" />
+        `;
+        
+        // Path
+        let path = `M ${getX(data[0].x)} ${getY(data[0].y)}`;
+        for (let i = 1; i < data.length; i++) {
+            path += ` L ${getX(data[i].x)} ${getY(data[i].y)}`;
+        }
+        
+        html += `<path d="${path}" fill="none" stroke="var(--primary-color)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />`;
+        
+        svg.innerHTML = html;
     }
 
     _renderStructure() {
@@ -391,7 +463,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         width: 100%;
                         overflow-x: auto;
                         justify-content: flex-start;
-                        padding-bottom: 8px; /* Space for scrollbar */
+                        padding-bottom: 8px;
                         background: transparent;
                         border: none;
                         padding: 0;
@@ -400,7 +472,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         flex-shrink: 0;
                         font-size: 11px;
                         padding: 8px 12px;
-                        background: rgba(255,255,255,0.08); /* Ensure visibility */
+                        background: rgba(255,255,255,0.08);
                         margin-right: 6px;
                         white-space: nowrap;
                     }
@@ -412,6 +484,17 @@ class LocalGrowBoxPanel extends HTMLElement {
                     .controls {
                         grid-template-columns: 1fr;
                         gap: 8px;
+                    }
+                    /* Mobile Diary Adjustments */
+                    .diary-active-grid {
+                        grid-template-columns: 1fr !important;
+                        gap: 16px !important;
+                    }
+                    .active-grow-card {
+                        padding: 15px !important;
+                    }
+                    .btn {
+                        padding: 14px !important; /* Larger touch targets */
                     }
                 }
             </style>
@@ -1834,7 +1917,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     }
                 }
 
-                const powerStr = consumed.toFixed(2);
+                const powerStr = consumed < 1.0 ? consumed.toFixed(3) : consumed.toFixed(2);
                 const costStr = (consumed * price).toFixed(2);
                 let wattStr = "0";
 
@@ -1851,7 +1934,7 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 activeCard.innerHTML = `
                     <div style="position:absolute; top:-10px; right:-10px; font-size:80px; opacity:0.05; pointer-events:none;">🌿</div>
-                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:20px; align-items:center;">
+                    <div class="diary-active-grid" style="display:grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap:20px; align-items:center;">
                         <div>
                             <div style="font-size:12px; color:var(--primary-color); text-transform:uppercase; font-weight:700; letter-spacing:1px;">Aktueller Grow</div>
                             <div style="font-size:24px; font-weight:800; margin:4px 0;">${activeGrow.name}</div>
@@ -1872,7 +1955,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                             <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Energie & Kosten</div>
                             <div style="font-size:24px; font-weight:800; color:#fbbf24;"><span class="val-kwh">${powerStr}</span> <small style="font-size:12px;">kWh</small></div>
                             <div style="font-size:16px; font-weight:600; color:#4ade80;">~ <span class="val-cost">${costStr}</span> €</div>
-                            <div style="font-size:11px; opacity:0.7; margin-top:4px;"><span class="val-watts">${wattStr}</span> W aktuell</div>
+                            <div style="font-size:10px; opacity:0.7; margin-top:4px;"><span class="val-watts">${wattStr}</span> W aktuell</div>
                             <button id="reset-energy-${activeGrow.id}" style="
                                 position:absolute; top:-10px; right:0; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); 
                                 color:white; font-size:10px; padding:2px 6px; border-radius:4px; cursor:pointer;
@@ -1888,7 +1971,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                                 </svg>
                                 <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:14px; font-weight:bold;">${vpdScore}%</div>
                             </div>
-                            <div style="font-size:10px; opacity:0.6;">VPD-Qualität</div>
+                            <div style="font-size:10px; opacity:0.6; margin-bottom:8px;">VPD-Qualität</div>
+                            <div style="background:rgba(0,0,0,0.2); border-radius:4px; padding:4px;">
+                                <svg id="vpd-sparkline-${device.id}" width="100" height="40" viewBox="0 0 100 40"></svg>
+                                <div style="font-size:9px; opacity:0.5; margin-top:2px;">Trend (24h)</div>
+                            </div>
                         </div>
 
                         <div style="display:flex; flex-direction:column; justify-content:center; gap:8px;">
@@ -1909,6 +1996,14 @@ class LocalGrowBoxPanel extends HTMLElement {
                     if (btnEvent) btnEvent.onclick = () => this._addEventDialog(device.entryId, activeGrow.id);
                     const btnReset = section.querySelector(`#reset-energy-${activeGrow.id}`);
                     if (btnReset) btnReset.onclick = () => this._resetEnergy(device.entryId, activeGrow.id);
+
+                    // Render sparkline if data exists
+                    if (device.entities.vpd && this.historyData[device.entities.vpd]) {
+                        const svg = section.querySelector(`#vpd-sparkline-${device.id}`);
+                        if (svg) this._renderSparkline(svg, this.historyData[device.entities.vpd], 0.8, 1.2);
+                    } else if (device.entities.vpd) {
+                        this._fetchHistory(device, device.entities.vpd);
+                    }
                 }, 0);
             }
 
