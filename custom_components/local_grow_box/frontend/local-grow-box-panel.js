@@ -38,7 +38,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             // Stability Fix: Only re-render 'overview' and 'statistics' on every state update.
             // Other tabs (settings, phases, logs, info) are static or input-heavy and should NOT
             // be wiped and re-created every time a sensor value changes in the background.
-            const persistentTabs = ['settings', 'phases', 'logs', 'info'];
+            const persistentTabs = ['settings', 'phases', 'logs', 'diary', 'info'];
             if (persistentTabs.includes(this._activeTab)) {
                 // For dynamic elements inside persistent tabs (like entity pickers), 
                 // we still update their hass object so they stay functional.
@@ -46,6 +46,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                     this.shadowRoot.querySelectorAll('ha-entity-picker, ha-selector').forEach(el => {
                         el.hass = this._hass;
                     });
+                }
+                if (this._activeTab === 'diary') {
+                    this._updateDiaryValues();
                 }
                 return;
             }
@@ -138,6 +141,25 @@ class LocalGrowBoxPanel extends HTMLElement {
         }
 
         this._updateContent();
+    }
+
+    async _fetchGrows(entryId = null) {
+        if (!this._hass || !this._devices) return;
+        try {
+            for (const device of this._devices) {
+                if (entryId && device.entryId !== entryId) continue;
+                const res = await this._hass.callWS({
+                    type: 'local_grow_box/get_grows',
+                    entry_id: device.entryId
+                });
+                device.grows = res.grows || [];
+            }
+            if (this._activeTab === 'diary') {
+                this._renderDiary(this.shadowRoot.getElementById('main-content'));
+            }
+        } catch (e) {
+            console.error("Fetch grows error:", e);
+        }
     }
 
     _renderStructure() {
@@ -449,6 +471,9 @@ class LocalGrowBoxPanel extends HTMLElement {
         this.shadowRoot.querySelectorAll('.tab').forEach(t => {
             t.addEventListener('click', (e) => {
                 this._activeTab = e.target.dataset.tab;
+                if (this._activeTab === 'diary') {
+                    this._fetchGrows();
+                }
 
                 // Update UI
                 this.shadowRoot.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
@@ -952,7 +977,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             };
 
             // NEW: HA Selector Helper (Modern)
-            const appendSelector = (parent, label, configKey, domain) => {
+            const appendSelector = (parent, label, configKey, domain, multiple = false) => {
                 const group = document.createElement('div');
                 group.className = 'form-group';
                 group.style.marginBottom = '12px';
@@ -965,7 +990,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const finalVal = (draftVal !== undefined) ? draftVal : (storedVal || '');
 
                 selector.hass = this._hass;
-                selector.selector = { entity: { domain: domain } };
+                selector.selector = { entity: { domain: domain, multiple: multiple } };
                 selector.value = finalVal;
                 selector.required = false;
 
@@ -1038,8 +1063,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             appendSelector(cardKlimaEntities.body, 'Feuchtigkeits Sensor', 'humidity_sensor', ['sensor']);
             appendSelector(cardKlimaEntities.body, 'Abluft Ventilator', 'fan_entity', ['switch', 'fan', 'input_boolean']);
             appendSelector(cardKlimaEntities.body, 'Luftbefeuchter', 'humidifier_entity', ['switch', 'input_boolean', 'humidifier']);
-            appendSelector(cardKlimaEntities.body, 'Stromzähler (kWh)', 'energy_sensor', ['sensor']);
-            appendSelector(cardKlimaEntities.body, 'Leistungssensor (W)', 'power_sensor', ['sensor']);
+            appendSelector(cardKlimaEntities.body, 'Stromzähler (kWh)', 'energy_sensor', ['sensor'], true);
+            appendSelector(cardKlimaEntities.body, 'Leistungssensor (W)', 'power_sensor', ['sensor'], true);
             settingsGrid.appendChild(cardKlimaEntities.card);
 
             // Card 2: Klima-Sollwerte
@@ -1692,160 +1717,215 @@ class LocalGrowBoxPanel extends HTMLElement {
         container.appendChild(statsDiv);
     }
 
+    _showMoreInfo(entityId) {
+        if (!entityId) return;
+        const event = new Event('hass-more-info', { bubbles: true, composed: true });
+        event.detail = { entityId: entityId };
+        this.dispatchEvent(event);
+    }
+
+    _getSummedValue(entities) {
+        if (!entities || !this._hass) return 0;
+        const list = Array.isArray(entities) ? entities : (entities.includes(',') ? entities.split(',').map(e => e.trim()) : [entities]);
+        let sum = 0;
+        let found = false;
+        list.forEach(entId => {
+            const s = this._hass.states[entId];
+            if (s && !isNaN(s.state)) {
+                sum += parseFloat(s.state);
+                found = true;
+            }
+        });
+        return found ? sum : null;
+    }
+
     async _renderDiary(container) {
         if (this._devices.length === 0) {
             container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Keine Grow Box gefunden.</div>';
             return;
         }
 
-        container.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; color: var(--text-secondary);">
-                <div style="font-size: 32px; margin-bottom: 16px; animation: pulse 1.5s infinite;">📖</div>
-                <div>Lade Tagebuch...</div>
-            </div>
-        `;
+        // Only show loading if we really have no data yet
+        if (!this._devices[0].grows) {
+            container.innerHTML = `
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; color: var(--text-secondary);">
+                    <div style="font-size: 32px; margin-bottom: 16px; animation: pulse 1.5s infinite;">📖</div>
+                    <div>Lade Tagebuch...</div>
+                </div>
+            `;
+            await this._fetchGrows();
+            return;
+        }
 
-        try {
-            for (const device of this._devices) {
-                const res = await this._hass.callWS({
-                    type: 'local_grow_box/get_grows',
-                    entry_id: device.entryId
-                });
-                device.grows = res.grows || [];
-            }
-
-            container.innerHTML = '';
+        container.innerHTML = '';
+        
+        this._devices.forEach(device => {
+            const section = document.createElement('div');
+            section.className = 'settings-section';
+            section.style.marginBottom = '40px';
             
-            this._devices.forEach(device => {
-                const section = document.createElement('div');
-                section.className = 'settings-section';
-                section.style.marginBottom = '40px';
-                
-                const title = document.createElement('div');
-                title.className = 'section-title';
-                title.style.display = 'flex';
-                title.style.justifyContent = 'space-between';
-                title.style.alignItems = 'center';
-                title.innerHTML = `
-                    <span>📖 ${device.name} - Tagebuch</span>
-                    <button class="btn active" style="width:auto; padding:8px 16px; font-size:12px;" id="start-grow-${device.id}">
-                        ➕ Neuer Grow
-                    </button>
-                `;
-                section.appendChild(title);
+            const title = document.createElement('div');
+            title.className = 'section-title';
+            title.style.display = 'flex';
+            title.style.justifyContent = 'space-between';
+            title.style.alignItems = 'center';
+            title.innerHTML = `
+                <span>📖 ${device.name} - Tagebuch</span>
+                <button class="btn active" style="width:auto; padding:8px 16px; font-size:12px;" id="start-grow-${device.id}">
+                    ➕ Neuer Grow
+                </button>
+            `;
+            section.appendChild(title);
 
-                const activeGrow = device.grows.find(g => g.status === 'active');
+            const activeGrow = (device.grows || []).find(g => g.status === 'active');
+            
+            if (activeGrow) {
+                const activeCard = document.createElement('div');
+                activeCard.id = `active-grow-card-${device.id}`;
+                activeCard.className = 'active-grow-card';
+                activeCard.style.cssText = "background: linear-gradient(135deg, rgba(3, 169, 244, 0.1) 0%, rgba(3, 169, 244, 0.02) 100%); border: 1px solid rgba(3, 169, 244, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px; position:relative; overflow:hidden;";
                 
-                if (activeGrow) {
-                    const activeCard = document.createElement('div');
-                    activeCard.style.cssText = "background: linear-gradient(135deg, rgba(3, 169, 244, 0.1) 0%, rgba(3, 169, 244, 0.02) 100%); border: 1px solid rgba(3, 169, 244, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px; position:relative; overflow:hidden;";
-                    
-                    const startDate = new Date(activeGrow.start_date);
-                    const days = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
-                    
-                    // Power Calculation
-                    let powerInfo = "Kein Sensor konfiguriert";
-                    if (device.options.energy_sensor) {
-                        const energyState = this._hass.states[device.options.energy_sensor];
-                        if (energyState && !isNaN(energyState.state)) {
-                            const currentEnergy = parseFloat(energyState.state);
-                            const consumed = Math.max(0, currentEnergy - (activeGrow.start_energy || 0));
-                            powerInfo = `${consumed.toFixed(2)} kWh verbraucht`;
-                        } else {
-                            powerInfo = "Warte auf Daten...";
-                        }
+                const startDate = new Date(activeGrow.start_date);
+                const days = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
+                
+                // Power Calculation (Initial)
+                let powerStr = "0.00";
+                let wattStr = "0";
+                if (device.options.energy_sensor) {
+                    const currentEnergy = this._getSummedValue(device.options.energy_sensor);
+                    if (currentEnergy !== null) {
+                        powerStr = Math.max(0, currentEnergy - (activeGrow.start_energy || 0)).toFixed(2);
                     }
-
-                    activeCard.innerHTML = `
-                        <div style="position:absolute; top:-10px; right:-10px; font-size:80px; opacity:0.05; pointer-events:none;">🌿</div>
-                        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px;">
-                            <div>
-                                <div style="font-size:12px; color:var(--primary-color); text-transform:uppercase; font-weight:700; letter-spacing:1px;">Aktueller Grow</div>
-                                <div style="font-size:24px; font-weight:800; margin:4px 0;">${activeGrow.name}</div>
-                                <div style="color:var(--text-secondary); font-size:14px;">${activeGrow.strain || 'Unbekannte Sorte'}</div>
-                            </div>
-                            <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px;">
-                                <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Dauer</div>
-                                <div style="font-size:28px; font-weight:800; color:#4ade80;">Tag ${days}</div>
-                                <div style="font-size:11px; opacity:0.7;">Seit ${startDate.toLocaleDateString()}</div>
-                            </div>
-                            <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px;">
-                                <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Verbrauch</div>
-                                <div style="font-size:24px; font-weight:800; color:#fbbf24;">${powerInfo.split(' ')[0]} <span style="font-size:14px;">kWh</span></div>
-                                <div style="font-size:11px; opacity:0.7;">${this._hass.states[device.options.power_sensor]?.state || '0'} W aktuell</div>
-                            </div>
-                            <div style="display:flex; flex-direction:column; justify-content:center; gap:8px;">
-                                <button class="btn" style="background:#ef4444; color:white; border:none;" id="stop-grow-${activeGrow.id}">🚀 Grow beenden</button>
-                                <button class="btn" id="edit-grow-${activeGrow.id}">📝 Notizen</button>
-                            </div>
-                        </div>
-                    `;
-                    section.appendChild(activeCard);
-                    
-                    setTimeout(() => {
-                        section.querySelector(`#stop-grow-${activeGrow.id}`).onclick = () => this._stopGrow(device.entryId, activeGrow.id);
-                        section.querySelector(`#edit-grow-${activeGrow.id}`).onclick = () => this._editGrow(device.entryId, activeGrow);
-                    }, 0);
+                }
+                if (device.options.power_sensor) {
+                    const currentWatts = this._getSummedValue(device.options.power_sensor);
+                    if (currentWatts !== null) wattStr = Math.round(currentWatts).toString();
                 }
 
-                // History
-                const historyTable = document.createElement('div');
-                historyTable.style.background = 'rgba(0,0,0,0.2)';
-                historyTable.style.borderRadius = '8px';
-                historyTable.style.overflow = 'hidden';
-                
-                let rows = '';
-                device.grows.filter(g => g.status === 'finished').forEach(g => {
-                    const duration = Math.floor((new Date(g.end_date) - new Date(g.start_date)) / (1000 * 60 * 60 * 24));
-                    const energy = (g.end_energy !== null && g.start_energy !== null) ? (g.end_energy - g.start_energy).toFixed(2) : '--';
-                    
-                    rows += `
-                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <td style="padding:12px;">${g.name}<br><small style="opacity:0.6;">${g.strain || ''}</small></td>
-                            <td style="padding:12px;">${new Date(g.start_date).toLocaleDateString()}</td>
-                            <td style="padding:12px; text-align:center;">${duration} Tage</td>
-                            <td style="padding:12px; text-align:center; color:#fbbf24;">${energy} kWh</td>
-                            <td style="padding:12px; text-align:right;">
-                                <button class="btn" style="padding:4px 8px; font-size:10px;" id="del-grow-${g.id}">🗑️</button>
-                                <button class="btn" style="padding:4px 8px; font-size:10px; margin-left:4px;" id="edit-hist-${g.id}">📝</button>
-                            </td>
-                        </tr>
-                    `;
-                });
-
-                historyTable.innerHTML = `
-                    <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                        <thead>
-                            <tr style="background:rgba(255,255,255,0.05); color:var(--primary-color);">
-                                <th style="padding:12px; text-align:left;">Name / Sorte</th>
-                                <th style="padding:12px; text-align:left;">Start</th>
-                                <th style="padding:12px; text-align:center;">Dauer</th>
-                                <th style="padding:12px; text-align:center;">Verbrauch</th>
-                                <th style="padding:12px; text-align:right;">Aktion</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows || '<tr><td colspan="5" style="padding:32px; text-align:center; color:var(--text-secondary);">Noch keine abgeschlossenen Grows.</td></tr>'}
-                        </tbody>
-                    </table>
+                activeCard.innerHTML = `
+                    <div style="position:absolute; top:-10px; right:-10px; font-size:80px; opacity:0.05; pointer-events:none;">🌿</div>
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px;">
+                        <div>
+                            <div style="font-size:12px; color:var(--primary-color); text-transform:uppercase; font-weight:700; letter-spacing:1px;">Aktueller Grow</div>
+                            <div style="font-size:24px; font-weight:800; margin:4px 0;">${activeGrow.name}</div>
+                            <div style="color:var(--text-secondary); font-size:14px;">${activeGrow.strain || 'Unbekannte Sorte'}</div>
+                        </div>
+                        <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px;">
+                            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Dauer</div>
+                            <div style="font-size:28px; font-weight:800; color:#4ade80;" class="val-days">Tag ${days}</div>
+                            <div style="font-size:11px; opacity:0.7;">Seit ${startDate.toLocaleDateString()}</div>
+                        </div>
+                        <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px;">
+                            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Verbrauch</div>
+                            <div style="font-size:24px; font-weight:800; color:#fbbf24;"><span class="val-kwh">${powerStr}</span> <span style="font-size:14px;">kWh</span></div>
+                            <div style="font-size:11px; opacity:0.7;"><span class="val-watts">${wattStr}</span> W aktuell</div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; justify-content:center; gap:8px;">
+                            <button class="btn" style="background:#ef4444; color:white; border:none;" id="stop-grow-${activeGrow.id}">🚀 Grow beenden</button>
+                            <button class="btn" id="edit-grow-${activeGrow.id}">📝 Notizen</button>
+                        </div>
+                    </div>
                 `;
-                section.appendChild(historyTable);
+                section.appendChild(activeCard);
                 
                 setTimeout(() => {
-                    section.querySelector(`#start-grow-${device.id}`).onclick = () => this._startGrowDialog(device.entryId);
-                    device.grows.filter(g => g.status === 'finished').forEach(g => {
-                        const btnDel = section.querySelector(`#del-grow-${g.id}`);
-                        if (btnDel) btnDel.onclick = () => this._deleteGrow(device.entryId, g.id);
-                        const btnEdit = section.querySelector(`#edit-hist-${g.id}`);
-                        if (btnEdit) btnEdit.onclick = () => this._editGrow(device.entryId, g);
-                    });
+                    const btnStop = section.querySelector(`#stop-grow-${activeGrow.id}`);
+                    if (btnStop) btnStop.onclick = () => this._stopGrow(device.entryId, activeGrow.id);
+                    const btnEdit = section.querySelector(`#edit-grow-${activeGrow.id}`);
+                    if (btnEdit) btnEdit.onclick = () => this._editGrow(device.entryId, activeGrow);
                 }, 0);
+            }
 
-                container.appendChild(section);
+            // History
+            const historyTable = document.createElement('div');
+            historyTable.style.background = 'rgba(0,0,0,0.2)';
+            historyTable.style.borderRadius = '8px';
+            historyTable.style.overflow = 'hidden';
+            
+            let rows = '';
+            (device.grows || []).filter(g => g.status === 'finished').forEach(g => {
+                const duration = Math.floor((new Date(g.end_date) - new Date(g.start_date)) / (1000 * 60 * 60 * 24));
+                const energy = (g.end_energy !== null && g.start_energy !== null) ? (g.end_energy - g.start_energy).toFixed(2) : '--';
+                
+                rows += `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding:12px;">${g.name}<br><small style="opacity:0.6;">${g.strain || ''}</small></td>
+                        <td style="padding:12px;">${new Date(g.start_date).toLocaleDateString()}</td>
+                        <td style="padding:12px; text-align:center;">${duration} Tage</td>
+                        <td style="padding:12px; text-align:center; color:#fbbf24;">${energy} kWh</td>
+                        <td style="padding:12px; text-align:right;">
+                            <button class="btn" style="padding:4px 8px; font-size:10px;" id="del-grow-${g.id}">🗑️</button>
+                            <button class="btn" style="padding:4px 8px; font-size:10px; margin-left:4px;" id="edit-hist-${g.id}">📝</button>
+                        </td>
+                    </tr>
+                `;
             });
-        } catch (err) {
-            container.innerHTML = `<div style="color:#ef4444; padding:20px;">Fehler: ${err.message}</div>`;
-        }
+
+            historyTable.innerHTML = `
+                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                    <thead>
+                        <tr style="background:rgba(255,255,255,0.05); color:var(--primary-color);">
+                            <th style="padding:12px; text-align:left;">Name / Sorte</th>
+                            <th style="padding:12px; text-align:left;">Start</th>
+                            <th style="padding:12px; text-align:center;">Dauer</th>
+                            <th style="padding:12px; text-align:center;">Verbrauch</th>
+                            <th style="padding:12px; text-align:right;">Aktion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows || '<tr><td colspan="5" style="padding:32px; text-align:center; color:var(--text-secondary);">Noch keine abgeschlossenen Grows.</td></tr>'}
+                    </tbody>
+                </table>
+            `;
+            section.appendChild(historyTable);
+            
+            setTimeout(() => {
+                section.querySelector(`#start-grow-${device.id}`).onclick = () => this._startGrowDialog(device.entryId);
+                (device.grows || []).filter(g => g.status === 'finished').forEach(g => {
+                    const btnDel = section.querySelector(`#del-grow-${g.id}`);
+                    if (btnDel) btnDel.onclick = () => this._deleteGrow(device.entryId, g.id);
+                    const btnEdit = section.querySelector(`#edit-hist-${g.id}`);
+                    if (btnEdit) btnEdit.onclick = () => this._editGrow(device.entryId, g);
+                });
+            }, 0);
+
+            container.appendChild(section);
+        });
+    }
+
+    _updateDiaryValues() {
+        if (!this._devices) return;
+        this._devices.forEach(device => {
+            const card = this.shadowRoot.getElementById(`active-grow-card-${device.id}`);
+            if (!card) return;
+
+            const activeGrow = (device.grows || []).find(g => g.status === 'active');
+            if (!activeGrow) return;
+
+            // Days
+            const days = Math.floor((new Date() - new Date(activeGrow.start_date)) / (1000 * 60 * 60 * 24));
+            const elDays = card.querySelector('.val-days');
+            if (elDays) elDays.innerText = `Tag ${days}`;
+
+            // Energy (Summed)
+            if (device.options.energy_sensor) {
+                const currentEnergy = this._getSummedValue(device.options.energy_sensor);
+                if (currentEnergy !== null) {
+                    const consumed = Math.max(0, currentEnergy - (activeGrow.start_energy || 0)).toFixed(2);
+                    const elKwh = card.querySelector('.val-kwh');
+                    if (elKwh) elKwh.innerText = consumed;
+                }
+            }
+
+            // Power (Summed)
+            if (device.options.power_sensor) {
+                const currentWatts = this._getSummedValue(device.options.power_sensor);
+                if (currentWatts !== null) {
+                    const elWatts = card.querySelector('.val-watts');
+                    if (elWatts) elWatts.innerText = Math.round(currentWatts);
+                }
+            }
+        });
     }
 
     async _startGrowDialog(entryId) {
