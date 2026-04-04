@@ -684,6 +684,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 <div class="card-body">
                     ${this._renderStatBar('Temperatur', temp, '°C', 10, 45, '#ef4444', '🌡️', tempTarget)}
                     ${this._renderStatBar('Luftfeuchte', hum, '%', 20, 90, '#3b82f6', '💧', humTarget)}
+                    ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3.0, '#10b981', '🍃', vpdTarget)}
                     ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6', '🪴') : ''}
                     
                     <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:16px; display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
