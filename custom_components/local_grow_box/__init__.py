@@ -162,7 +162,8 @@ class GrowBoxManager:
             "notes": "",
             "events": [],
             "vpd_total_mins": 0,
-            "vpd_ideal_mins": 0
+            "vpd_ideal_mins": 0,
+            "consumed_kwh": 0
         }
         self.grows.insert(0, new_grow)
         self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
@@ -189,11 +190,35 @@ class GrowBoxManager:
                 g["end_energy"] = end_energy
                 # Final cost calculation
                 price = self.config.get(CONF_ELECTRIC_PRICE, 0.35)
-                consumed = end_energy - g.get("start_energy", 0)
+                # Use integrated energy if available and > 0, else fall back to total energy diff
+                consumed = g.get("consumed_kwh", 0)
+                if consumed <= 0:
+                    consumed = end_energy - g.get("start_energy", 0)
+                
                 g["total_cost"] = round(consumed * price, 2)
+                g["total_kwh"] = round(consumed, 2) # Store final kWh
                 self.add_log(f"Grow beendet: {g['name']}. Kosten: {g['total_cost']}€")
                 break
+    def reset_grow_energy(self, grow_id):
+        """Reset energy offset for a specific grow."""
+        current_energy = 0
+        energy_entities = self.config.get(CONF_ENERGY_SENSOR)
+        if energy_entities:
+            ent_list = [energy_entities] if isinstance(energy_entities, str) else energy_entities
+            for ent_id in ent_list:
+                state = self.hass.states.get(ent_id)
+                if state and state.state not in ["unavailable", "unknown"]:
+                    try:
+                        current_energy += float(state.state)
+                    except ValueError:
+                        pass
         
+        for g in self.grows:
+            if g["id"] == grow_id:
+                g["start_energy"] = current_energy
+                g["consumed_kwh"] = 0
+                self.add_log(f"Zählerstand zurückgesetzt für: {g['name']}")
+                break
         self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
 
     def add_grow_event(self, grow_id, event_type, note=""):
@@ -700,18 +725,34 @@ class GrowBoxManager:
                   await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": humidifier_entity})
                   self.humidifier_start_time = now
 
-        # VPD Health Tracking (approx once per minute)
+        # VPD Health & Energy Tracking (approx once per minute)
         current_time = now
-        if not hasattr(self, "_last_vpd_tracking") or (current_time - self._last_vpd_tracking).total_seconds() >= 60:
-            self._last_vpd_tracking = current_time
+        if not hasattr(self, "_last_metrics_tracking") or (current_time - self._last_metrics_tracking).total_seconds() >= 60:
+            self._last_metrics_tracking = current_time
             active_grow = next((g for g in self.grows if g["status"] == "active"), None)
             if active_grow:
-                # self.vpd is updated earlier in this method
+                # 1. VPD Tracking (Ideal Range: 0.8 - 1.2 kPa)
                 active_grow["vpd_total_mins"] = active_grow.get("vpd_total_mins", 0) + 1
-                # Ideal Range: 0.8 - 1.2 kPa
                 if 0.8 <= self.vpd <= 1.2:
                     active_grow["vpd_ideal_mins"] = active_grow.get("vpd_ideal_mins", 0) + 1
                 
+                # 2. Energy Integration (Power to kWh)
+                power_entities = self.config.get(CONF_POWER_SENSOR)
+                if power_entities:
+                    ent_list = [power_entities] if isinstance(power_entities, str) else power_entities
+                    total_watts = 0
+                    for ent_id in ent_list:
+                        state = self.hass.states.get(ent_id)
+                        if state and state.state not in ["unavailable", "unknown"]:
+                            try:
+                                total_watts += float(state.state)
+                            except ValueError:
+                                pass
+                    
+                    # Integration: Watts * (1 minute / 60 minutes) / 1000 = kWh
+                    minute_kwh = (total_watts / 60.0) / 1000.0
+                    active_grow["consumed_kwh"] = active_grow.get("consumed_kwh", 0) + minute_kwh
+
                 # Persistence check (save every 60 mins)
                 if active_grow["vpd_total_mins"] % 60 == 0:
                     self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
@@ -770,6 +811,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         websocket_api.async_register_command(hass, ws_update_grow)
         websocket_api.async_register_command(hass, ws_delete_grow)
         websocket_api.async_register_command(hass, ws_add_grow_event)
+        websocket_api.async_register_command(hass, ws_reset_grow_energy)
     except Exception:
         pass # Expected if already registered
 
@@ -992,6 +1034,22 @@ async def ws_delete_grow(hass, connection, msg):
     if manager:
         manager.delete_grow(msg["grow_id"])
         connection.send_result(msg["id"], {"success": True, "grows": manager.grows})
+    else:
+        connection.send_error(msg["id"], "not_found", "Manager not found")
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/reset_grow_energy",
+    vol.Required("entry_id"): str,
+    vol.Required("grow_id"): str,
+})
+@websocket_api.async_response
+async def ws_reset_grow_energy(hass, connection, msg):
+    """Handle reset grow energy."""
+    entry_id = msg["entry_id"]
+    manager = hass.data[DOMAIN].get(entry_id)
+    if manager:
+        manager.reset_grow_energy(msg["grow_id"])
+        connection.send_result(msg["id"], {"status": "success", "grows": manager.grows})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")
 

@@ -1823,19 +1823,21 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const progress = Math.min(100, (days / totalDays) * 100);
                 
                 // Power & Cost
-                let powerStr = "0.00";
-                let costStr = "0.00";
-                let wattStr = "0";
+                let consumed = activeGrow.consumed_kwh || 0;
                 const price = device.options.electric_price || 0.35;
 
-                if (device.options.energy_sensor) {
+                // Fallback to Total Energy if no integrated kWh recorded yet
+                if (consumed <= 0 && device.options.energy_sensor) {
                     const currentEnergy = this._getSummedValue(device.options.energy_sensor);
                     if (currentEnergy !== null) {
-                        const consumed = Math.max(0, currentEnergy - (activeGrow.start_energy || 0));
-                        powerStr = consumed.toFixed(2);
-                        costStr = (consumed * price).toFixed(2);
+                        consumed = Math.max(0, currentEnergy - (activeGrow.start_energy || 0));
                     }
                 }
+
+                const powerStr = consumed.toFixed(2);
+                const costStr = (consumed * price).toFixed(2);
+                let wattStr = "0";
+
                 if (device.options.power_sensor) {
                     const currentWatts = this._getSummedValue(device.options.power_sensor);
                     if (currentWatts !== null) wattStr = Math.round(currentWatts).toString();
@@ -1866,11 +1868,15 @@ class LocalGrowBoxPanel extends HTMLElement {
                             </div>
                         </div>
                         
-                        <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px;">
+                        <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px; position:relative;">
                             <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Energie & Kosten</div>
                             <div style="font-size:24px; font-weight:800; color:#fbbf24;"><span class="val-kwh">${powerStr}</span> <small style="font-size:12px;">kWh</small></div>
                             <div style="font-size:16px; font-weight:600; color:#4ade80;">~ <span class="val-cost">${costStr}</span> €</div>
                             <div style="font-size:11px; opacity:0.7; margin-top:4px;"><span class="val-watts">${wattStr}</span> W aktuell</div>
+                            <button id="reset-energy-${activeGrow.id}" style="
+                                position:absolute; top:-10px; right:0; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); 
+                                color:white; font-size:10px; padding:2px 6px; border-radius:4px; cursor:pointer;
+                            ">⚖️ Reset</button>
                         </div>
 
                         <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px;">
@@ -1901,6 +1907,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                     if (btnEdit) btnEdit.onclick = () => this._editGrow(device.entryId, activeGrow);
                     const btnEvent = section.querySelector(`#add-event-${activeGrow.id}`);
                     if (btnEvent) btnEvent.onclick = () => this._addEventDialog(device.entryId, activeGrow.id);
+                    const btnReset = section.querySelector(`#reset-energy-${activeGrow.id}`);
+                    if (btnReset) btnReset.onclick = () => this._resetEnergy(device.entryId, activeGrow.id);
                 }, 0);
             }
 
@@ -1990,17 +1998,20 @@ class LocalGrowBoxPanel extends HTMLElement {
             if (elBar) elBar.style.width = `${progress}%`;
 
             // Energy & Cost
+            let consumed = activeGrow.consumed_kwh || 0;
             const price = device.options.electric_price || 0.35;
-            if (device.options.energy_sensor) {
+
+            if (consumed <= 0 && device.options.energy_sensor) {
                 const currentEnergy = this._getSummedValue(device.options.energy_sensor);
                 if (currentEnergy !== null) {
-                    const consumed = Math.max(0, currentEnergy - (activeGrow.start_energy || 0));
-                    const elKwh = card.querySelector('.val-kwh');
-                    if (elKwh) elKwh.innerText = consumed.toFixed(2);
-                    const elCost = card.querySelector('.val-cost');
-                    if (elCost) elCost.innerText = (consumed * price).toFixed(2);
+                    consumed = Math.max(0, currentEnergy - (activeGrow.start_energy || 0));
                 }
             }
+
+            const elKwh = card.querySelector('.val-kwh');
+            if (elKwh) elKwh.innerText = consumed.toFixed(2);
+            const elCost = card.querySelector('.val-cost');
+            if (elCost) elCost.innerText = (consumed * price).toFixed(2);
 
             // Power
             if (device.options.power_sensor) {
@@ -2011,6 +2022,21 @@ class LocalGrowBoxPanel extends HTMLElement {
                 }
             }
         });
+    }
+
+    async _resetEnergy(entryId, growId) {
+        if (!confirm("Den Energieverbrauch für diesen Grow wirklich auf 0 zurücksetzen? (Der aktuelle Zählerstand wird als neuer Nullpunkt genommen)")) return;
+        
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/reset_grow_energy',
+                entry_id: entryId,
+                grow_id: growId
+            });
+            this._fetchGrows();
+        } catch (err) {
+            alert("Fehler: " + err.message);
+        }
     }
 
     async _addEventDialog(entryId, growId) {
