@@ -185,6 +185,16 @@ class LocalGrowBoxPanel extends HTMLElement {
                     y: parseFloat(s.state)
                 })).filter(p => !isNaN(p.y));
                 
+                // Artificially extend steady states to 'now' to prevent empty graphs if state never changed
+                if (points.length === 1) {
+                    points.push({ x: Date.now(), y: points[0].y });
+                } else if (points.length > 1) {
+                    const lastPoint = points[points.length - 1];
+                    if (Date.now() - lastPoint.x > 60000) { // If last point is older than 60s
+                         points.push({ x: Date.now(), y: lastPoint.y });
+                    }
+                }
+
                 this.historyData[entityId] = points;
                 
                 // Re-render sparkline if it's already in the DOM
