@@ -21,6 +21,7 @@ from .const import (
     CONF_HUMIDITY_SENSOR,
     CONF_ENERGY_SENSOR,
     CONF_POWER_SENSOR,
+    CONF_ELECTRIC_PRICE,
     CONF_MOISTURE_SENSOR,
     CONF_HUMIDIFIER_ENTITY,
     CONF_TARGET_TEMP,
@@ -136,10 +137,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 selector.EntitySelectorConfig(domain="sensor")
             ),
             vol.Optional(CONF_ENERGY_SENSOR, description={"suggested_value": get_val(CONF_ENERGY_SENSOR)}): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="energy")
+                selector.EntitySelectorConfig(domain="sensor", device_class="energy", multiple=True)
             ),
             vol.Optional(CONF_POWER_SENSOR, description={"suggested_value": get_val(CONF_POWER_SENSOR)}): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor", device_class="power")
+                selector.EntitySelectorConfig(domain="sensor", device_class="power", multiple=True)
+            ),
+            vol.Optional(CONF_ELECTRIC_PRICE, default=get_val(CONF_ELECTRIC_PRICE) or 0.35): selector.NumberSelector(
+                selector.NumberSelectorConfig(min=0, max=2, step="any", mode="box", unit_of_measurement="€/kWh")
             ),
             vol.Optional(CONF_LIGHT_ENTITY, description={"suggested_value": get_val(CONF_LIGHT_ENTITY)}): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["switch", "light", "input_boolean"])

@@ -684,12 +684,26 @@ class LocalGrowBoxPanel extends HTMLElement {
                 <div class="card-body">
                     ${this._renderStatBar('Temperatur', temp, '°C', 10, 45, '#ef4444', '🌡️', tempTarget)}
                     ${this._renderStatBar('Luftfeuchte', hum, '%', 20, 90, '#3b82f6', '💧', humTarget)}
-                    ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3.0, '#10b981', '🍃', vpdTarget)}
-                    
                     ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6', '🪴') : ''}
                     
                     <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:16px; display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                         
+                        <div class="info-box">
+                            <div class="info-icon">⚡</div>
+                            <div class="info-content">
+                                <div class="info-label">Leistung</div>
+                                <div class="info-val">${Math.round(this._getSummedValue(device.options.power_sensor) || 0)} W</div>
+                            </div>
+                        </div>
+
+                        <div class="info-box">
+                            <div class="info-icon">📊</div>
+                            <div class="info-content">
+                                <div class="info-label">Energie</div>
+                                <div class="info-val">${(this._getSummedValue(device.options.energy_sensor) || 0).toFixed(1)} kWh</div>
+                            </div>
+                        </div>
+
                         <div class="info-box">
                             <div class="info-icon">${lightStatus === 'on' ? '💡' : '🌑'}</div>
                             <div class="info-content">
@@ -1065,6 +1079,22 @@ class LocalGrowBoxPanel extends HTMLElement {
             appendSelector(cardKlimaEntities.body, 'Luftbefeuchter', 'humidifier_entity', ['switch', 'input_boolean', 'humidifier']);
             appendSelector(cardKlimaEntities.body, 'Stromzähler (kWh)', 'energy_sensor', ['sensor'], true);
             appendSelector(cardKlimaEntities.body, 'Leistungssensor (W)', 'power_sensor', ['sensor'], true);
+            
+            const rowPrice = document.createElement('div');
+            rowPrice.className = 'form-group';
+            rowPrice.innerHTML = `<label>Strompreis (€/kWh)</label>`;
+            const inputPrice = document.createElement('input');
+            inputPrice.type = 'number';
+            inputPrice.step = '0.01';
+            inputPrice.style.cssText = "width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; padding:8px; border-radius:4px;";
+            inputPrice.value = device.options.electric_price || 0.35;
+            inputPrice.onchange = (e) => {
+                this._draft[device.entryId] = this._draft[device.entryId] || {};
+                this._draft[device.entryId].electric_price = parseFloat(e.target.value);
+            };
+            rowPrice.appendChild(inputPrice);
+            cardKlimaEntities.body.appendChild(rowPrice);
+
             settingsGrid.appendChild(cardKlimaEntities.card);
 
             // Card 2: Klima-Sollwerte
@@ -1786,15 +1816,23 @@ class LocalGrowBoxPanel extends HTMLElement {
                 activeCard.style.cssText = "background: linear-gradient(135deg, rgba(3, 169, 244, 0.1) 0%, rgba(3, 169, 244, 0.02) 100%); border: 1px solid rgba(3, 169, 244, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px; position:relative; overflow:hidden;";
                 
                 const startDate = new Date(activeGrow.start_date);
-                const days = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
+                const now = new Date();
+                const days = Math.floor((now - startDate) / (1000 * 60 * 60 * 24));
+                const totalDays = (activeGrow.expected_weeks || 8) * 7;
+                const progress = Math.min(100, (days / totalDays) * 100);
                 
-                // Power Calculation (Initial)
+                // Power & Cost
                 let powerStr = "0.00";
+                let costStr = "0.00";
                 let wattStr = "0";
+                const price = device.options.electric_price || 0.35;
+
                 if (device.options.energy_sensor) {
                     const currentEnergy = this._getSummedValue(device.options.energy_sensor);
                     if (currentEnergy !== null) {
-                        powerStr = Math.max(0, currentEnergy - (activeGrow.start_energy || 0)).toFixed(2);
+                        const consumed = Math.max(0, currentEnergy - (activeGrow.start_energy || 0));
+                        powerStr = consumed.toFixed(2);
+                        costStr = (consumed * price).toFixed(2);
                     }
                 }
                 if (device.options.power_sensor) {
@@ -1802,27 +1840,54 @@ class LocalGrowBoxPanel extends HTMLElement {
                     if (currentWatts !== null) wattStr = Math.round(currentWatts).toString();
                 }
 
+                // VPD Health
+                const vpdTotal = activeGrow.vpd_total_mins || 0;
+                const vpdIdeal = activeGrow.vpd_ideal_mins || 0;
+                const vpdScore = vpdTotal > 0 ? Math.round((vpdIdeal / vpdTotal) * 100) : 100;
+                const healthColor = vpdScore > 80 ? "#4ade80" : (vpdScore > 50 ? "#fbbf24" : "#ef4444");
+
                 activeCard.innerHTML = `
                     <div style="position:absolute; top:-10px; right:-10px; font-size:80px; opacity:0.05; pointer-events:none;">🌿</div>
-                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:20px;">
+                    <div style="display:grid; grid-template-columns: 1fr 1fr 1fr auto; gap:20px; align-items:center;">
                         <div>
                             <div style="font-size:12px; color:var(--primary-color); text-transform:uppercase; font-weight:700; letter-spacing:1px;">Aktueller Grow</div>
                             <div style="font-size:24px; font-weight:800; margin:4px 0;">${activeGrow.name}</div>
                             <div style="color:var(--text-secondary); font-size:14px;">${activeGrow.strain || 'Unbekannte Sorte'}</div>
+                            
+                            <div style="margin-top:16px;">
+                                <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
+                                    <span>Fortschritt</span>
+                                    <span>Tag ${days} / ${totalDays}</span>
+                                </div>
+                                <div style="height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
+                                    <div style="width:${progress}%; height:100%; background:linear-gradient(90deg, #4ade80, #38bdf8); border-radius:4px;"></div>
+                                </div>
+                            </div>
                         </div>
+                        
                         <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px;">
-                            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Dauer</div>
-                            <div style="font-size:28px; font-weight:800; color:#4ade80;" class="val-days">Tag ${days}</div>
-                            <div style="font-size:11px; opacity:0.7;">Seit ${startDate.toLocaleDateString()}</div>
+                            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Energie & Kosten</div>
+                            <div style="font-size:24px; font-weight:800; color:#fbbf24;"><span class="val-kwh">${powerStr}</span> <small style="font-size:12px;">kWh</small></div>
+                            <div style="font-size:16px; font-weight:600; color:#4ade80;">~ <span class="val-cost">${costStr}</span> €</div>
+                            <div style="font-size:11px; opacity:0.7; margin-top:4px;"><span class="val-watts">${wattStr}</span> W aktuell</div>
                         </div>
+
                         <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px;">
-                            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Verbrauch</div>
-                            <div style="font-size:24px; font-weight:800; color:#fbbf24;"><span class="val-kwh">${powerStr}</span> <span style="font-size:14px;">kWh</span></div>
-                            <div style="font-size:11px; opacity:0.7;"><span class="val-watts">${wattStr}</span> W aktuell</div>
+                            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Klima-Score</div>
+                            <div style="position:relative; width:60px; height:60px; margin:8px auto;">
+                                <svg viewBox="0 0 36 36" style="width:60px; height:60px; transform: rotate(-90deg);">
+                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3" />
+                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="${healthColor}" stroke-dasharray="${vpdScore}, 100" stroke-width="3" stroke-linecap="round" />
+                                </svg>
+                                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:14px; font-weight:bold;">${vpdScore}%</div>
+                            </div>
+                            <div style="font-size:10px; opacity:0.6;">VPD-Qualität</div>
                         </div>
+
                         <div style="display:flex; flex-direction:column; justify-content:center; gap:8px;">
-                            <button class="btn" style="background:#ef4444; color:white; border:none;" id="stop-grow-${activeGrow.id}">🚀 Grow beenden</button>
+                            <button class="btn active" id="add-event-${activeGrow.id}">➕ Event</button>
                             <button class="btn" id="edit-grow-${activeGrow.id}">📝 Notizen</button>
+                            <button class="btn" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid #ef4444;" id="stop-grow-${activeGrow.id}">🚀 Beenden</button>
                         </div>
                     </div>
                 `;
@@ -1833,6 +1898,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                     if (btnStop) btnStop.onclick = () => this._stopGrow(device.entryId, activeGrow.id);
                     const btnEdit = section.querySelector(`#edit-grow-${activeGrow.id}`);
                     if (btnEdit) btnEdit.onclick = () => this._editGrow(device.entryId, activeGrow);
+                    const btnEvent = section.querySelector(`#add-event-${activeGrow.id}`);
+                    if (btnEvent) btnEvent.onclick = () => this._addEventDialog(device.entryId, activeGrow.id);
                 }, 0);
             }
 
@@ -1844,15 +1911,22 @@ class LocalGrowBoxPanel extends HTMLElement {
             
             let rows = '';
             (device.grows || []).filter(g => g.status === 'finished').forEach(g => {
-                const duration = Math.floor((new Date(g.end_date) - new Date(g.start_date)) / (1000 * 60 * 60 * 24));
-                const energy = (g.end_energy !== null && g.start_energy !== null) ? (g.end_energy - g.start_energy).toFixed(2) : '--';
+                const cost = g.total_cost || '--';
+                const events = (g.events || []).map(e => `• ${e.type}`).join(', ');
                 
                 rows += `
                     <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                        <td style="padding:12px;">${g.name}<br><small style="opacity:0.6;">${g.strain || ''}</small></td>
+                        <td style="padding:12px;">
+                            ${g.name}<br>
+                            <small style="opacity:0.6;">${g.strain || ''}</small>
+                            ${events ? `<div style="font-size:10px; color:var(--primary-color); margin-top:4px;">${events}</div>` : ''}
+                        </td>
                         <td style="padding:12px;">${new Date(g.start_date).toLocaleDateString()}</td>
                         <td style="padding:12px; text-align:center;">${duration} Tage</td>
-                        <td style="padding:12px; text-align:center; color:#fbbf24;">${energy} kWh</td>
+                        <td style="padding:12px; text-align:center; color:#fbbf24;">
+                            ${energy} kWh<br>
+                            <small style="color:#4ade80;">${cost} €</small>
+                        </td>
                         <td style="padding:12px; text-align:right;">
                             <button class="btn" style="padding:4px 8px; font-size:10px;" id="del-grow-${g.id}">🗑️</button>
                             <button class="btn" style="padding:4px 8px; font-size:10px; margin-left:4px;" id="edit-hist-${g.id}">📝</button>
@@ -1902,22 +1976,32 @@ class LocalGrowBoxPanel extends HTMLElement {
             const activeGrow = (device.grows || []).find(g => g.status === 'active');
             if (!activeGrow) return;
 
-            // Days
-            const days = Math.floor((new Date() - new Date(activeGrow.start_date)) / (1000 * 60 * 60 * 24));
+            // Days & Progress
+            const startDate = new Date(activeGrow.start_date);
+            const days = Math.floor((new Date() - startDate) / (1000 * 60 * 60 * 24));
+            const totalDays = (activeGrow.expected_weeks || 8) * 7;
+            const progress = Math.min(100, (days / totalDays) * 100);
+            
             const elDays = card.querySelector('.val-days');
-            if (elDays) elDays.innerText = `Tag ${days}`;
+            if (elDays) elDays.innerText = `Tag ${days} / ${totalDays}`;
+            
+            const elBar = card.querySelector('[style*="width:"]');
+            if (elBar) elBar.style.width = `${progress}%`;
 
-            // Energy (Summed)
+            // Energy & Cost
+            const price = device.options.electric_price || 0.35;
             if (device.options.energy_sensor) {
                 const currentEnergy = this._getSummedValue(device.options.energy_sensor);
                 if (currentEnergy !== null) {
-                    const consumed = Math.max(0, currentEnergy - (activeGrow.start_energy || 0)).toFixed(2);
+                    const consumed = Math.max(0, currentEnergy - (activeGrow.start_energy || 0));
                     const elKwh = card.querySelector('.val-kwh');
-                    if (elKwh) elKwh.innerText = consumed;
+                    if (elKwh) elKwh.innerText = consumed.toFixed(2);
+                    const elCost = card.querySelector('.val-cost');
+                    if (elCost) elCost.innerText = (consumed * price).toFixed(2);
                 }
             }
 
-            // Power (Summed)
+            // Power
             if (device.options.power_sensor) {
                 const currentWatts = this._getSummedValue(device.options.power_sensor);
                 if (currentWatts !== null) {
@@ -1928,19 +2012,42 @@ class LocalGrowBoxPanel extends HTMLElement {
         });
     }
 
+    async _addEventDialog(entryId, growId) {
+        const types = ["Topping", "Dünger", "Wasser", "LST", "Defoliation", "Umgetopft", "Sonstiges"];
+        const type = prompt(`Event Typ wählen:\n${types.join(", ")}`, "Topping");
+        if (!type) return;
+        const note = prompt("Zusatz-Notiz (optional):", "");
+        
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/add_grow_event',
+                entry_id: entryId,
+                grow_id: growId,
+                event_type: type,
+                note: note || ""
+            });
+            this._fetchGrows();
+        } catch (err) {
+            alert("Fehler: " + err.message);
+        }
+    }
+
     async _startGrowDialog(entryId) {
         const name = prompt("Name für den neuen Grow:", "Mein Grow " + new Date().toLocaleDateString());
         if (!name) return;
         const strain = prompt("Sorte (optional):", "");
+        const weeks = prompt("Erwartete Dauer (Wochen):", "8");
+        if (weeks === null) return;
         
         try {
             await this._hass.callWS({
                 type: 'local_grow_box/start_grow',
                 entry_id: entryId,
                 name: name,
-                strain: strain
+                strain: strain,
+                expected_weeks: parseInt(weeks) || 8
             });
-            this._updateContent();
+            this._fetchGrows();
         } catch (err) {
             alert("Fehler beim Starten: " + err.message);
         }
