@@ -369,6 +369,40 @@ class GrowBoxManager:
                 await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": entity_id})
 
     async def _async_update_logic(self, now: datetime.datetime):
+        # 1. Metrics Tracking (Runs independently of Master Switch and Sensors)
+        current_time = now
+        if not hasattr(self, "_last_metrics_tracking") or (current_time - self._last_metrics_tracking).total_seconds() >= 60:
+            self._last_metrics_tracking = current_time
+            active_grow = next((g for g in self.grows if g["status"] == "active"), None)
+            if active_grow:
+                # VPD Tracking (Ideal Range: 0.8 - 1.2 kPa)
+                active_grow["vpd_total_mins"] = active_grow.get("vpd_total_mins", 0) + 1
+                if 0.8 <= (self.vpd or 0) <= 1.2:
+                    active_grow["vpd_ideal_mins"] = active_grow.get("vpd_ideal_mins", 0) + 1
+                
+                # Energy Integration (Power to kWh)
+                power_entities = self.config.get(CONF_POWER_SENSOR)
+                if power_entities:
+                    ent_list = [power_entities] if isinstance(power_entities, str) else power_entities
+                    total_watts = 0
+                    for ent_id in ent_list:
+                        state = self.hass.states.get(ent_id)
+                        if state and state.state not in ["unavailable", "unknown"]:
+                            try:
+                                total_watts += float(state.state)
+                            except ValueError:
+                                pass
+                    
+                    minute_kwh = (total_watts / 60.0) / 1000.0
+                    active_grow["consumed_kwh"] = active_grow.get("consumed_kwh", 0) + minute_kwh
+
+                # Persistence check
+                if active_grow["vpd_total_mins"] % 5 == 0:
+                    self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
+
+            # Push updates to HA sensors exactly once per minute
+            self.async_update_listeners()
+
         if not self.master_switch_on:
             await self._async_stop_all_devices()
             return
@@ -690,41 +724,6 @@ class GrowBoxManager:
 
         svp = 0.61078 * math.exp((17.27 * current_temp) / (current_temp + 237.3))
         self.vpd = svp * (1 - current_humid / 100)
-
-        # Metrics Tracking (Energy & VPD Health - approx once per minute)
-        current_time = now
-        if not hasattr(self, "_last_metrics_tracking") or (current_time - self._last_metrics_tracking).total_seconds() >= 60:
-            self._last_metrics_tracking = current_time
-            active_grow = next((g for g in self.grows if g["status"] == "active"), None)
-            if active_grow:
-                # 1. VPD Tracking (Ideal Range: 0.8 - 1.2 kPa)
-                active_grow["vpd_total_mins"] = active_grow.get("vpd_total_mins", 0) + 1
-                if 0.8 <= (self.vpd or 0) <= 1.2:
-                    active_grow["vpd_ideal_mins"] = active_grow.get("vpd_ideal_mins", 0) + 1
-                
-                # 2. Energy Integration (Power to kWh)
-                power_entities = self.config.get(CONF_POWER_SENSOR)
-                if power_entities:
-                    ent_list = [power_entities] if isinstance(power_entities, str) else power_entities
-                    total_watts = 0
-                    for ent_id in ent_list:
-                        state = self.hass.states.get(ent_id)
-                        if state and state.state not in ["unavailable", "unknown"]:
-                            try:
-                                total_watts += float(state.state)
-                            except ValueError:
-                                pass
-                    
-                    # Integration: Watts * (1 minute / 60 minutes) / 1000 = kWh
-                    minute_kwh = (total_watts / 60.0) / 1000.0
-                    active_grow["consumed_kwh"] = active_grow.get("consumed_kwh", 0) + minute_kwh
-
-                # Persistence check (save every 5 mins to prevent data loss on reload)
-                if active_grow["vpd_total_mins"] % 5 == 0:
-                    self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
-
-        # Push updates to HA sensors
-        self.async_update_listeners()
 
         if fan_entity:
             fan_state = self._get_safe_state(fan_entity)
