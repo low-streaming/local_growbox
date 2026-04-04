@@ -45,6 +45,7 @@ class GrowBoxVPDSensor(SensorEntity):
     _attr_device_class = SensorDeviceClass.PRESSURE
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_icon = "mdi:water-percent"
+    _attr_should_poll = False
 
     def __init__(self, hass, manager, entry_id):
         """Initialize the sensor."""
@@ -71,11 +72,9 @@ class GrowBoxVPDSensor(SensorEntity):
         
     async def async_added_to_hass(self) -> None:
         """Register callbacks."""
-        pass
-        
-    def update(self):
-        """Fetch new state data for the sensor."""
-        pass
+        self.async_on_remove(
+            self.manager.async_register_update_callback(self.async_write_ha_state)
+        )
 
 class GrowBoxDaysInPhaseSensor(SensorEntity):
     """Representation of Days in Phase Sensor."""
@@ -84,6 +83,7 @@ class GrowBoxDaysInPhaseSensor(SensorEntity):
     _attr_name = "Days in Current Phase"
     _attr_native_unit_of_measurement = "days"
     _attr_icon = "mdi:calendar-clock"
+    _attr_should_poll = False
 
     def __init__(self, hass, manager, entry_id):
         """Initialize the sensor."""
@@ -106,3 +106,9 @@ class GrowBoxDaysInPhaseSensor(SensorEntity):
     def native_value(self) -> int:
         """Return the value of the sensor."""
         return self.manager.days_in_phase
+
+    async def async_added_to_hass(self) -> None:
+        """Register callbacks."""
+        self.async_on_remove(
+            self.manager.async_register_update_callback(self.async_write_ha_state)
+        )

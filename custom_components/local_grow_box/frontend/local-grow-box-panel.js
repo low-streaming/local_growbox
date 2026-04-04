@@ -780,13 +780,6 @@ class LocalGrowBoxPanel extends HTMLElement {
                             </div>
                         </div>
 
-                        <div class="info-box">
-                            <div class="info-icon">📊</div>
-                            <div class="info-content">
-                                <div class="info-label">Energie</div>
-                                <div class="info-val">${(this._getSummedValue(device.options.energy_sensor) || 0).toFixed(1)} kWh</div>
-                            </div>
-                        </div>
 
                         <div class="info-box">
                             <div class="info-icon">${lightStatus === 'on' ? '💡' : '🌑'}</div>
@@ -1648,8 +1641,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                     </div>
                 </div>
                 
-                <div style="text-align:center; margin-top:40px; opacity:0.5; font-size:12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
-                    Local Grow Box Integration v2.1.8
+                <div style="text-align:center; margin-top:40px; opacity:0.8; font-size:12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
+                    <div style="background:rgba(251, 191, 36, 0.1); border:1px solid rgba(251, 191, 36, 0.3); padding:10px; margin-bottom:20px; border-radius:8px; color:#fbbf24;">
+                        <strong>💡 Tipp bei UI-Problemen:</strong> Falls Änderungen (wie gelöschte Boxen) nicht erscheinen, drücke bitte <strong>STRG + F5</strong> um den Browser-Cache zu leeren.
+                    </div>
+                    Local Grow Box Integration v2.4.2
                 </div>
             </div>
         `;
@@ -1703,7 +1699,13 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <h4 style="color: ${colorHex}; margin: 0; font-size: 1.0em; text-transform: uppercase;">${label}</h4>
                         <span style="color: #fff; font-size: 1.1em; font-weight: bold;">${currentState} ${unit}</span>
                     </div>
-                    <div style="height: 120px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">Keine Verlaufsdaten für ${label} gefunden.</div>
+                    <div style="height: 120px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <div style="text-align:center;">
+                            <div style="font-size:20px; margin-bottom:8px;">⏳</div>
+                            Warte auf Datenpunkte...<br>
+                            <small style="opacity:0.5;">(Kann nach Neustart 1-2 Min dauern)</small>
+                        </div>
+                    </div>
                 </div>
             `;
         }

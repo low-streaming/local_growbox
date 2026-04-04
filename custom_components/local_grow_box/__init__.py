@@ -81,7 +81,29 @@ class GrowBoxManager:
         self._grows_file_path = hass.config.path(".storage", f"local_grow_box_grows_{self.entry.entry_id}.json")
         self._load_grows()
 
+        self._update_callbacks = []
         self._last_display_update = None
+
+    @property
+    def days_in_phase(self) -> int:
+        """Get days in current phase."""
+        if not self.phase_start_date:
+            return 0
+        delta = dt_util.now() - self.phase_start_date
+        return max(0, delta.days)
+
+    def async_register_update_callback(self, callback):
+        """Register callback for status updates."""
+        if callback not in self._update_callbacks:
+            self._update_callbacks.append(callback)
+        
+        # Return remover function
+        return lambda: self._update_callbacks.remove(callback)
+
+    def async_update_listeners(self):
+        """Update all registered listeners."""
+        for callback in self._update_callbacks:
+            callback()
 
     def _load_logs(self):
         """Load logs from file."""
@@ -697,10 +719,12 @@ class GrowBoxManager:
                     minute_kwh = (total_watts / 60.0) / 1000.0
                     active_grow["consumed_kwh"] = active_grow.get("consumed_kwh", 0) + minute_kwh
 
-                # Persistence check (save every 60 mins)
-                if active_grow["vpd_total_mins"] % 60 == 0:
+                # Persistence check (save every 5 mins to prevent data loss on reload)
+                if active_grow["vpd_total_mins"] % 5 == 0:
                     self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
 
+        # Push updates to HA sensors
+        self.async_update_listeners()
 
         if fan_entity:
             fan_state = self._get_safe_state(fan_entity)
