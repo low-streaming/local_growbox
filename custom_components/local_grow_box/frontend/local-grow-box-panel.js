@@ -613,7 +613,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             let camStateObj = null;
             if (device.options.camera_entity) {
                 camStateObj = this._hass.states[device.options.camera_entity];
-                if (camStateObj) {
+                if (camStateObj && camStateObj.attributes.entity_picture) {
                     imgUrl = camStateObj.attributes.entity_picture;
                     isLive = true;
                 }
@@ -1860,7 +1860,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                             <div style="margin-top:16px;">
                                 <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
                                     <span>Fortschritt</span>
-                                    <span>Tag ${days} / ${totalDays}</span>
+                                    <span class="val-days">Tag ${days} / ${totalDays}</span>
                                 </div>
                                 <div style="height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
                                     <div style="width:${progress}%; height:100%; background:linear-gradient(90deg, #4ade80, #38bdf8); border-radius:4px;"></div>
@@ -1921,8 +1921,13 @@ class LocalGrowBoxPanel extends HTMLElement {
             let rows = '';
             (device.grows || []).filter(g => g.status === 'finished').forEach(g => {
                 const cost = g.total_cost || '--';
+                const energy = g.total_kwh || g.consumed_kwh || 0;
                 const events = (g.events || []).map(e => `• ${e.type}`).join(', ');
                 
+                const startDt = new Date(g.start_date);
+                const endDt = new Date(g.end_date || g.start_date);
+                const durationDays = Math.max(1, Math.ceil((endDt - startDt) / (1000 * 60 * 60 * 24)));
+
                 rows += `
                     <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                         <td style="padding:12px;">
@@ -1930,10 +1935,10 @@ class LocalGrowBoxPanel extends HTMLElement {
                             <small style="opacity:0.6;">${g.strain || ''}</small>
                             ${events ? `<div style="font-size:10px; color:var(--primary-color); margin-top:4px;">${events}</div>` : ''}
                         </td>
-                        <td style="padding:12px;">${new Date(g.start_date).toLocaleDateString()}</td>
-                        <td style="padding:12px; text-align:center;">${duration} Tage</td>
+                        <td style="padding:12px;">${startDt.toLocaleDateString()}</td>
+                        <td style="padding:12px; text-align:center;">${durationDays} Tage</td>
                         <td style="padding:12px; text-align:center; color:#fbbf24;">
-                            ${energy} kWh<br>
+                            ${parseFloat(energy).toFixed(2)} kWh<br>
                             <small style="color:#4ade80;">${cost} €</small>
                         </td>
                         <td style="padding:12px; text-align:right;">
