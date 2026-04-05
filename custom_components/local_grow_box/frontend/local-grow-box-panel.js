@@ -36,9 +36,9 @@ class LocalGrowBoxPanel extends HTMLElement {
         // Re-render logic
         if (this._devices) {
             // Stability Fix: Only re-render 'overview' and 'statistics' on every state update.
-            // Other tabs (settings, phases, logs, info) are static or input-heavy and should NOT
+            // Other tabs (settings, phases, logs, info, recipes) are static or input-heavy and should NOT
             // be wiped and re-created every time a sensor value changes in the background.
-            const persistentTabs = ['settings', 'phases', 'logs', 'diary', 'info'];
+            const persistentTabs = ['settings', 'phases', 'logs', 'diary', 'info', 'recipes'];
             if (persistentTabs.includes(this._activeTab)) {
                 // For dynamic elements inside persistent tabs (like entity pickers), 
                 // we still update their hass object so they stay functional.
@@ -264,7 +264,10 @@ class LocalGrowBoxPanel extends HTMLElement {
                     color: var(--text-primary);
                 }
                 
-
+                select option {
+                    background-color: var(--card-bg);
+                    color: var(--text-primary);
+                }
                 
                 /* Layout */
                 .header { 
@@ -495,12 +498,12 @@ class LocalGrowBoxPanel extends HTMLElement {
                 </div>
                 <div class="tabs">
                     <div class="tab active" data-tab="overview">Übersicht</div>
-                    <div class="tab" data-tab="statistics">Statistiken</div>
-                    <div class="tab" data-tab="settings">Geräte & Config</div>
-                    <div class="tab" data-tab="phases">Phasen</div>
-                    <div class="tab" data-tab="logs">Protokoll</div>
                     <div class="tab" data-tab="diary">Tagebuch</div>
+                    <div class="tab" data-tab="statistics">Statistiken</div>
                     <div class="tab" data-tab="recipes">Rezepte 📋</div>
+                    <div class="tab" data-tab="phases">Phasen</div>
+                    <div class="tab" data-tab="settings">Geräte & Config</div>
+                    <div class="tab" data-tab="logs">Protokoll</div>
                     <div class="tab" data-tab="info">Info / Hilfe</div>
                 </div>
             </div>
@@ -947,9 +950,9 @@ class LocalGrowBoxPanel extends HTMLElement {
     }
 
     _renderStatBar(label, val, unit, min, max, color, icon, targetRange) {
-        if (val === null) return `<div class="stat-row"><span class="stat-label">${label}</span><span class="stat-value">--</span></div>`;
-
-        const pct = Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100));
+        let isNull = (val === null || val === undefined);
+        const displayVal = isNull ? '--' : `${val} ${unit}`;
+        const pct = isNull ? 0 : Math.min(100, Math.max(0, ((val - min) / (max - min)) * 100));
 
         // Target Area Rendering
         let targetArea = '';
@@ -963,10 +966,10 @@ class LocalGrowBoxPanel extends HTMLElement {
         }
 
         return `
-            <div style="margin-bottom:12px;">
+            <div style="margin-bottom:12px; opacity: ${isNull ? '0.5' : '1'};">
                 <div class="stat-row" style="margin-bottom:4px;">
                     <span class="stat-label">${label}</span>
-                    <span class="stat-value">${val} ${unit}</span>
+                    <span class="stat-value">${displayVal}</span>
                 </div>
                 <div class="bar-bg" style="position:relative;">
                     ${targetArea}
@@ -2408,6 +2411,19 @@ class LocalGrowBoxPanel extends HTMLElement {
                         </div>
                     </div>
                 </div>
+            </div>
+            
+            <div style="margin-top: 24px; padding: 16px; background: rgba(56, 189, 248, 0.05); border-left: 3px solid var(--primary-color); border-radius: 4px;">
+                <h4 style="margin: 0 0 8px 0; color: var(--primary-color);">💡 Wie funktionieren Rezepte?</h4>
+                <p style="margin: 0 0 8px 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary);">
+                    Rezepte bestehen aus vordefinierten Zielwerten für jede deiner Wachstumsphasen (Keimling, Wachstum, Blüte usw.). 
+                    Wenn du ein Rezept auf eine Grow Box anwendest, werden die <strong>Zielwerte (Temperatur, Luftfeuchtigkeit, Bodenfeuchte und Lichtzyklus)</strong> 
+                    dieser Box <strong>sofort überschrieben</strong> und im Hintergrund fest gespeichert. 
+                </p>
+                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary);">
+                    Die Box steuert ab diesem Zeitpunkt ihre angeschlossenen Geräte (Abluft, Befeuchter, Pumpe, Lampe) automatisch so, dass sie versuchen, diese neuen Zielwerte zu erreichen und zu halten. 
+                    Mithilfe der Export-Funktion kannst du dein aktuelles Klima-Setup kopieren und ganz einfach mit anderen Züchtern austauschen.
+                </p>
             </div>
         `;
 
