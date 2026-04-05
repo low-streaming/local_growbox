@@ -1159,22 +1159,44 @@ class LocalGrowBoxPanel extends HTMLElement {
             const settingsGrid = document.createElement('div');
             settingsGrid.style.cssText = "display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; width: 100%;";
 
-            // Card 1: Hardware
-            const cardHardware = createCard('Deine Hardware', '🔌');
-            appendSelector(cardHardware.body, 'Temperatur Sensor', 'temp_sensor', ['sensor']);
-            appendSelector(cardHardware.body, 'Luftfeuchtigkeits Sensor', 'humidity_sensor', ['sensor']);
-            appendSelector(cardHardware.body, 'Bodenfeuchte Sensor', 'moisture_sensor', ['sensor']);
-            appendSelector(cardHardware.body, 'Pflanzenbeleuchtung (Steckdose)', 'light_entity', ['switch', 'light', 'input_boolean']);
-            appendSelector(cardHardware.body, 'Abluft Ventilator (Steckdose)', 'fan_entity', ['switch', 'fan', 'input_boolean']);
-            appendSelector(cardHardware.body, 'Luftbefeuchter (Steckdose)', 'humidifier_entity', ['switch', 'input_boolean', 'humidifier']);
-            appendSelector(cardHardware.body, 'Wasserpumpe (Steckdose)', 'pump_entity', ['switch', 'input_boolean']);
-            appendSelector(cardHardware.body, 'Stromverbrauch (kWh Sensor)', 'energy_sensor', ['sensor'], true, 'Zählt Gesamtkosten. Bei Mehrfachauswahl werden diese addiert.');
-            appendSelector(cardHardware.body, 'Aktuelle Leistung (Watt Sensor)', 'power_sensor', ['sensor'], true, 'Optional, dient nur zur Anzeige oben rechts. Nicht für Kostenabrechnung.');
-            appendSelector(cardHardware.body, 'Kamera', 'camera_entity', ['camera'], false, 'Verbindet dein Dashboard mit der Live-Kamera.');
-            settingsGrid.appendChild(cardHardware.card);
+            // --- Card: Temperatur & Klima 🌡️ ---
+            const cardTemp = createCard('Temperatur & Klima', '🌡️');
+            appendSelector(cardTemp.body, 'Temperatur Sensor', 'temp_sensor', ['sensor']);
+            appendInput(cardTemp.body, 'Standard Ziel Temperatur (°C)', 'target_temp', 'number', '', 'Wird evtl. von Rezepten überschrieben.');
+            appendInput(cardTemp.body, 'Temp Hysterese (Lüfter °C)', 'temp_hysteresis', 'number', '', 'Ab welcher Abweichung nach oben soll der Abluft-Ventilator kühlen? (Standard: 1.0)');
+            settingsGrid.appendChild(cardTemp.card);
 
-            // Card 2: Basis-Einstellungen & Energie
-            const cardGeneral = createCard(' Basis-Konfiguration & KI', '⚙️');
+            // --- Card: Abluft & Luftfeuchte 🌪️ ---
+            const cardHum = createCard('Abluft & Luftfeuchte', '🌪️');
+            appendSelector(cardHum.body, 'Luftfeuchtigkeits Sensor', 'humidity_sensor', ['sensor']);
+            appendInput(cardHum.body, 'Standard Ziel Feuchte (%)', 'target_humidity', 'number', '', 'Wird evtl. von Rezepten überschrieben.');
+            appendSelector(cardHum.body, 'Abluft Ventilator (Steckdose)', 'fan_entity', ['switch', 'fan', 'input_boolean']);
+            appendSelector(cardHum.body, 'Luftbefeuchter (Steckdose)', 'humidifier_entity', ['switch', 'input_boolean', 'humidifier']);
+            appendInput(cardHum.body, 'Feuchte Hysterese (Befeuchter %)', 'humidity_hysteresis', 'number', '', 'Ab welcher Abweichung nach unten soll der Befeuchter sprühen? (Standard: 5.0)');
+            appendInput(cardHum.body, 'Abluft-Limit (Notfall Max %)', 'max_humidity', 'number', '', 'Bei wie viel % LF soll die Abluft sofort angehen um Schimmel zu verhindern? (Bsp: 80)');
+            appendInput(cardHum.body, 'Abluft Nachlauf/Hysterese (%)', 'fan_hysteresis', 'number', '', 'Wie stark muss die LF unter das Notfall-Limit fallen, bis der Lüfter wieder stoppt? (Std: 5.0)');
+            settingsGrid.appendChild(cardHum.card);
+
+            // --- Card: Bewässerung & Boden 🪴 ---
+            const cardWater = createCard('Bewässerung & Boden', '🪴');
+            appendSelector(cardWater.body, 'Bodenfeuchte Sensor', 'moisture_sensor', ['sensor']);
+            appendInput(cardWater.body, 'Standard Ziel Bodenfeuchte (%)', 'target_moisture', 'number', '', 'Wird evtl. von Rezepten überschrieben.');
+            appendSelector(cardWater.body, 'Wasserpumpe (Steckdose)', 'pump_entity', ['switch', 'input_boolean']);
+            appendInput(cardWater.body, 'Pumpen Dauer (Sek)', 'pump_duration', 'number', '', 'Wie viele Sekunden läuft die Wasserpumpe beim Gießen? (Standard: 5)');
+            settingsGrid.appendChild(cardWater.card);
+
+            // --- Card: Licht & Basis-Setup 💡 ---
+            const cardLight = createCard('Licht & Basis-Setup', '💡');
+            appendSelector(cardLight.body, 'Pflanzenbeleuchtung (Steckdose)', 'light_entity', ['switch', 'light', 'input_boolean']);
+            appendInput(cardLight.body, 'Licht Start-Uhrzeit (Stunde)', 'light_start_hour', 'number', '☀️', 'Beispiel: 6 bedeutet das Licht geht um 06:00 Uhr morgens an.');
+            appendSelector(cardLight.body, 'Kamera', 'camera_entity', ['camera'], false, 'Verbindet dein Dashboard mit der Live-Kamera.');
+            appendInput(cardLight.body, 'Aktueller Grow Start (Datum)', 'phase_start_date', 'date', '🏁', 'Tipp: Kann im Tagebuch präziser pro Grow verwaltet werden.');
+            settingsGrid.appendChild(cardLight.card);
+
+            // --- Card: Energie & Strom ⚡ ---
+            const cardEnergy = createCard('Energie & Kosten', '⚡');
+            appendSelector(cardEnergy.body, 'Stromverbrauch (kWh Sensor)', 'energy_sensor', ['sensor'], true, 'Zählt Gesamtkosten. Bei Mehrfachauswahl addiert.');
+            appendSelector(cardEnergy.body, 'Aktuelle Leistung (Watt Sensor)', 'power_sensor', ['sensor'], true, 'Optional, dient zur Anzeige oben rechts im Dashboard.');
             
             const rowPrice = document.createElement('div');
             rowPrice.className = 'form-group';
@@ -1189,17 +1211,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                 this._draft[device.entryId].electric_price = parseFloat(e.target.value);
             };
             rowPrice.appendChild(inputPrice);
-            cardGeneral.body.appendChild(rowPrice);
+            cardEnergy.body.appendChild(rowPrice);
+            settingsGrid.appendChild(cardEnergy.card);
 
-            appendInput(cardGeneral.body, 'Licht Start-Uhrzeit (Stunde)', 'light_start_hour', 'number', '☀️', 'Beispiel: 6 bedeutet das Licht geht um 06:00 Uhr morgens an.');
-            appendInput(cardGeneral.body, 'Aktueller Grow Start (Datum)', 'phase_start_date', 'date', '🏁', 'Tipp: Kann im Tagebuch präziser pro Grow verwaltet werden.');
-            
-            // AI Settings nested inside General 
-            const aiDivider = document.createElement('div');
-            aiDivider.style.cssText = "border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 16px; padding-top: 16px;";
-            aiDivider.innerHTML = `<div style="font-weight:bold; font-size:12px; color:#a855f7; margin-bottom:8px;">🧠 KI Pflanzenanalyse</div>`;
-            cardGeneral.body.appendChild(aiDivider);
-
+            // --- Card: KI Pflanzenanalyse 🧠 ---
+            const cardAI = createCard('KI Pflanzenanalyse', '🧠');
             const rowProvider = document.createElement('div');
             rowProvider.className = 'form-group';
             rowProvider.innerHTML = `<label>KI-Anbieter auswählen</label>`;
@@ -1215,9 +1231,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                 this._draft[device.entryId].ai_provider = e.target.value;
             };
             rowProvider.appendChild(selectProvider);
-            cardGeneral.body.appendChild(rowProvider);
-
-            appendInput(cardGeneral.body, 'API Key', 'ai_api_key', 'password', '🔑', 'Dein persönlicher Schlüssel von OpenAI oder Google.');
+            cardAI.body.appendChild(rowProvider);
+            
+            appendInput(cardAI.body, 'API Key', 'ai_api_key', 'password', '🔑', 'Dein persönlicher Schlüssel von OpenAI oder Google.');
 
             const rowAuto = document.createElement('div');
             rowAuto.style.cssText = "display:flex; align-items:center; gap:10px; margin-top:8px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;";
@@ -1229,30 +1245,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                 this._draft[device.entryId] = this._draft[device.entryId] || {};
                 this._draft[device.entryId].ai_enabled = e.target.checked;
             };
-            cardGeneral.body.appendChild(rowAuto);
-
-            settingsGrid.appendChild(cardGeneral.card);
-
-            // Move advanced settings into cardHardware to fulfill "immer aktiv und bei den entitys"
-            const hwDivider = document.createElement('div');
-            hwDivider.style.cssText = "border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 16px; padding-top: 16px;";
-            hwDivider.innerHTML = `<div style="font-weight:bold; font-size:12px; color:var(--primary-color); margin-bottom:8px;">🛠️ Grenzwerte & Feintuning</div>`;
-            cardHardware.body.appendChild(hwDivider);
-
-            appendInput(cardHardware.body, 'Temp Hysterese (Lüfter °C)', 'temp_hysteresis', 'number', '', 'Ab welcher Abweichung nach oben soll der Abluft-Ventilator kühlen? (Standard: 1.0)');
-            appendInput(cardHardware.body, 'Feuchte Hysterese (Befeuchter %)', 'humidity_hysteresis', 'number', '', 'Ab welcher Abweichung nach unten soll der Befeuchter sprühen? (Standard: 5.0)');
-            appendInput(cardHardware.body, 'Abluft-Limit (Notfall Max %)', 'max_humidity', 'number', '', 'Bei wie viel % Luftfeuchtigkeit soll die Abluft sofort angehen um Schimmel zu verhindern? (Beispiel: 80)');
-            appendInput(cardHardware.body, 'Abluft Nachlauf/Hysterese (%)', 'fan_hysteresis', 'number', '', 'Wie stark muss die Feuchtigkeit unter das Notfall-Limit fallen, bis der Lüfter wieder stoppt? (Standard: 5.0)');
-            appendInput(cardHardware.body, 'Pumpen Dauer (Sek)', 'pump_duration', 'number', '', 'Wie viele Sekunden läuft die Wasserpumpe, wenn eine Bewässerung ansteht? (Standard: 5)');
-
-            const hcDivider = document.createElement('div');
-            hcDivider.style.cssText = "border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 16px; padding-top: 16px;";
-            hcDivider.innerHTML = `<div style="font-weight:bold; font-size:12px; color:var(--text-secondary); margin-bottom:8px;">Manuelle Standard-Werte (werden von Rezepten überschrieben)</div>`;
-            cardHardware.body.appendChild(hcDivider);
-            
-            appendInput(cardHardware.body, 'Standard Ziel Temperatur (°C)', 'target_temp', 'number', '');
-            appendInput(cardHardware.body, 'Standard Ziel Feuchte (%)', 'target_humidity', 'number', '');
-            appendInput(cardHardware.body, 'Standard Ziel Bodenfeuchte (%)', 'target_moisture', 'number', '');
+            cardAI.body.appendChild(rowAuto);
+            settingsGrid.appendChild(cardAI.card);
 
             section.appendChild(settingsGrid);
 
