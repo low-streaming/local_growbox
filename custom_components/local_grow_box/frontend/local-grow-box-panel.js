@@ -158,7 +158,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 if (this._activeTab === 'diary') {
                     const active = device.grows.find(g => g.status === 'active');
                     if (active && device.entities.vpd) {
-                        this._fetchHistory(device, device.entities.vpd);
+                        this.fetchHistoryData(device.entities.vpd);
                     }
                 }
             }
@@ -170,55 +170,35 @@ class LocalGrowBoxPanel extends HTMLElement {
         }
     }
 
-    async _fetchHistory(device, entityId) {
-        if (this.fetchingHistory[entityId]) return;
-        this.fetchingHistory[entityId] = true;
-        
-        try {
-            const start = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
-            const url = `history/period/${start}?filter_entity_id=${entityId}&minimal_response&no_attributes`;
-            const result = await this._hass.callApi("GET", url);
-            
-            if (result && result.length > 0 && result[0].length > 0) {
-                const points = result[0].map(s => ({
-                    x: new Date(s.last_changed).getTime(),
-                    y: parseFloat(s.state)
-                })).filter(p => !isNaN(p.y));
-                
-                // Artificially extend steady states to 'now' to prevent empty graphs if state never changed
-                if (points.length === 1) {
-                    points.push({ x: Date.now(), y: points[0].y });
-                } else if (points.length > 1) {
-                    const lastPoint = points[points.length - 1];
-                    if (Date.now() - lastPoint.x > 60000) { // If last point is older than 60s
-                         points.push({ x: Date.now(), y: lastPoint.y });
-                    }
-                }
-
-                this.historyData[entityId] = points;
-                
-                // Re-render sparkline if it's already in the DOM
-                const svg = this.shadowRoot.getElementById(`vpd-sparkline-${device.id}`);
-                if (svg) this._renderSparkline(svg, points, 0.8, 1.2);
-            }
-        } catch (e) {
-            console.warn("Error fetching history for", entityId, e);
-        } finally {
-            this.fetchingHistory[entityId] = false;
-        }
-    }
-
     _renderSparkline(svg, data, minTarget, maxTarget) {
-        if (!data || data.length < 2) return;
+        if (!data || data.length === 0) return;
         
+        const validData = data.filter(d => d && d.state && !isNaN(parseFloat(d.state)));
+        if (validData.length === 0) return;
+
+        const points = validData.map(s => ({
+            x: new Date(s.last_changed).getTime(),
+            y: parseFloat(s.state)
+        }));
+
+        // Extension logic to current time (like in _fetchHistory)
+        if (points.length === 1) {
+            points.push({ x: Date.now(), y: points[0].y });
+        } else if (points.length > 1) {
+            const lastPoint = points[points.length - 1];
+            if (Date.now() - lastPoint.x > 60000) {
+                 points.push({ x: Date.now(), y: lastPoint.y });
+            }
+        }
+
         const width = 100;
         const height = 40;
         const padding = 2;
         
-        const xMin = data[0].x;
-        const xMax = data[data.length-1].x;
+        const xMin = points[0].x;
+        const xMax = points[points.length-1].x;
         const yMin = 0;
-        const yMax = Math.max(2.5, ...data.map(p => p.y));
+        const yMax = Math.max(2.5, ...points.map(p => p.y));
         
         const getX = (val) => ((val - xMin) / (xMax - xMin)) * (width - 2 * padding) + padding;
         const getY = (val) => height - (((val - yMin) / (yMax - yMin)) * (height - 2 * padding) + padding);
@@ -234,9 +214,9 @@ class LocalGrowBoxPanel extends HTMLElement {
         `;
         
         // Path
-        let path = `M ${getX(data[0].x)} ${getY(data[0].y)}`;
-        for (let i = 1; i < data.length; i++) {
-            path += ` L ${getX(data[i].x)} ${getY(data[i].y)}`;
+        let path = `M ${getX(points[0].x)} ${getY(points[0].y)}`;
+        for (let i = 1; i < points.length; i++) {
+            path += ` L ${getX(points[i].x)} ${getY(points[i].y)}`;
         }
         
         html += `<path d="${path}" fill="none" stroke="var(--primary-color)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />`;
@@ -1679,8 +1659,20 @@ class LocalGrowBoxPanel extends HTMLElement {
             this.historyData = { ...this.historyData, [entityId]: [] };
         } finally {
             this.fetchingHistory[entityId] = false;
-            if (this._activeTab === 'statistics') {
-                this._updateContent();
+            // Triggers UI update based on tab
+            const container = this.shadowRoot.getElementById('main-content');
+            if (container) {
+                if (this._activeTab === 'statistics') {
+                    this._renderStatistics(container);
+                } else if (this._activeTab === 'diary') {
+                    // Update only sparklines to avoid full re-render of complex cards
+                    this._devices.forEach(d => {
+                        const svg = this.shadowRoot.getElementById(`vpd-sparkline-${d.id}`);
+                        if (svg && d.entities.vpd === entityId) {
+                            this._renderSparkline(svg, this.historyData[entityId], 0.8, 1.2);
+                        }
+                    });
+                }
             }
         }
     }
@@ -2012,9 +2004,20 @@ class LocalGrowBoxPanel extends HTMLElement {
                     // Render sparkline if data exists
                     if (device.entities.vpd && this.historyData[device.entities.vpd]) {
                         const svg = section.querySelector(`#vpd-sparkline-${device.id}`);
-                        if (svg) this._renderSparkline(svg, this.historyData[device.entities.vpd], 0.8, 1.2);
+                        if (svg) {
+                            const phase = activeGrow.phase || 'vegetative';
+                            const targets = {
+                                'seedling': [0.4, 0.8],
+                                'vegetative': [0.8, 1.2],
+                                'flowering': [1.2, 1.6],
+                                'drying': [0.8, 1.0],
+                                'curing': [0.5, 0.7]
+                            };
+                            const [minT, maxT] = targets[phase] || [0.8, 1.2];
+                            this._renderSparkline(svg, this.historyData[device.entities.vpd], minT, maxT);
+                        }
                     } else if (device.entities.vpd) {
-                        this._fetchHistory(device, device.entities.vpd);
+                        this.fetchHistoryData(device.entities.vpd);
                     }
                 }, 0);
             }

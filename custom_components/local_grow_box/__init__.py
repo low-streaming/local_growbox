@@ -391,6 +391,9 @@ class GrowBoxManager:
             self._last_metrics_tracking = current_time
             active_grow = next((g for g in self.grows if g["status"] == "active"), None)
             if active_grow and self.vpd is not None:
+                # Store current phase in grow record for frontend
+                active_grow["phase"] = self.current_phase
+                
                 # VPD Tracking (Phase-Specific Ideal Range)
                 active_grow["vpd_total_mins"] = active_grow.get("vpd_total_mins", 0) + 1
                 
