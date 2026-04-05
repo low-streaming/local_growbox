@@ -7,6 +7,7 @@ import math
 import os
 import json
 import base64
+import aiohttp
 import voluptuous as vol
 from datetime import timedelta
 
@@ -36,6 +37,8 @@ from .const import (
     CONF_FAN_HYSTERESIS, DEFAULT_FAN_HYSTERESIS,
     DEFAULT_LIGHT_START_HOUR, DEFAULT_TARGET_MOISTURE,
     CONF_ENERGY_SENSOR, CONF_POWER_SENSOR, CONF_ELECTRIC_PRICE,
+    CONF_AI_PROVIDER, CONF_AI_API_KEY, CONF_AI_ENABLED,
+    AI_PROVIDER_NONE, AI_PROVIDER_OPENAI, AI_PROVIDER_GEMINI,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -734,7 +737,7 @@ class GrowBoxManager:
             
             try:
                 val = float(state.state)
-                target = self._get_config_value(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE, float)
+                target = self._get_recipe_value(self.current_phase, "target_moisture", self._get_config_value(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE, float))
                 if val < target:
                      _LOGGER.info("Moisture low (%.1f < %.1f). Starting Pump.", val, target)
                      self.add_log(f"Pumpe eingeschaltet (Bodenfeuchte {val}% < {target}%)")
@@ -923,9 +926,125 @@ class GrowBoxManager:
                 
             self.hass.async_add_executor_job(self._save_grows)
             _LOGGER.info("Snapshot saved for grow %s: %s", grow_id, filename)
+
+            # Trigger AI analysis if enabled
+            if not manual and self.config.get(CONF_AI_ENABLED):
+                self.hass.async_create_task(self._async_run_ai_health_check(grow_id, filename))
             
         except Exception as e:
             _LOGGER.error("Failed to take snapshot: %s", e)
+
+    async def _async_run_ai_health_check(self, grow_id: str, photo_filename: str):
+        """Run an AI health check using the configured provider."""
+        provider = self.config.get(CONF_AI_PROVIDER, AI_PROVIDER_NONE)
+        api_key = self.config.get(CONF_AI_API_KEY)
+        
+        if provider == AI_PROVIDER_NONE or not api_key:
+            return
+            
+        active_grow = next((g for g in self.grows if g["id"] == grow_id), None)
+        if not active_grow:
+            return
+            
+        _LOGGER.info("Starting AI Health Check for grow %s with %s", grow_id, provider)
+        
+        image_path = self.hass.config.path("www", "local_grow_box_images", "grows", grow_id, photo_filename)
+        if not os.path.exists(image_path):
+            _LOGGER.error("AI check failed: Image not found at %s", image_path)
+            return
+
+        # Prepare base64 image
+        try:
+            def _read_image():
+                with open(image_path, "rb") as f:
+                    return base64.b64encode(f.read()).decode("utf-8")
+            
+            b64_image = await self.hass.async_add_executor_job(_read_image)
+        except Exception as e:
+            _LOGGER.error("Failed to read image for AI check: %s", e)
+            return
+
+        prompt = (
+            "Du bist ein Experte für den Anbau von Pflanzen. Analysiere das beigefügte Foto einer Growbox. "
+            "Identifiziere: 1. Den aktuellen Wachstumsstatus (Vigor), 2. Eventuelle Nährstoffmängel (z. B. Stickstoff, Magnesium), "
+            "3. Anzeichen von Schädlingen oder Schimmel, 4. Actionable Advice (Handlungsempfehlung). "
+            "Antworte kurz und prägnant auf Deutsch."
+        )
+
+        try:
+            result_text = "Keine Analyse verfügbar."
+            
+            async with aiohttp.ClientSession() as session:
+                if provider == AI_PROVIDER_OPENAI:
+                    result_text = await self._call_openai(session, api_key, prompt, b64_image)
+                elif provider == AI_PROVIDER_GEMINI:
+                    result_text = await self._call_gemini(session, api_key, prompt, b64_image)
+
+            # Store result in grow record
+            if "ai_reports" not in active_grow:
+                active_grow["ai_reports"] = []
+                
+            report = {
+                "date": dt_util.now().isoformat(),
+                "photo": photo_filename,
+                "analysis": result_text
+            }
+            active_grow["ai_reports"].append(report)
+            
+            # Limit history to last 30 reports
+            if len(active_grow["ai_reports"]) > 30:
+                active_grow["ai_reports"].pop(0)
+                
+            self.hass.async_add_executor_job(self._save_grows)
+            _LOGGER.info("AI analysis completed and saved for grow %s", grow_id)
+            
+        except Exception as e:
+            _LOGGER.error("AI Health Check failed: %s", e)
+
+    async def _call_openai(self, session, api_key, prompt, b64_image):
+        """Call OpenAI GPT-4o Vision API."""
+        url = "https://api.openai.com/v1/chat/completions"
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        payload = {
+            "model": "gpt-4o",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_image}"}}
+                    ]
+                }
+            ],
+            "max_tokens": 500
+        }
+        
+        async with session.post(url, headers=headers, json=payload) as resp:
+            if resp.status != 200:
+                text = await resp.text()
+                raise Exception(f"OpenAI error {resp.status}: {text}")
+            data = await resp.json()
+            return data["choices"][0]["message"]["content"]
+
+    async def _call_gemini(self, session, api_key, prompt, b64_image):
+        """Call Google Gemini 1.5 Pro API."""
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key={api_key}"
+        headers = {"Content-Type": "application/json"}
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": prompt},
+                    {"inline_data": {"mime_type": "image/jpeg", "data": b64_image}}
+                ]
+            }]
+        }
+        
+        async with session.post(url, headers=headers, json=payload) as resp:
+            if resp.status != 200:
+                text = await resp.text()
+                raise Exception(f"Gemini error {resp.status}: {text}")
+            data = await resp.json()
+            return data["candidates"][0]["content"]["parts"][0]["text"]
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     await hass.http.async_register_static_paths([
@@ -976,6 +1095,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         websocket_api.async_register_command(hass, ws_reset_grow_energy)
         websocket_api.async_register_command(hass, ws_apply_recipe)
         websocket_api.async_register_command(hass, ws_take_snapshot)
+        websocket_api.async_register_command(hass, ws_run_ai_check)
     except Exception:
         pass # Expected if already registered
 
@@ -1274,6 +1394,26 @@ async def ws_take_snapshot(hass, connection, msg):
     if DOMAIN in hass.data and entry_id in hass.data[DOMAIN]:
         manager = hass.data[DOMAIN][entry_id]
         await manager._async_take_snapshot(grow_id, manual=True)
+        connection.send_result(msg["id"], {"success": True})
+    else:
+        connection.send_error(msg["id"], "not_found", "Manager not found")
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/run_ai_check",
+    vol.Required("entry_id"): str,
+    vol.Required("grow_id"): str,
+    vol.Required("photo"): str,
+})
+@websocket_api.async_response
+async def ws_run_ai_check(hass, connection, msg):
+    """Manually trigger an AI check for a specific photo."""
+    entry_id = msg["entry_id"]
+    grow_id = msg["grow_id"]
+    photo = msg["photo"]
+    
+    if DOMAIN in hass.data and entry_id in hass.data[DOMAIN]:
+        manager = hass.data[DOMAIN][entry_id]
+        await manager._async_run_ai_health_check(grow_id, photo)
         connection.send_result(msg["id"], {"success": True})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")

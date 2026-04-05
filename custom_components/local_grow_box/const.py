@@ -62,6 +62,13 @@ CONF_TARGET_MOISTURE = "target_moisture" # In %
 CONF_LIGHT_START_HOUR = "light_start_hour"
 CONF_ACTIVE_RECIPE = "active_recipe"
 CONF_PHASE_START_DATE = "phase_start_date"
+CONF_AI_PROVIDER = "ai_provider"
+CONF_AI_API_KEY = "ai_api_key"
+CONF_AI_ENABLED = "ai_enabled"
+
+AI_PROVIDER_NONE = "none"
+AI_PROVIDER_OPENAI = "openai"
+AI_PROVIDER_GEMINI = "gemini"
 
 # Defaults
 DEFAULT_TARGET_TEMP = 24.0

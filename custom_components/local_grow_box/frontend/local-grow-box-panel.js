@@ -1193,6 +1193,40 @@ class LocalGrowBoxPanel extends HTMLElement {
             appendSelector(cardAdvanced.body, 'Kamera', 'camera_entity', ['camera']);
             settingsGrid.appendChild(cardAdvanced.card);
 
+            // Card 5: KI & Analyse (NEU)
+            const cardAI = createCard('KI & Analyse', '🧠');
+            const rowProvider = document.createElement('div');
+            rowProvider.className = 'form-group';
+            rowProvider.innerHTML = `<label>KI-Anbieter</label>`;
+            const selectProvider = document.createElement('select');
+            selectProvider.style.cssText = "width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius:6px;";
+            selectProvider.innerHTML = `
+                <option value="none" ${device.options.ai_provider === 'none' ? 'selected' : ''}>Kein AI-Check</option>
+                <option value="openai" ${device.options.ai_provider === 'openai' ? 'selected' : ''}>OpenAI (GPT-4o Vision)</option>
+                <option value="gemini" ${device.options.ai_provider === 'gemini' ? 'selected' : ''}>Google Gemini 1.5 Pro</option>
+            `;
+            selectProvider.onchange = (e) => {
+                this._draft[device.entryId] = this._draft[device.entryId] || {};
+                this._draft[device.entryId].ai_provider = e.target.value;
+            };
+            rowProvider.appendChild(selectProvider);
+            cardAI.body.appendChild(rowProvider);
+
+            appendInput(cardAI.body, 'API Key', 'ai_api_key', 'password', '🔑');
+
+            const rowAuto = document.createElement('div');
+            rowAuto.style.cssText = "display:flex; align-items:center; gap:10px; margin-top:8px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;";
+            rowAuto.innerHTML = `
+                <input type="checkbox" id="ai-auto-${device.id}" ${device.options.ai_enabled ? 'checked' : ''} style="width:20px; height:20px; margin:0;">
+                <label for="ai-auto-${device.id}" style="font-size:12px; cursor:pointer;">Automatischer täglicher KI-Check</label>
+            `;
+            rowAuto.querySelector('input').onchange = (e) => {
+                this._draft[device.entryId] = this._draft[device.entryId] || {};
+                this._draft[device.entryId].ai_enabled = e.target.checked;
+            };
+            cardAI.body.appendChild(rowAuto);
+            settingsGrid.appendChild(cardAI.card);
+
             section.appendChild(settingsGrid);
 
             // Save Button
@@ -1995,6 +2029,21 @@ class LocalGrowBoxPanel extends HTMLElement {
                     <div id="gallery-container-${activeGrow.id}" style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.05); padding-top:15px;"></div>
                 `;
                 section.appendChild(activeCard);
+
+                // AI Report Display (NEU)
+                if (activeGrow.ai_reports && activeGrow.ai_reports.length > 0) {
+                    const latestReport = activeGrow.ai_reports[activeGrow.ai_reports.length - 1];
+                    const aiCard = document.createElement('div');
+                    aiCard.style.cssText = "background: rgba(168, 85, 247, 0.05); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 16px; margin-bottom: 24px; position:relative;";
+                    aiCard.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                            <span style="font-size:18px;">🧠</span>
+                            <span style="font-weight:700; font-size:12px; text-transform:uppercase; color:#a855f7;">KI-Gesundheitsbericht (Zuletzt: ${new Date(latestReport.date).toLocaleDateString()})</span>
+                        </div>
+                        <div style="font-size:13px; line-height:1.6; color:var(--text-primary); white-space: pre-wrap;">${latestReport.analysis}</div>
+                    `;
+                    section.appendChild(aiCard);
+                }
                 
                 setTimeout(() => {
                     const btnStop = section.querySelector(`#stop-grow-${activeGrow.id}`);
@@ -2267,27 +2316,27 @@ class LocalGrowBoxPanel extends HTMLElement {
                 name: "🌱 Autoflower (Standard)",
                 desc: "Optimiert für automatische Sorten. Konstant 18h Licht, angepasster VPD für schnelles Wachstum.",
                 phases: {
-                    seedling: { target_temp: 24, target_humidity: 75, vpd_range: [0.4, 0.8], light_hours: 18 },
-                    vegetative: { target_temp: 26, target_humidity: 60, vpd_range: [0.8, 1.2], light_hours: 18 },
-                    flowering: { target_temp: 25, target_humidity: 45, vpd_range: [1.2, 1.6], light_hours: 18 }
+                    seedling: { target_temp: 24, target_humidity: 75, vpd_range: [0.4, 0.8], light_hours: 18, target_moisture: 70 },
+                    vegetative: { target_temp: 26, target_humidity: 60, vpd_range: [0.8, 1.2], light_hours: 18, target_moisture: 60 },
+                    flowering: { target_temp: 25, target_humidity: 45, vpd_range: [1.2, 1.6], light_hours: 18, target_moisture: 45 }
                 }
             },
             {
                 name: "🌸 Photoperiodisch (Classic)",
                 desc: "Der Klassiker: 18/6 in der Vegi, automatischer Switch auf 12/12 in der Blüte inkl. VPD-Anpassung.",
                 phases: {
-                    seedling: { target_temp: 23, target_humidity: 70, vpd_range: [0.4, 0.8], light_hours: 18 },
-                    vegetative: { target_temp: 26, target_humidity: 60, vpd_range: [0.8, 1.2], light_hours: 18 },
-                    flowering: { target_temp: 24, target_humidity: 45, vpd_range: [1.2, 1.6], light_hours: 12 }
+                    seedling: { target_temp: 23, target_humidity: 70, vpd_range: [0.4, 0.8], light_hours: 18, target_moisture: 70 },
+                    vegetative: { target_temp: 26, target_humidity: 60, vpd_range: [0.8, 1.2], light_hours: 18, target_moisture: 60 },
+                    flowering: { target_temp: 24, target_humidity: 45, vpd_range: [1.2, 1.6], light_hours: 12, target_moisture: 45 }
                 }
             },
             {
                 name: "❄️ Eco-Growing (Low-Temp)",
                 desc: "Energiesparend bei kühleren Temperaturen. Reduzierte Zielwerte für Winter-Grows.",
                 phases: {
-                    seedling: { target_temp: 21, target_humidity: 65, vpd_range: [0.4, 1.0], light_hours: 18 },
-                    vegetative: { target_temp: 22, target_humidity: 55, vpd_range: [0.8, 1.2], light_hours: 18 },
-                    flowering: { target_temp: 21, target_humidity: 50, vpd_range: [1.2, 1.8], light_hours: 12 }
+                    seedling: { target_temp: 21, target_humidity: 65, vpd_range: [0.4, 1.0], light_hours: 18, target_moisture: 65 },
+                    vegetative: { target_temp: 22, target_humidity: 55, vpd_range: [0.8, 1.2], light_hours: 18, target_moisture: 55 },
+                    flowering: { target_temp: 21, target_humidity: 50, vpd_range: [1.2, 1.8], light_hours: 12, target_moisture: 50 }
                 }
             }
         ];
@@ -2312,12 +2361,12 @@ class LocalGrowBoxPanel extends HTMLElement {
                             <div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px; font-size: 11px;">
                                 <div style="display: flex; justify-content: space-between; margin-bottom: 4px; opacity: 0.7;">
                                     <span>Phase</span>
-                                    <span>Licht / Temp / Feuchte</span>
+                                    <span>Licht / Temp / RLF / Boden</span>
                                 </div>
                                 ${Object.keys(r.phases).map(p => `
                                     <div style="display: flex; justify-content: space-between; padding: 4px 0; border-top: 1px solid rgba(255,255,255,0.05);">
                                         <span style="text-transform: capitalize;">${p}</span>
-                                        <span style="font-weight: 600;">${r.phases[p].light_hours}h | ${r.phases[p].target_temp}° | ${r.phases[p].target_humidity}%</span>
+                                        <span style="font-weight: 600;">${r.phases[p].light_hours}h | ${r.phases[p].target_temp}° | ${r.phases[p].target_humidity}% | ${r.phases[p].target_moisture}%</span>
                                     </div>
                                 `).join('')}
                             </div>
@@ -2326,7 +2375,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                             <select id="recipe-box-${idx}" style="margin-bottom: 10px;">
                                 ${this._devices.map(d => `<option value="${d.entryId}">${d.name}</option>`).join('')}
                             </select>
-                            <button class="btn active" style="width: 100%;" id="apply-recipe-${idx}">Rezept anwenden</button>
+                            <button type="button" class="btn active" style="width: 100%;" id="apply-recipe-${idx}">Rezept anwenden</button>
                         </div>
                     </div>
                 `).join('')}
@@ -2343,7 +2392,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                             <select id="import-box" style="flex: 1;">
                                 ${this._devices.map(d => `<option value="${d.entryId}">${d.name}</option>`).join('')}
                             </select>
-                            <button class="btn active" id="btn-import-recipe" style="width: auto; padding: 0 24px;">Importieren</button>
+                            <button type="button" class="btn active" id="btn-import-recipe" style="width: auto; padding: 0 24px;">Importieren</button>
                         </div>
                     </div>
                     <div style="border-left: 1px dashed rgba(255,255,255,0.1); padding-left: 32px;">
@@ -2352,7 +2401,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <select id="export-box" style="margin-bottom: 12px;">
                             ${this._devices.map(d => `<option value="${d.entryId}">${d.name}</option>`).join('')}
                         </select>
-                        <button class="btn" id="btn-export-recipe" style="width: 100%; margin-bottom: 16px;">Rezept-Code generieren</button>
+                        <button type="button" class="btn" id="btn-export-recipe" style="width: 100%; margin-bottom: 16px;">Rezept-Code generieren</button>
                         <div id="export-result" style="display: none;">
                             <p style="font-size: 11px; margin-bottom: 4px; color: #4ade80;">Fertig! Kopiere diesen Code:</p>
                             <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; font-size: 10px; font-family: monospace; word-break: break-all; opacity: 0.8; border: 1px solid rgba(74, 222, 128, 0.2);" id="export-code"></div>
@@ -2398,17 +2447,20 @@ class LocalGrowBoxPanel extends HTMLElement {
                     seedling: { 
                         target_temp: parseFloat(device.options.target_temp || 24), 
                         target_humidity: parseFloat(device.options.target_humidity || 70),
-                        light_hours: parseFloat(device.options.phase_seedling_hours || 18)
+                        light_hours: parseFloat(device.options.phase_seedling_hours || 18),
+                        target_moisture: parseFloat(device.options.target_moisture || 70)
                     },
                     vegetative: { 
                         target_temp: parseFloat(device.options.target_temp || 26), 
                         target_humidity: parseFloat(device.options.target_humidity || 60),
-                        light_hours: parseFloat(device.options.phase_vegetative_hours || 18)
+                        light_hours: parseFloat(device.options.phase_vegetative_hours || 18),
+                        target_moisture: parseFloat(device.options.target_moisture || 60)
                     },
                     flowering: { 
                         target_temp: parseFloat(device.options.target_temp || 25), 
                         target_humidity: parseFloat(device.options.target_humidity || 45),
-                        light_hours: parseFloat(device.options.phase_flowering_hours || 12)
+                        light_hours: parseFloat(device.options.phase_flowering_hours || 12),
+                        target_moisture: parseFloat(device.options.target_moisture || 45)
                     }
                 }
             };
@@ -2450,16 +2502,43 @@ class LocalGrowBoxPanel extends HTMLElement {
             <div style="font-size:11px; color:var(--text-secondary); margin-bottom:10px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">Foto-Chronik</div>
             <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:8px; scrollbar-width: thin;">
                 ${grow.photos.map(photo => `
-                    <div style="flex:0 0 100px; height:75px; border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); cursor:pointer; transition:transform 0.2s;" 
-                         onclick='const modal=this.closest("local-grow-box-panel").shadowRoot.getElementById("camera-modal"); 
+                    <div style="flex:0 0 100px; height:75px; border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); cursor:pointer; transition:transform 0.2s; position:relative;" 
+                         onclick='if(event.target.tagName !== "BUTTON") { const modal=this.closest("local-grow-box-panel").shadowRoot.getElementById("camera-modal"); 
                                  modal.querySelector("img").src="/local/local_grow_box_images/grows/${grow.id}/${photo}"; 
                                  modal.querySelector("#modal-title").innerText="${photo}";
-                                 modal.classList.add("visible");'>
+                                 modal.classList.add("visible"); }'>
                         <img src="/local/local_grow_box_images/grows/${grow.id}/${photo}" style="width:100%; height:100%; object-fit:cover;">
+                        <button style="position:absolute; bottom:4px; right:4px; background:rgba(168, 85, 247, 0.8); border:none; border-radius:4px; color:white; font-size:10px; padding:2px 4px; cursor:pointer;" 
+                                onclick='event.stopPropagation(); this.closest("local-grow-box-panel")._runAICheck("${device.entryId}", "${grow.id}", "${photo}")'>🧠</button>
                     </div>
                 `).join('')}
             </div>
         `;
+    }
+
+    async _runAICheck(entryId, growId, photo) {
+        if (!confirm("Möchtest du eine KI-Analyse für dieses Foto starten? (Verursacht API-Kosten bei OpenAI/Gemini)")) return;
+        
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/run_ai_check',
+                entry_id: entryId,
+                grow_id: growId,
+                photo: photo
+            });
+            
+            const toast = this.shadowRoot.getElementById('save-toast');
+            toast.innerText = "🧠 KI-Analyse gestartet... Das Ergebnis erscheint gleich im Tagebuch.";
+            toast.classList.add('visible');
+            setTimeout(() => toast.classList.remove('visible'), 3000);
+            
+            // Poll for result after a few seconds
+            setTimeout(() => this._fetchGrows(), 5000);
+            setTimeout(() => this._fetchGrows(), 10000);
+        } catch (e) {
+            console.error("AI check error", e);
+            alert("KI-Check fehlgeschlagen: " + e.message);
+        }
     }
 
     async _takeManualSnapshot(entryId, grow_id) {
