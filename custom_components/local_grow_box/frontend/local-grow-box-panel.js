@@ -1988,9 +1988,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <div style="display:flex; flex-direction:column; justify-content:center; gap:8px;">
                             <button class="btn active" id="add-event-${activeGrow.id}">➕ Event</button>
                             <button class="btn" id="edit-grow-${activeGrow.id}">📝 Notizen</button>
+                            <button class="btn" id="take-snapshot-${activeGrow.id}">📸 Foto</button>
                             <button class="btn" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid #ef4444;" id="stop-grow-${activeGrow.id}">🚀 Beenden</button>
                         </div>
                     </div>
+                    <div id="gallery-container-${activeGrow.id}" style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.05); padding-top:15px;"></div>
                 `;
                 section.appendChild(activeCard);
                 
@@ -2003,6 +2005,12 @@ class LocalGrowBoxPanel extends HTMLElement {
                     if (btnEvent) btnEvent.onclick = () => this._addEventDialog(device.entryId, activeGrow.id);
                     const btnReset = section.querySelector(`#reset-energy-${activeGrow.id}`);
                     if (btnReset) btnReset.onclick = () => this._resetEnergy(device.entryId, activeGrow.id);
+                    const btnSnap = section.querySelector(`#take-snapshot-${activeGrow.id}`);
+                    if (btnSnap) btnSnap.onclick = () => this._takeManualSnapshot(device.entryId, activeGrow.id);
+
+                    // Render Gallery
+                    const gallCont = section.querySelector(`#gallery-container-${activeGrow.id}`);
+                    if (gallCont) this._renderPhotoGallery(gallCont, device, activeGrow);
 
                     // Render sparkline if data exists
                     if (device.entities.vpd && this.historyData[device.entities.vpd]) {
@@ -2055,6 +2063,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                             <small style="color:#4ade80;">${cost} €</small>
                         </td>
                         <td style="padding:12px; text-align:right;">
+                            ${g.photos && g.photos.length > 0 ? `<button class="btn" style="width:auto; padding:4px 10px; font-size:10px; display:inline-flex; margin-right:8px;" onclick='this.parentElement.parentElement.parentElement.querySelector(".row-gallery-${g.id}").style.display="table-row"; this.style.display="none";'>📸 ${g.photos.length}</button>` : ''}
                             <button class="btn" style="padding:4px 8px; font-size:10px;" id="del-grow-${g.id}">🗑️</button>
                             <button class="btn" style="padding:4px 8px; font-size:10px; margin-left:4px;" id="edit-hist-${g.id}">📝</button>
                         </td>
@@ -2085,6 +2094,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                 (device.grows || []).filter(g => g.status === 'finished').forEach(g => {
                     const btnDel = section.querySelector(`#del-grow-${g.id}`);
                     if (btnDel) btnDel.onclick = () => this._deleteGrow(device.entryId, g.id);
+                    
+                    if (g.photos && g.photos.length > 0) {
+                        const histGall = section.querySelector(`#hist-gallery-${g.id}`);
+                        if (histGall) this._renderPhotoGallery(histGall, device, g);
+                    }
                     const btnEdit = section.querySelector(`#edit-hist-${g.id}`);
                     if (btnEdit) btnEdit.onclick = () => this._editGrow(device.entryId, g);
                 });
@@ -2424,6 +2438,48 @@ class LocalGrowBoxPanel extends HTMLElement {
         } catch (e) {
             console.error("Apply recipe failed", e);
             alert("Fehler beim Anwenden des Rezepts: " + e.message);
+        }
+    }
+    _renderPhotoGallery(container, device, grow) {
+        if (!grow.photos || grow.photos.length === 0) {
+            container.innerHTML = '<div style="font-size:11px; color:var(--text-secondary); opacity:0.6;">Noch keine Fotos für diesen Grow vorhanden.</div>';
+            return;
+        }
+
+        container.innerHTML = `
+            <div style="font-size:11px; color:var(--text-secondary); margin-bottom:10px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">Foto-Chronik</div>
+            <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:8px; scrollbar-width: thin;">
+                ${grow.photos.map(photo => `
+                    <div style="flex:0 0 100px; height:75px; border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); cursor:pointer; transition:transform 0.2s;" 
+                         onclick='const modal=this.closest("local-grow-box-panel").shadowRoot.getElementById("camera-modal"); 
+                                 modal.querySelector("img").src="/local/local_grow_box_images/grows/${grow.id}/${photo}"; 
+                                 modal.querySelector("#modal-title").innerText="${photo}";
+                                 modal.classList.add("visible");'>
+                        <img src="/local/local_grow_box_images/grows/${grow.id}/${photo}" style="width:100%; height:100%; object-fit:cover;">
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    async _takeManualSnapshot(entryId, grow_id) {
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/take_snapshot',
+                entry_id: entryId,
+                grow_id: grow_id
+            });
+            
+            const toast = this.shadowRoot.getElementById('save-toast');
+            toast.innerText = "📸 Snapshot gespeichert!";
+            toast.classList.add('visible');
+            setTimeout(() => toast.classList.remove('visible'), 3000);
+            
+            // Refresh grows to show new photo
+            await this._fetchGrows();
+        } catch (e) {
+            console.error("Snapshot failed", e);
+            alert("Snapshot fehlgeschlagen: " + e.message);
         }
     }
 }

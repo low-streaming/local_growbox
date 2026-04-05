@@ -83,6 +83,7 @@ class GrowBoxManager:
 
         self._update_callbacks = []
         self._last_display_update = None
+        self._last_daily_snapshot_date = None
 
     @property
     def days_in_phase(self) -> int:
@@ -446,6 +447,27 @@ class GrowBoxManager:
             await self._async_update_water_logic(now)
         except Exception as e:
             _LOGGER.error("Error in Water Logic: %s", e)
+
+        # 4. Daily Snapshot Logic
+        today = now.date().isoformat()
+        if self._last_daily_snapshot_date != today:
+            active_grow = next((g for g in self.grows if g["status"] == "active"), None)
+            cam_entity = self.config.get(CONF_CAMERA_ENTITY)
+            if active_grow and cam_entity:
+                # Check if light is currently ON to avoid black photos
+                light_entity = self.config.get(CONF_LIGHT_ENTITY)
+                light_state = self.hass.states.get(light_entity) if light_entity else None
+                is_on = light_state and light_state.state == "on"
+                
+                # Check if we already have a photo for today in the record
+                photos = active_grow.get("photos", [])
+                already_has_today = any(p.startswith(today) for p in photos)
+                
+                if is_on and not already_has_today:
+                    self._last_daily_snapshot_date = today
+                    self.hass.async_create_task(self._async_take_snapshot(active_grow["id"]))
+
+        # Update Display Logic - Throttle to every 5 seconds
 
         # Update Display Logic - Throttle to every 5 seconds
         try:
@@ -855,6 +877,56 @@ class GrowBoxManager:
         self.current_phase = phase
         self.hass.async_create_task(self._async_update_logic(dt_util.now()))
 
+    async def _async_take_snapshot(self, grow_id: str, manual: bool = False):
+        """Take a snapshot from the configured camera for a specific grow."""
+        cam_entity = self.config.get(CONF_CAMERA_ENTITY)
+        if not cam_entity:
+            return
+            
+        active_grow = next((g for g in self.grows if g["id"] == grow_id), None)
+        if not active_grow:
+            return
+            
+        # Ensure directories exist
+        base_path = self.hass.config.path("www", "local_grow_box_images", "grows", grow_id)
+        if not os.path.exists(base_path):
+            try:
+                os.makedirs(base_path, exist_ok=True)
+            except Exception as e:
+                _LOGGER.error("Failed to create snapshot directory: %s", e)
+                return
+
+        # Generate filename
+        timestamp = dt_util.now()
+        filename = f"{timestamp.date().isoformat()}.jpg"
+        if manual:
+            filename = f"{timestamp.strftime('%Y-%m-%d_%H-%M-%S')}.jpg"
+            
+        full_path = os.path.join(base_path, filename)
+        
+        try:
+            await self.hass.services.async_call(
+                "camera", 
+                "snapshot", 
+                {"entity_id": cam_entity, "filename": full_path},
+                blocking=True
+            )
+            
+            # Update grow record
+            if "photos" not in active_grow:
+                active_grow["photos"] = []
+            
+            if filename not in active_grow["photos"]:
+                active_grow["photos"].append(filename)
+                # Sort photos by date/time
+                active_grow["photos"].sort()
+                
+            self.hass.async_add_executor_job(self._save_grows)
+            _LOGGER.info("Snapshot saved for grow %s: %s", grow_id, filename)
+            
+        except Exception as e:
+            _LOGGER.error("Failed to take snapshot: %s", e)
+
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     await hass.http.async_register_static_paths([
         StaticPathConfig("/local_grow_box", hass.config.path("custom_components/local_grow_box/frontend"), True)
@@ -903,6 +975,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         websocket_api.async_register_command(hass, ws_add_grow_event)
         websocket_api.async_register_command(hass, ws_reset_grow_energy)
         websocket_api.async_register_command(hass, ws_apply_recipe)
+        websocket_api.async_register_command(hass, ws_take_snapshot)
     except Exception:
         pass # Expected if already registered
 
@@ -1186,3 +1259,21 @@ async def ws_apply_recipe(hass, connection, msg):
         hass.data[DOMAIN][entry_id].config = {**hass.data[DOMAIN][entry_id].config, CONF_ACTIVE_RECIPE: recipe}
     
     connection.send_result(msg["id"], {"recipe": recipe})
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/take_snapshot",
+    vol.Required("entry_id"): str,
+    vol.Required("grow_id"): str,
+})
+@websocket_api.async_response
+async def ws_take_snapshot(hass, connection, msg):
+    """Manually trigger a snapshot for a grow."""
+    entry_id = msg["entry_id"]
+    grow_id = msg["grow_id"]
+    
+    if DOMAIN in hass.data and entry_id in hass.data[DOMAIN]:
+        manager = hass.data[DOMAIN][entry_id]
+        await manager._async_take_snapshot(grow_id, manual=True)
+        connection.send_result(msg["id"], {"success": True})
+    else:
+        connection.send_error(msg["id"], "not_found", "Manager not found")
