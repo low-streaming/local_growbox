@@ -2590,13 +2590,13 @@ class LocalGrowBoxPanel extends HTMLElement {
             <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:8px; scrollbar-width: thin;">
                 ${grow.photos.map(photo => `
                     <div style="flex:0 0 100px; height:75px; border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); cursor:pointer; transition:transform 0.2s; position:relative;" 
-                         onclick='if(event.target.tagName !== "BUTTON") { const modal=this.closest("local-grow-box-panel").shadowRoot.getElementById("camera-modal"); 
+                         onclick='if(event.target.tagName !== "BUTTON") { const modal=this.getRootNode().host.shadowRoot.getElementById("camera-modal"); 
                                  modal.querySelector("img").src="/local/local_grow_box_images/grows/${grow.id}/${photo}"; 
                                  modal.querySelector("#modal-title").innerText="${photo}";
                                  modal.classList.add("visible"); }'>
                         <img src="/local/local_grow_box_images/grows/${grow.id}/${photo}" style="width:100%; height:100%; object-fit:cover;">
                         <button style="position:absolute; bottom:4px; right:4px; background:rgba(168, 85, 247, 0.8); border:none; border-radius:4px; color:white; font-size:10px; padding:2px 4px; cursor:pointer;" 
-                                onclick='event.stopPropagation(); this.closest("local-grow-box-panel")._runAICheck("${device.entryId}", "${grow.id}", "${photo}")'>🧠</button>
+                                onclick='event.stopPropagation(); this.getRootNode().host._runAICheck("${device.entryId}", "${grow.id}", "${photo}")'>🧠</button>
                     </div>
                 `).join('')}
             </div>
