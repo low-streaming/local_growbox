@@ -1132,26 +1132,18 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     
-    # FAILSAFE: Ensure commands are registered even if async_setup didn't run or failed
-    try:
-        websocket_api.async_register_command(hass, ws_upload_image)
-        websocket_api.async_register_command(hass, ws_update_config)
-        websocket_api.async_register_command(hass, ws_get_config)
-        websocket_api.async_register_command(hass, ws_get_logs)
-        websocket_api.async_register_command(hass, ws_get_grows)
-        websocket_api.async_register_command(hass, ws_start_grow)
-        websocket_api.async_register_command(hass, ws_stop_grow)
-        websocket_api.async_register_command(hass, ws_update_grow)
-        websocket_api.async_register_command(hass, ws_delete_grow)
-        websocket_api.async_register_command(hass, ws_add_grow_event)
-        websocket_api.async_register_command(hass, ws_reset_grow_energy)
-        websocket_api.async_register_command(hass, ws_apply_recipe)
-        websocket_api.async_register_command(hass, ws_take_snapshot)
-        websocket_api.async_register_command(hass, ws_run_ai_check)
-        websocket_api.async_register_command(hass, ws_get_tank)
-        websocket_api.async_register_command(hass, ws_update_tank)
-    except Exception:
-        pass # Expected if already registered
+    # FAILSAFE: Register commands globally. Using a set of names to register individually.
+    cmds = [
+        ws_upload_image, ws_update_config, ws_get_config, ws_get_logs, ws_get_grows,
+        ws_start_grow, ws_stop_grow, ws_update_grow, ws_delete_grow, ws_add_grow_event,
+        ws_reset_grow_energy, ws_apply_recipe, ws_take_snapshot, ws_run_ai_check,
+        ws_get_tank, ws_update_tank
+    ]
+    for cmd in cmds:
+        try:
+            websocket_api.async_register_command(hass, cmd)
+        except Exception:
+            pass # Skip if already registered or other issue
 
     manager = GrowBoxManager(hass, entry)
     hass.data[DOMAIN][entry.entry_id] = manager
@@ -1415,15 +1407,27 @@ async def ws_get_tank(hass, connection, msg):
 @websocket_api.async_response
 async def ws_update_tank(hass, connection, msg):
     """Update tank data."""
-    entry_id = msg["entry_id"]
-    manager = hass.data[DOMAIN].get(entry_id)
-    if manager:
-        for k, v in msg["updates"].items():
-            manager.tank_state[k] = v
-        manager.hass.async_create_task(manager.hass.async_add_executor_job(manager._save_tank))
-        connection.send_result(msg["id"], {"success": True, "tank": manager.tank_state})
-    else:
-        connection.send_error(msg["id"], "not_found", "Manager not found")
+    try:
+        entry_id = msg["entry_id"]
+        updates = msg["updates"]
+        manager = hass.data[DOMAIN].get(entry_id)
+        
+        if manager:
+            for k, v in updates.items():
+                manager.tank_state[k] = v
+            
+            # Save in background
+            hass.async_add_executor_job(manager._save_tank)
+            
+            connection.send_result(msg["id"], {
+                "success": True, 
+                "tank": manager.tank_state
+            })
+        else:
+            connection.send_error(msg["id"], "not_found", f"Manager {entry_id} not found")
+    except Exception as e:
+        _LOGGER.error("Error in ws_update_tank: %s", e)
+        connection.send_error(msg["id"], "server_error", str(e))
 
 @websocket_api.websocket_command({
     vol.Required("type"): "local_grow_box/add_grow_event",
