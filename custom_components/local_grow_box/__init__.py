@@ -64,7 +64,7 @@ class GrowBoxManager:
         if self.phase_start_date is None:
              self.phase_start_date = dt_util.now()
 
-        self.vpd = 0.0
+        self.vpd = None
         self.pump_start_time = None
         # Initialize timers in the past so devices can start immediately on restart if needed
         self.last_pump_stop_time = dt_util.now() - timedelta(hours=1)
@@ -390,10 +390,13 @@ class GrowBoxManager:
         if not hasattr(self, "_last_metrics_tracking") or (current_time - self._last_metrics_tracking).total_seconds() >= 60:
             self._last_metrics_tracking = current_time
             active_grow = next((g for g in self.grows if g["status"] == "active"), None)
-            if active_grow:
-                # VPD Tracking (Ideal Range: 0.8 - 1.2 kPa)
+            if active_grow and self.vpd is not None:
+                # VPD Tracking (Phase-Specific Ideal Range)
                 active_grow["vpd_total_mins"] = active_grow.get("vpd_total_mins", 0) + 1
-                if 0.8 <= (self.vpd or 0) <= 1.2:
+                
+                # Get phase targets
+                vmin, vmax = self._get_vpd_target_range(self.current_phase)
+                if vmin <= self.vpd <= vmax:
                     active_grow["vpd_ideal_mins"] = active_grow.get("vpd_ideal_mins", 0) + 1
                 
                 # Energy Integration (Power to kWh)
@@ -523,7 +526,7 @@ class GrowBoxManager:
                 soil_val = str(soil_state.state)
 
         # VPD is calculated globally in manager
-        vpd_val = f"{self.vpd:.2f}" if self.vpd > 0 else "-.--"
+        vpd_val = f"{self.vpd:.2f}" if self.vpd is not None and self.vpd > 0 else "-.--"
 
         # Light
         light_entity = self.config.get(CONF_LIGHT_ENTITY)
@@ -798,6 +801,19 @@ class GrowBoxManager:
     def set_master_switch(self, state: bool):
         self.master_switch_on = state
         self.hass.async_create_task(self._async_update_logic(dt_util.now()))
+
+    def _get_vpd_target_range(self, phase: str) -> tuple[float, float]:
+        """Get ideal VPD range for a specific growth phase (in kPa)."""
+        # seedling: 0.4 - 0.8, vegetative: 0.8 - 1.2, flowering: 1.2 - 1.6
+        # drying: 0.8 - 1.0, curing: 0.5 - 0.7
+        ranges = {
+            PHASE_SEEDLING: (0.4, 0.8),
+            PHASE_VEGETATIVE: (0.8, 1.2),
+            PHASE_FLOWERING: (1.2, 1.6),
+            PHASE_DRYING: (0.8, 1.0),
+            PHASE_CURING: (0.5, 0.7),
+        }
+        return ranges.get(phase, (0.8, 1.2)) # Default to vegetative
 
     def set_phase(self, phase: str):
         self.current_phase = phase

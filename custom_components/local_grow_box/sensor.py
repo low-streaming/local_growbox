@@ -66,8 +66,10 @@ class GrowBoxVPDSensor(SensorEntity):
         )
 
     @property
-    def native_value(self) -> float:
+    def native_value(self) -> float | None:
         """Return the value of the sensor."""
+        if self.manager.vpd is None:
+            return None
         return round(self.manager.vpd, 2)
         
     async def async_added_to_hass(self) -> None:
