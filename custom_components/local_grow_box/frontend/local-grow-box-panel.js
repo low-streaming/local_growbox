@@ -421,6 +421,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .save-bar.visible { display: flex; animation: slideUp 0.3s ease-out; }
                 
                 @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+                @keyframes spin { 100% { transform: rotate(360deg); } }
 
                 /* Modal */
                 .modal {
@@ -766,6 +767,12 @@ class LocalGrowBoxPanel extends HTMLElement {
                     ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3.0, '#10b981', '🍃', vpdTarget)}
                     ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6', '🪴', { min: parseFloat(device.options.target_moisture || 60) - 2, max: parseFloat(device.options.target_moisture || 60) + 2 }) : ''}
                     
+                    <div style="display:flex; justify-content:center; gap: 40px; margin-top:24px; margin-bottom:12px; border-radius: 12px; background: rgba(0,0,0,0.2); padding: 16px;">
+                       <div style="font-size:40px; transition: all 0.5s ease; ${lightStatus === 'on' ? 'filter: drop-shadow(0 0 20px #fbbf24); transform: scale(1.1);' : 'opacity:0.2; filter: grayscale(100%);'}">💡</div>
+                       <div style="font-size:40px; display:inline-block; transition: all 0.5s ease; ${this._hass.states[device.options.fan_entity]?.state === 'on' ? 'animation: spin 1s linear infinite; filter: drop-shadow(0 0 10px #9ca3af);' : 'opacity:0.2; transform: scale(0.9);'}">🌪️</div>
+                       ${device.options.pump_entity ? `<div style="font-size:40px; transition: all 0.5s ease; ${pumpState?.state === 'on' ? 'filter: drop-shadow(0 0 15px #3b82f6); transform: scale(1.1);' : 'opacity:0.2;'}">💧</div>` : ''}
+                    </div>
+
                     <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:16px; display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                         
                         <div class="info-box">
@@ -1494,13 +1501,9 @@ class LocalGrowBoxPanel extends HTMLElement {
             outerWrapper.appendChild(header);
 
             const listContainer = document.createElement('div');
-            listContainer.style.position = 'relative';
-            listContainer.style.paddingLeft = '100px';
-
-            // Vertical Timeline Line
-            const timelineLine = document.createElement('div');
-            timelineLine.style.cssText = "position: absolute; left: 120px; text-align:right; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.05); z-index: 0;";
-            listContainer.appendChild(timelineLine);
+            listContainer.style.display = 'flex';
+            listContainer.style.flexDirection = 'column';
+            listContainer.style.gap = '12px';
 
             // Sort combined logs chronologically (newest first)
             allLogs.sort((a, b) => {
@@ -1520,9 +1523,9 @@ class LocalGrowBoxPanel extends HTMLElement {
             } else {
                 for (const entry of allLogs) {
                     const item = document.createElement('div');
-                    item.style.cssText = "position: relative; padding: 16px; margin-bottom: 16px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 12px; display:flex; align-items:center; gap:16px; transition:transform 0.2s; z-index: 1;";
-                    item.onmouseenter = () => item.style.transform = 'translateX(4px)';
-                    item.onmouseleave = () => item.style.transform = 'translateX(0)';
+                    item.style.cssText = "padding: 16px; background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%); border-left: 2px solid rgba(255,255,255,0.2); border-radius: 4px 8px 8px 4px; display:flex; align-items:center; gap:16px; transition:transform 0.2s, background 0.2s;";
+                    item.onmouseenter = () => { item.style.transform = 'translateY(-2px)'; item.style.background = 'linear-gradient(90deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)'; };
+                    item.onmouseleave = () => { item.style.transform = 'translateY(0)'; item.style.background = 'linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)'; };
 
                     let timeStr = "";
                     let msgStr = entry.line;
@@ -1535,10 +1538,14 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                     // Choose icon based on content
                     let icon = '📝';
-                    if (msgStr.includes('Licht')) icon = '💡';
-                    else if (msgStr.includes('Pumpe')) icon = '💧';
-                    else if (msgStr.includes('Abluft')) icon = '🌪️';
-                    else if (msgStr.includes('Befeuchter')) icon = '💦';
+                    let accentColor = '#64748b';
+                    if (msgStr.includes('Licht')) { icon = '💡'; accentColor = '#fbbf24'; }
+                    else if (msgStr.includes('Pumpe')) { icon = '💧'; accentColor = '#3b82f6'; }
+                    else if (msgStr.includes('Abluft')) { icon = '🌪️'; accentColor = '#9ca3af'; }
+                    else if (msgStr.includes('Befeuchter')) { icon = '💦'; accentColor = '#38bdf8'; }
+                    else if (msgStr.includes('Grow') || msgStr.includes('Zählerstand')) { icon = '🌿'; accentColor = '#4ade80'; }
+
+                    item.style.borderLeftColor = accentColor;
 
                     // Highlight keywords playfully
                     if (msgStr.includes('eingeschaltet')) {
@@ -1549,20 +1556,17 @@ class LocalGrowBoxPanel extends HTMLElement {
                     }
 
                     item.innerHTML = `
-                        <div style="position: absolute; left: -100px; width: 80px; text-align: right; color:var(--text-secondary); font-size:11px; font-variant-numeric: tabular-nums; opacity:0.7;">
-                            ${timeStr.split(' ')[0]}<br>
-                            <span style="font-weight:700; font-size:13px; color:var(--text-primary); opacity:1;">${timeStr.split(' ')[1]}</span>
+                        <div style="min-width: 110px; color:var(--text-secondary); font-size:12px; text-align:right; font-variant-numeric: tabular-nums; opacity:0.8; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 16px;">
+                            <div style="font-weight:700; color:var(--text-primary); opacity:1;">${timeStr.split(' ')[1]}</div>
+                            <div style="font-size:10px; margin-top:2px;">${timeStr.split(' ')[0]}</div>
                         </div>
                         
-                        <div style="position: absolute; left: -26px; width: 14px; height: 14px; background: var(--card-bg); border: 2px solid ${icon === '💡' ? '#fbbf24' : icon === '💧' ? '#3b82f6' : icon === '🌪️' ? '#9ca3af' : icon === '💦' ? '#38bdf8' : '#a855f7'}; border-radius: 50%; z-index: 2;"></div>
-                        
-                        <div style="display:flex; align-items:center; justify-content:center; width: 44px; height: 44px; background: rgba(255,255,255,0.03); border-radius: 12px;">
-                            <div style="font-size:20px; line-height:1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
-                                ${icon}
-                            </div>
+                        <div style="display:flex; align-items:center; justify-content:center; width: 36px; height: 36px; background: rgba(0,0,0,0.2); border-radius: 50%; border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="font-size:16px;">${icon}</div>
                         </div>
-                        <div style="display:flex; flex-direction:column; justify-content: center; gap:4px; flex:1;">
-                            <span style="font-size:11px; font-weight:800; color:#cbd5e1; letter-spacing:0.5px; text-transform:uppercase;">
+                        
+                        <div style="display:flex; flex-direction:column; justify-content: center; gap:4px; flex:1; padding-left: 8px;">
+                            <span style="font-size:10px; font-weight:800; color:${accentColor}; letter-spacing:0.5px; text-transform:uppercase;">
                                 ${entry.devName}
                             </span>
                             <span style="font-size:14px; color:var(--text-primary); line-height: 1.4;">
@@ -2155,6 +2159,14 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const endDt = new Date(g.end_date || g.start_date);
                 const durationDays = Math.max(1, Math.ceil((endDt - startDt) / (1000 * 60 * 60 * 24)));
 
+                let yieldHtml = '';
+                if (g.yield_grams && parseFloat(g.total_cost) > 0) {
+                    const costPerGram = (parseFloat(g.total_cost) / parseFloat(g.yield_grams)).toFixed(2);
+                    yieldHtml = `<div style="margin-top:6px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.1); font-size:11px; color:#c084fc; line-height: 1.4;">⚖️ ${g.yield_grams}g<br/><span style="color:#a855f7;">(${costPerGram} €/g)</span></div>`;
+                } else if (g.yield_grams) {
+                    yieldHtml = `<div style="margin-top:6px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.1); font-size:11px; color:#c084fc;">⚖️ ${g.yield_grams}g</div>`;
+                }
+
                 rows += `
                     <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
                         <td style="padding:12px;">
@@ -2167,6 +2179,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <td style="padding:12px; text-align:center; color:#fbbf24;">
                             ${parseFloat(energy).toFixed(2)} kWh<br>
                             <small style="color:#4ade80;">${cost} €</small>
+                            ${yieldHtml}
                         </td>
                         <td style="padding:12px; text-align:right;">
                             ${g.photos && g.photos.length > 0 ? `<button class="btn" style="width:auto; padding:4px 10px; font-size:10px; display:inline-flex; margin-right:8px;" onclick='this.parentElement.parentElement.parentElement.querySelector(".row-gallery-${g.id}").style.display="table-row"; this.style.display="none";'>📸 ${g.photos.length}</button>` : ''}
@@ -2331,11 +2344,17 @@ class LocalGrowBoxPanel extends HTMLElement {
 
     async _stopGrow(entryId, growId) {
         if (!confirm("Möchtest du diesen Grow wirklich beenden? Der aktuelle Stromzählerstand wird gespeichert.")) return;
+        
+        let yieldStr = prompt("Optional: Ernte in Gramm eintragen (Trockengewicht):\n(Lass es leer oder auf 0, falls noch nicht getrocknet)", "0");
+        let yieldGrams = parseFloat(yieldStr);
+        if (isNaN(yieldGrams) || yieldGrams <= 0) yieldGrams = null;
+
         try {
             await this._hass.callWS({
                 type: 'local_grow_box/stop_grow',
                 entry_id: entryId,
-                grow_id: growId
+                grow_id: growId,
+                yield_grams: yieldGrams
             });
             this._updateContent();
         } catch (err) {
@@ -2358,15 +2377,26 @@ class LocalGrowBoxPanel extends HTMLElement {
     }
 
     async _editGrow(entryId, grow) {
-        const notes = prompt("Notizen / Ertrag / Fazit:", grow.notes || "");
+        const notes = prompt("Notizen / Fazit:", grow.notes || "");
         if (notes === null) return;
+        
+        let updates = { notes: notes };
+        
+        if (grow.status === 'finished') {
+            let yieldStr = prompt("Ernte in Gramm (Trockengewicht) für Effizienz-Berechnung:", grow.yield_grams || "0");
+            if (yieldStr !== null) {
+                let yieldGrams = parseFloat(yieldStr);
+                if (!isNaN(yieldGrams) && yieldGrams > 0) updates.yield_grams = yieldGrams;
+                else updates.yield_grams = null; // Can optionally clear it
+            }
+        }
         
         try {
             await this._hass.callWS({
                 type: 'local_grow_box/update_grow',
                 entry_id: entryId,
                 grow_id: grow.id,
-                updates: { notes: notes }
+                updates: updates
             });
             this._updateContent();
         } catch (err) {
@@ -2579,8 +2609,15 @@ class LocalGrowBoxPanel extends HTMLElement {
             return;
         }
 
+        const photosStr = JSON.stringify(grow.photos).replace(/'/g, "\\'");
+
         container.innerHTML = `
-            <div style="font-size:11px; color:var(--text-secondary); margin-bottom:10px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">Foto-Chronik</div>
+            <div style="font-size:11px; color:var(--text-secondary); margin-bottom:10px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display: flex; justify-content: space-between; align-items:center;">
+                <span>Foto-Chronik</span>
+                <button class="btn" style="padding:4px 10px; font-size:10px; width:auto; border-radius:4px;" onclick='this.getRootNode().host._playTimelapse("${grow.id}", ${photosStr})'>
+                    🎞️ Zeitraffer ansehen
+                </button>
+            </div>
             <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:8px; scrollbar-width: thin;">
                 ${grow.photos.map(photo => `
                     <div style="flex:0 0 100px; height:75px; border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); cursor:pointer; transition:transform 0.2s; position:relative;" 
@@ -2597,8 +2634,58 @@ class LocalGrowBoxPanel extends HTMLElement {
         `;
     }
 
+    _playTimelapse(growId, photos) {
+        if (!photos || photos.length < 2) {
+            alert("Es werden mindestens 2 Fotos für einen Zeitraffer benötigt!");
+            return;
+        }
+        
+        const modal = this.shadowRoot.getElementById("camera-modal");
+        const img = modal.querySelector("img");
+        const title = modal.querySelector("#modal-title");
+        modal.classList.add("visible");
+        
+        let index = 0;
+        let isPlaying = true;
+        
+        // Cleanup function for when modal is closed
+        const origCleanup = modal.querySelector('.close-modal').onclick;
+        const newCleanup = () => {
+            isPlaying = false;
+            if (origCleanup) origCleanup();
+            modal.querySelector('.close-modal').onclick = origCleanup;
+        };
+        modal.querySelector('.close-modal').onclick = newCleanup;
+
+        const playNext = () => {
+             if (!isPlaying || !modal.classList.contains('visible')) return; 
+             
+             // Preload next image to avoid flickering
+             const nextImg = new Image();
+             nextImg.onload = () => {
+                 if (!isPlaying) return;
+                 img.src = nextImg.src;
+                 title.innerHTML = `🎞️ Zeitraffer (Tag ${index+1}/${photos.length}) <br/> <span style="font-size:12px;opacity:0.7;">${photos[index]}</span>`;
+                 index++;
+                 if (index < photos.length) {
+                     setTimeout(playNext, 400); // 400ms delay per frame
+                 } else {
+                     title.innerText = `✅ Zeitraffer beendet - ${photos.length} Fotos abgespielt.`;
+                 }
+             };
+             nextImg.src = `/local/local_grow_box_images/grows/${growId}/${photos[index]}`;
+        };
+        
+        title.innerText = "Lade Zeitraffer...";
+        playNext();
+    }
+
     async _runAICheck(entryId, growId, photo) {
         if (!confirm("Möchtest du eine KI-Analyse für dieses Foto starten? (Verursacht API-Kosten bei OpenAI/Gemini)")) return;
+        
+        const toast = this.shadowRoot.getElementById('save-toast');
+        toast.innerText = "🧠 KI-Analyse läuft... Bitte warten (kann 10-30s dauern).";
+        toast.classList.add('visible');
         
         try {
             await this._hass.callWS({
@@ -2608,16 +2695,14 @@ class LocalGrowBoxPanel extends HTMLElement {
                 photo: photo
             });
             
-            const toast = this.shadowRoot.getElementById('save-toast');
-            toast.innerText = "🧠 KI-Analyse gestartet... Das Ergebnis erscheint gleich im Tagebuch.";
-            toast.classList.add('visible');
-            setTimeout(() => toast.classList.remove('visible'), 3000);
+            toast.innerText = "✅ KI-Analyse erfolgreich!";
+            setTimeout(() => toast.classList.remove('visible'), 4000);
             
-            // Poll for result after a few seconds
-            setTimeout(() => this._fetchGrows(), 5000);
-            setTimeout(() => this._fetchGrows(), 10000);
+            // Refresh instantly, because the backend awaited the API call
+            await this._fetchGrows();
         } catch (e) {
             console.error("AI check error", e);
+            toast.classList.remove('visible');
             alert("KI-Check fehlgeschlagen: " + e.message);
         }
     }

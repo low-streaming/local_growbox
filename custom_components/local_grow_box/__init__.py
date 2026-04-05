@@ -197,7 +197,7 @@ class GrowBoxManager:
         self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
         self.add_log(f"Neuer Grow gestartet: {name} ({expected_weeks} Wochen geplant)")
 
-    def stop_grow(self, grow_id):
+    def stop_grow(self, grow_id, yield_grams=None):
         """Finish a grow cycle."""
         end_energy = 0
         energy_entities = self.config.get(CONF_ENERGY_SENSOR)
@@ -216,6 +216,12 @@ class GrowBoxManager:
                 g["status"] = "finished"
                 g["end_date"] = dt_util.now().isoformat()
                 g["end_energy"] = end_energy
+                if yield_grams is not None:
+                    try:
+                        g["yield_grams"] = float(yield_grams)
+                    except ValueError:
+                        pass
+
                 # Final cost calculation
                 price = self.config.get(CONF_ELECTRIC_PRICE, 0.35)
                 # Use integrated energy if available and > 0, else fall back to total energy diff
@@ -225,7 +231,13 @@ class GrowBoxManager:
                 
                 g["total_cost"] = round(consumed * price, 2)
                 g["total_kwh"] = round(consumed, 2) # Store final kWh
-                self.add_log(f"Grow beendet: {g['name']}. Kosten: {g['total_cost']}€")
+                
+                log_msg = f"Grow beendet: {g['name']}. Kosten: {g['total_cost']}€"
+                if "yield_grams" in g and g["yield_grams"] > 0:
+                    log_msg += f" | Ertrag: {g['yield_grams']}g"
+                self.add_log(log_msg)
+                
+                self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
                 break
     def reset_grow_energy(self, grow_id):
         """Reset energy offset for a specific grow."""
@@ -1006,6 +1018,7 @@ class GrowBoxManager:
             
         except Exception as e:
             _LOGGER.error("AI Health Check failed: %s", e)
+            raise HomeAssistantError(f"KI Fehler: {e}")
 
     async def _call_openai(self, session, api_key, prompt, b64_image):
         """Call OpenAI GPT-4o Vision API."""
@@ -1282,14 +1295,16 @@ async def ws_start_grow(hass, connection, msg):
     vol.Required("type"): "local_grow_box/stop_grow",
     vol.Required("entry_id"): str,
     vol.Required("grow_id"): str,
+    vol.Optional("yield_grams"): vol.Any(float, int, str),
 })
 @websocket_api.async_response
 async def ws_stop_grow(hass, connection, msg):
     """Handle stop grow."""
     entry_id = msg["entry_id"]
+    yield_grams = msg.get("yield_grams")
     manager = hass.data[DOMAIN].get(entry_id)
     if manager:
-        manager.stop_grow(msg["grow_id"])
+        manager.stop_grow(msg["grow_id"], yield_grams=yield_grams)
         connection.send_result(msg["id"], {"grows": manager.grows})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")
