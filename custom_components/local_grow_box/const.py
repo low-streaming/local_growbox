@@ -60,6 +60,7 @@ CONF_PUMP_DURATION = "pump_duration" # In seconds
 CONF_MOISTURE_SENSOR = "moisture_sensor"
 CONF_TARGET_MOISTURE = "target_moisture" # In %
 CONF_LIGHT_START_HOUR = "light_start_hour"
+CONF_ACTIVE_RECIPE = "active_recipe"
 CONF_PHASE_START_DATE = "phase_start_date"
 
 # Defaults

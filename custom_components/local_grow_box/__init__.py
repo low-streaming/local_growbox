@@ -578,24 +578,31 @@ class GrowBoxManager:
         light_hours = 0
         phase = self.current_phase
 
-        if phase == PHASE_SEEDLING:
-            light_hours = self._get_config_value(CONF_PHASE_SEEDLING_HOURS, 18, float)
-        elif phase == PHASE_VEGETATIVE:
-            light_hours = self._get_config_value(CONF_PHASE_VEGETATIVE_HOURS, 18, float)
-        elif phase == PHASE_FLOWERING:
-            light_hours = self._get_config_value(CONF_PHASE_FLOWERING_HOURS, 12, float)
-        elif phase == PHASE_DRYING:
-            light_hours = self._get_config_value(CONF_PHASE_DRYING_HOURS, 0, float)
-        elif phase == PHASE_CURING:
-            light_hours = self._get_config_value(CONF_PHASE_CURING_HOURS, 0, float)
-        elif phase == self.config.get(CONF_CUSTOM1_NAME):
-            light_hours = self._get_config_value(CONF_CUSTOM1_HOURS, 0, float)
-        elif phase == self.config.get(CONF_CUSTOM2_NAME):
-            light_hours = self._get_config_value(CONF_CUSTOM2_HOURS, 0, float)
-        elif phase == self.config.get(CONF_CUSTOM3_NAME):
-            light_hours = self._get_config_value(CONF_CUSTOM3_HOURS, 0, float)
+        start_hour = self._get_config_value(CONF_LIGHT_START_HOUR, DEFAULT_LIGHT_START_HOUR, int)
+        
+        # Check Recipe for light hours
+        recipe_hours = self._get_recipe_value(phase, "light_hours", None)
+        if recipe_hours is not None:
+            light_hours = float(recipe_hours)
         else:
-             light_hours = PHASE_LIGHT_HOURS.get(phase, 12)
+            if phase == PHASE_SEEDLING:
+                light_hours = self._get_config_value(CONF_PHASE_SEEDLING_HOURS, 18, float)
+            elif phase == PHASE_VEGETATIVE:
+                light_hours = self._get_config_value(CONF_PHASE_VEGETATIVE_HOURS, 18, float)
+            elif phase == PHASE_FLOWERING:
+                light_hours = self._get_config_value(CONF_PHASE_FLOWERING_HOURS, 12, float)
+            elif phase == PHASE_DRYING:
+                light_hours = self._get_config_value(CONF_PHASE_DRYING_HOURS, 0, float)
+            elif phase == PHASE_CURING:
+                light_hours = self._get_config_value(CONF_PHASE_CURING_HOURS, 0, float)
+            elif phase == self.config.get(CONF_CUSTOM1_NAME):
+                light_hours = self._get_config_value(CONF_CUSTOM1_HOURS, 0, float)
+            elif phase == self.config.get(CONF_CUSTOM2_NAME):
+                light_hours = self._get_config_value(CONF_CUSTOM2_HOURS, 0, float)
+            elif phase == self.config.get(CONF_CUSTOM3_NAME):
+                light_hours = self._get_config_value(CONF_CUSTOM3_HOURS, 0, float)
+            else:
+                 light_hours = PHASE_LIGHT_HOURS.get(phase, 12)
 
         start_hour = self._get_config_value(CONF_LIGHT_START_HOUR, DEFAULT_LIGHT_START_HOUR, int)
         
@@ -720,10 +727,17 @@ class GrowBoxManager:
         fan_entity = self.config.get(CONF_FAN_ENTITY)
         
         # Climate Settings
-        target_temp = self._get_config_value(CONF_TARGET_TEMP, DEFAULT_TARGET_TEMP, float)
+        # Climate Settings (Recipe Override)
+        target_temp = self._get_recipe_value(self.current_phase, "target_temp", self._get_config_value(CONF_TARGET_TEMP, DEFAULT_TARGET_TEMP, float))
+        target_humidity = self._get_recipe_value(self.current_phase, "target_humidity", self._get_config_value(CONF_TARGET_HUMIDITY, DEFAULT_TARGET_HUMIDITY, float))
+        
+        # Other settings
         min_humidity = self._get_config_value(CONF_MIN_HUMIDITY, DEFAULT_MIN_HUMIDITY, float)
         max_humidity = self._get_config_value(CONF_MAX_HUMIDITY, DEFAULT_MAX_HUMIDITY, float)
-        target_humidity = self._get_config_value(CONF_TARGET_HUMIDITY, DEFAULT_TARGET_HUMIDITY, float)
+        # Use target_humidity if recipe set it, otherwise max_humidity
+        if target_humidity > max_humidity:
+             max_humidity = target_humidity + 5
+             
         humidity_hysteresis = self._get_config_value(CONF_HUMIDITY_HYSTERESIS, DEFAULT_HUMIDITY_HYSTERESIS, float)
         temp_hysteresis = self._get_config_value(CONF_TEMP_HYSTERESIS, DEFAULT_TEMP_HYSTERESIS, float)
         fan_hysteresis = self._get_config_value(CONF_FAN_HYSTERESIS, DEFAULT_FAN_HYSTERESIS, float)
@@ -807,8 +821,12 @@ class GrowBoxManager:
 
     def _get_vpd_target_range(self, phase: str) -> tuple[float, float]:
         """Get ideal VPD range for a specific growth phase (in kPa)."""
-        # seedling: 0.4 - 0.8, vegetative: 0.8 - 1.2, flowering: 1.2 - 1.6
-        # drying: 0.8 - 1.0, curing: 0.5 - 0.7
+        # Check Recipe first
+        recipe_range = self._get_recipe_value(phase, "vpd_range", None)
+        if recipe_range and isinstance(recipe_range, list) and len(recipe_range) == 2:
+            return (float(recipe_range[0]), float(recipe_range[1]))
+
+        # Fallback to defaults
         ranges = {
             PHASE_SEEDLING: (0.4, 0.8),
             PHASE_VEGETATIVE: (0.8, 1.2),
@@ -817,6 +835,21 @@ class GrowBoxManager:
             PHASE_CURING: (0.5, 0.7),
         }
         return ranges.get(phase, (0.8, 1.2)) # Default to vegetative
+
+    def _get_recipe_value(self, phase: str, key: str, default: Any) -> Any:
+        """Get a value from the active recipe for the current phase."""
+        recipe = self.config.get(CONF_ACTIVE_RECIPE)
+        if not recipe or not isinstance(recipe, dict):
+            return default
+            
+        phases = recipe.get("phases", {})
+        phase_config = phases.get(phase, {})
+        
+        # We look for the key in the phase-specific config
+        if key in phase_config:
+            return phase_config[key]
+            
+        return default
 
     def set_phase(self, phase: str):
         self.current_phase = phase
@@ -869,6 +902,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         websocket_api.async_register_command(hass, ws_delete_grow)
         websocket_api.async_register_command(hass, ws_add_grow_event)
         websocket_api.async_register_command(hass, ws_reset_grow_energy)
+        websocket_api.async_register_command(hass, ws_apply_recipe)
     except Exception:
         pass # Expected if already registered
 
@@ -1127,3 +1161,28 @@ async def ws_add_grow_event(hass, connection, msg):
         connection.send_result(msg["id"], {"grows": manager.grows})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/apply_recipe",
+    vol.Required("entry_id"): str,
+    vol.Required("recipe"): vol.Any(dict, None),
+})
+@websocket_api.async_response
+async def ws_apply_recipe(hass, connection, msg):
+    """Apply a growth recipe to a config entry."""
+    entry_id = msg["entry_id"]
+    recipe = msg["recipe"]
+    entry = hass.config_entries.async_get_entry(entry_id)
+
+    if not entry:
+        connection.send_error(msg["id"], "not_found", "Entry not found")
+        return
+
+    # Update options with the new recipe
+    new_options = {**entry.options, CONF_ACTIVE_RECIPE: recipe}
+    hass.config_entries.async_update_entry(entry, options=new_options)
+    
+    # Also update the running manager's config immediately
+    if DOMAIN in hass.data and entry_id in hass.data[DOMAIN]:
+        hass.data[DOMAIN][entry_id].config = {**hass.data[DOMAIN][entry_id].config, CONF_ACTIVE_RECIPE: recipe}
+    
+    connection.send_result(msg["id"], {"recipe": recipe})

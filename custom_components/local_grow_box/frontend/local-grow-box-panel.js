@@ -500,6 +500,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     <div class="tab" data-tab="phases">Phasen</div>
                     <div class="tab" data-tab="logs">Protokoll</div>
                     <div class="tab" data-tab="diary">Tagebuch</div>
+                    <div class="tab" data-tab="recipes">Rezepte 📋</div>
                     <div class="tab" data-tab="info">Info / Hilfe</div>
                 </div>
             </div>
@@ -575,6 +576,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             this._renderLogs(container);
         } else if (this._activeTab === 'diary') {
             this._renderDiary(container);
+        } else if (this._activeTab === 'recipes') {
+            this._renderRecipes(container);
         } else if (this._activeTab === 'info') {
             this._renderInfo(container);
         }
@@ -2237,6 +2240,190 @@ class LocalGrowBoxPanel extends HTMLElement {
             this._updateContent();
         } catch (err) {
             alert("Fehler beim Speichern: " + err.message);
+        }
+    }
+    _renderRecipes(container) {
+        if (!this._devices || this._devices.length === 0) {
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Keine Grow Box gefunden.</div>';
+            return;
+        }
+
+        const buildInRecipes = [
+            {
+                name: "🌱 Autoflower (Standard)",
+                desc: "Optimiert für automatische Sorten. Konstant 18h Licht, angepasster VPD für schnelles Wachstum.",
+                phases: {
+                    seedling: { target_temp: 24, target_humidity: 75, vpd_range: [0.4, 0.8], light_hours: 18 },
+                    vegetative: { target_temp: 26, target_humidity: 60, vpd_range: [0.8, 1.2], light_hours: 18 },
+                    flowering: { target_temp: 25, target_humidity: 45, vpd_range: [1.2, 1.6], light_hours: 18 }
+                }
+            },
+            {
+                name: "🌸 Photoperiodisch (Classic)",
+                desc: "Der Klassiker: 18/6 in der Vegi, automatischer Switch auf 12/12 in der Blüte inkl. VPD-Anpassung.",
+                phases: {
+                    seedling: { target_temp: 23, target_humidity: 70, vpd_range: [0.4, 0.8], light_hours: 18 },
+                    vegetative: { target_temp: 26, target_humidity: 60, vpd_range: [0.8, 1.2], light_hours: 18 },
+                    flowering: { target_temp: 24, target_humidity: 45, vpd_range: [1.2, 1.6], light_hours: 12 }
+                }
+            },
+            {
+                name: "❄️ Eco-Growing (Low-Temp)",
+                desc: "Energiesparend bei kühleren Temperaturen. Reduzierte Zielwerte für Winter-Grows.",
+                phases: {
+                    seedling: { target_temp: 21, target_humidity: 65, vpd_range: [0.4, 1.0], light_hours: 18 },
+                    vegetative: { target_temp: 22, target_humidity: 55, vpd_range: [0.8, 1.2], light_hours: 18 },
+                    flowering: { target_temp: 21, target_humidity: 50, vpd_range: [1.2, 1.8], light_hours: 12 }
+                }
+            }
+        ];
+
+        const recipesDiv = document.createElement('div');
+        recipesDiv.style.maxWidth = '1000px';
+        recipesDiv.style.margin = '0 auto';
+
+        recipesDiv.innerHTML = `
+            <div style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(56, 189, 248, 0.05) 100%); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; padding: 24px; margin-bottom: 32px; text-align: center;">
+                <h2 style="margin: 0 0 8px 0; color: #38bdf8;">📋 Grow-Rezepte</h2>
+                <p style="color: var(--text-secondary); margin: 0; font-size: 14px;">Wähle ein Profil aus oder importiere Einstellungen aus der Community.</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 40px;">
+                ${buildInRecipes.map((r, idx) => `
+                    <div class="card" style="display: flex; flex-direction: column;">
+                        <div style="padding: 20px; flex: 1;">
+                            <h3 style="margin: 0 0 10px 0; font-size: 18px; color: var(--primary-color);">${r.name}</h3>
+                            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">${r.desc}</p>
+                            
+                            <div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px; font-size: 11px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px; opacity: 0.7;">
+                                    <span>Phase</span>
+                                    <span>Licht / Temp / Feuchte</span>
+                                </div>
+                                ${Object.keys(r.phases).map(p => `
+                                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-top: 1px solid rgba(255,255,255,0.05);">
+                                        <span style="text-transform: capitalize;">${p}</span>
+                                        <span style="font-weight: 600;">${r.phases[p].light_hours}h | ${r.phases[p].target_temp}° | ${r.phases[p].target_humidity}%</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        <div style="padding: 16px; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.1);">
+                            <select id="recipe-box-${idx}" style="margin-bottom: 10px;">
+                                ${this._devices.map(d => `<option value="${d.entryId}">${d.name}</option>`).join('')}
+                            </select>
+                            <button class="btn active" style="width: 100%;" id="apply-recipe-${idx}">Rezept anwenden</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+
+            <div class="settings-section">
+                <div class="section-title">🤝 Community & Sharing</div>
+                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px;">
+                    <div>
+                        <h4 style="margin: 0 0 12px 0;">Rezept importieren</h4>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Füge hier den JSON-Code eines Community-Rezepts ein.</p>
+                        <textarea id="import-area" style="width: 100%; height: 120px; background: #0b1121; border: 1px solid rgba(255,255,255,0.1); color: #4ade80; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 11px; resize: none; margin-bottom: 12px;" placeholder='{"name": "Mein Setup", "phases": ...}'></textarea>
+                        <div style="display: flex; gap: 12px;">
+                            <select id="import-box" style="flex: 1;">
+                                ${this._devices.map(d => `<option value="${d.entryId}">${d.name}</option>`).join('')}
+                            </select>
+                            <button class="btn active" id="btn-import-recipe" style="width: auto; padding: 0 24px;">Importieren</button>
+                        </div>
+                    </div>
+                    <div style="border-left: 1px dashed rgba(255,255,255,0.1); padding-left: 32px;">
+                        <h4 style="margin: 0 0 12px 0;">Teilen & Exportieren</h4>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Erstelle einen Code aus deinen aktuellen Einstellungen einer Box.</p>
+                        <select id="export-box" style="margin-bottom: 12px;">
+                            ${this._devices.map(d => `<option value="${d.entryId}">${d.name}</option>`).join('')}
+                        </select>
+                        <button class="btn" id="btn-export-recipe" style="width: 100%; margin-bottom: 16px;">Rezept-Code generieren</button>
+                        <div id="export-result" style="display: none;">
+                            <p style="font-size: 11px; margin-bottom: 4px; color: #4ade80;">Fertig! Kopiere diesen Code:</p>
+                            <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; font-size: 10px; font-family: monospace; word-break: break-all; opacity: 0.8; border: 1px solid rgba(74, 222, 128, 0.2);" id="export-code"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.appendChild(recipesDiv);
+
+        // Listeners for built-in
+        buildInRecipes.forEach((r, idx) => {
+            const btn = recipesDiv.querySelector(`#apply-recipe-${idx}`);
+            btn.onclick = () => {
+                const entryId = recipesDiv.querySelector(`#recipe-box-${idx}`).value;
+                this._applyRecipe(entryId, r);
+            };
+        });
+
+        // Listeners for import
+        recipesDiv.querySelector('#btn-import-recipe').onclick = () => {
+            const code = recipesDiv.querySelector('#import-area').value.trim();
+            const entryId = recipesDiv.querySelector('#import-box').value;
+            if (!code) return;
+            try {
+                const recipe = JSON.parse(code);
+                this._applyRecipe(entryId, recipe);
+            } catch (e) {
+                alert("Ungültiger Rezept-Code! Bitte prüfe das JSON-Format.");
+            }
+        };
+
+        // Listeners for export
+        recipesDiv.querySelector('#btn-export-recipe').onclick = () => {
+            const entryId = recipesDiv.querySelector('#export-box').value;
+            const device = this._devices.find(d => d.entryId === entryId);
+            if (!device) return;
+
+            const recipe = {
+                name: "Community-Grow Profile",
+                phases: {
+                    seedling: { 
+                        target_temp: parseFloat(device.options.target_temp || 24), 
+                        target_humidity: parseFloat(device.options.target_humidity || 70),
+                        light_hours: parseFloat(device.options.phase_seedling_hours || 18)
+                    },
+                    vegetative: { 
+                        target_temp: parseFloat(device.options.target_temp || 26), 
+                        target_humidity: parseFloat(device.options.target_humidity || 60),
+                        light_hours: parseFloat(device.options.phase_vegetative_hours || 18)
+                    },
+                    flowering: { 
+                        target_temp: parseFloat(device.options.target_temp || 25), 
+                        target_humidity: parseFloat(device.options.target_humidity || 45),
+                        light_hours: parseFloat(device.options.phase_flowering_hours || 12)
+                    }
+                }
+            };
+            
+            recipesDiv.querySelector('#export-result').style.display = 'block';
+            recipesDiv.querySelector('#export-code').innerText = JSON.stringify(recipe);
+        };
+    }
+
+    async _applyRecipe(entryId, recipe) {
+        if (!confirm(`Möchtest du das Rezept "${recipe.name}" auf diese Grow Box anwenden? Alle Phasen-Sollwerte werden überschrieben.`)) return;
+
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/apply_recipe',
+                entry_id: entryId,
+                recipe: recipe
+            });
+
+            const toast = this.shadowRoot.getElementById('save-toast');
+            toast.innerText = `✅ Rezept "${recipe.name}" aktiviert!`;
+            toast.classList.add('visible');
+            setTimeout(() => toast.classList.remove('visible'), 3000);
+            
+            // Re-fetch everything to show updated state
+            await this._fetchDevices();
+        } catch (e) {
+            console.error("Apply recipe failed", e);
+            alert("Fehler beim Anwenden des Rezepts: " + e.message);
         }
     }
 }
