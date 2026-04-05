@@ -767,10 +767,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                     ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3.0, '#10b981', '🍃', vpdTarget)}
                     ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6', '🪴', { min: parseFloat(device.options.target_moisture || 60) - 2, max: parseFloat(device.options.target_moisture || 60) + 2 }) : ''}
                     
-                    <div style="display:flex; justify-content:center; gap: 40px; margin-top:24px; margin-bottom:12px; border-radius: 12px; background: rgba(0,0,0,0.2); padding: 16px;">
+                    <div style="display:flex; justify-content:center; gap: 24px; margin-top:24px; margin-bottom:12px; border-radius: 12px; background: rgba(0,0,0,0.2); padding: 16px;">
                        <div style="font-size:40px; transition: all 0.5s ease; ${lightStatus === 'on' ? 'filter: drop-shadow(0 0 20px #fbbf24); transform: scale(1.1);' : 'opacity:0.2; filter: grayscale(100%);'}">💡</div>
                        <div style="font-size:40px; display:inline-block; transition: all 0.5s ease; ${this._hass.states[device.options.fan_entity]?.state === 'on' ? 'animation: spin 1s linear infinite; filter: drop-shadow(0 0 10px #9ca3af);' : 'opacity:0.2; transform: scale(0.9);'}">🌪️</div>
-                       ${device.options.pump_entity ? `<div style="font-size:40px; transition: all 0.5s ease; ${pumpState?.state === 'on' ? 'filter: drop-shadow(0 0 15px #3b82f6); transform: scale(1.1);' : 'opacity:0.2;'}">💧</div>` : ''}
+                       ${device.options.pump_entity ? `<div title="Pumpe" style="font-size:40px; transition: all 0.5s ease; ${pumpState?.state === 'on' ? 'filter: drop-shadow(0 0 15px #3b82f6); transform: scale(1.1);' : 'opacity:0.2; transform: scale(0.9);'}">💧</div>` : ''}
+                       ${device.options.humidifier_entity ? `<div title="Befeuchter" style="font-size:40px; transition: all 0.5s ease; ${this._hass.states[device.options.humidifier_entity]?.state === 'on' ? 'animation: slideUp 0.8s infinite alternate; filter: drop-shadow(0 0 15px #38bdf8);' : 'opacity:0.2; transform: scale(0.9);'}">💦</div>` : ''}
                     </div>
 
                     <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:16px; display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
@@ -2349,13 +2350,18 @@ class LocalGrowBoxPanel extends HTMLElement {
         let yieldGrams = parseFloat(yieldStr);
         if (isNaN(yieldGrams) || yieldGrams <= 0) yieldGrams = null;
 
+        let payload = {
+            type: 'local_grow_box/stop_grow',
+            entry_id: entryId,
+            grow_id: growId
+        };
+        
+        if (yieldGrams !== null) {
+            payload.yield_grams = yieldGrams;
+        }
+
         try {
-            await this._hass.callWS({
-                type: 'local_grow_box/stop_grow',
-                entry_id: entryId,
-                grow_id: growId,
-                yield_grams: yieldGrams
-            });
+            await this._hass.callWS(payload);
             this._updateContent();
         } catch (err) {
             alert("Fehler beim Beenden: " + err.message);
