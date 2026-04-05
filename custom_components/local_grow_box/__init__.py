@@ -8,6 +8,7 @@ import os
 import json
 import base64
 import aiohttp
+import re
 import voluptuous as vol
 from datetime import timedelta
 
@@ -205,7 +206,7 @@ class GrowBoxManager:
                 state = self.hass.states.get(ent_id)
                 if state and state.state not in ["unavailable", "unknown"]:
                     try:
-                        end_energy += float(state.state)
+                        end_energy += self._extract_float(state.state)
                     except ValueError:
                         pass
 
@@ -235,7 +236,7 @@ class GrowBoxManager:
                 state = self.hass.states.get(ent_id)
                 if state and state.state not in ["unavailable", "unknown"]:
                     try:
-                        current_energy += float(state.state)
+                        current_energy += self._extract_float(state.state)
                     except ValueError:
                         pass
         
@@ -354,6 +355,13 @@ class GrowBoxManager:
         except (ValueError, TypeError):
             return default
 
+    def _extract_float(self, val) -> float:
+        """Extract a valid float from a string like '19.6 °C' or '19,6'."""
+        s_str = str(val).replace(",", ".")
+        match = re.search(r"[-+]?[0-9]*\.?[0-9]+", s_str)
+        if match: return float(match.group(0))
+        raise ValueError(f"No valid number extracted from {val}")
+
     async def _async_stop_all_devices(self):
         """Turn off all managed devices if they are currently on."""
         entities = [
@@ -381,8 +389,8 @@ class GrowBoxManager:
         
         if temp_state and humid_state:
             try:
-                current_temp = float(temp_state.state)
-                current_humid = float(humid_state.state)
+                current_temp = self._extract_float(temp_state.state)
+                current_humid = self._extract_float(humid_state.state)
                 # Calculate saturated vapor pressure (kPa) and VPD
                 svp = 0.61078 * math.exp((17.27 * current_temp) / (current_temp + 237.3))
                 self.vpd = svp * (1 - current_humid / 100)
@@ -415,7 +423,7 @@ class GrowBoxManager:
                         state = self.hass.states.get(ent_id)
                         if state and state.state not in ["unavailable", "unknown"]:
                             try:
-                                total_watts += float(state.state)
+                                total_watts += self._extract_float(state.state)
                             except ValueError:
                                 pass
                     
@@ -469,8 +477,6 @@ class GrowBoxManager:
                 if is_on and not already_has_today:
                     self._last_daily_snapshot_date = today
                     self.hass.async_create_task(self._async_take_snapshot(active_grow["id"]))
-
-        # Update Display Logic - Throttle to every 5 seconds
 
         # Update Display Logic - Throttle to every 5 seconds
         try:
@@ -527,7 +533,7 @@ class GrowBoxManager:
         temp_val = "--.-"
         if temp_state:
             try:
-                temp_val = f"{float(temp_state.state):.1f}"
+                temp_val = f"{self._extract_float(temp_state.state):.1f}"
             except ValueError:
                 temp_val = str(temp_state.state)
 
@@ -537,7 +543,7 @@ class GrowBoxManager:
         hum_val = "--"
         if hum_state:
             try:
-                hum_val = f"{float(hum_state.state):.1f}"
+                hum_val = f"{self._extract_float(hum_state.state):.1f}"
                 if hum_val.endswith(".0"):
                     hum_val = hum_val[:-2]
             except ValueError:
@@ -549,7 +555,7 @@ class GrowBoxManager:
         soil_val = "--"
         if soil_state:
             try:
-                soil_val = f"{float(soil_state.state):.0f}"
+                soil_val = f"{self._extract_float(soil_state.state):.0f}"
             except ValueError:
                 soil_val = str(soil_state.state)
 
@@ -736,7 +742,7 @@ class GrowBoxManager:
                 return
             
             try:
-                val = float(state.state)
+                val = self._extract_float(state.state)
                 target = self._get_recipe_value(self.current_phase, "target_moisture", self._get_config_value(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE, float))
                 if val < target:
                      _LOGGER.info("Moisture low (%.1f < %.1f). Starting Pump.", val, target)
@@ -751,7 +757,6 @@ class GrowBoxManager:
         humid_entity = self.config.get(CONF_HUMIDITY_SENSOR)
         fan_entity = self.config.get(CONF_FAN_ENTITY)
         
-        # Climate Settings
         # Climate Settings (Recipe Override)
         target_temp = self._get_recipe_value(self.current_phase, "target_temp", self._get_config_value(CONF_TARGET_TEMP, DEFAULT_TARGET_TEMP, float))
         target_humidity = self._get_recipe_value(self.current_phase, "target_humidity", self._get_config_value(CONF_TARGET_HUMIDITY, DEFAULT_TARGET_HUMIDITY, float))
@@ -778,8 +783,8 @@ class GrowBoxManager:
              return
 
         try:
-            current_temp = float(temp_state.state)
-            current_humid = float(humid_state.state)
+            current_temp = self._extract_float(temp_state.state)
+            current_humid = self._extract_float(humid_state.state)
         except ValueError:
             return
 
