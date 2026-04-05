@@ -764,7 +764,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     ${this._renderStatBar('Temperatur', temp, '°C', 10, 45, '#ef4444', '🌡️', tempTarget)}
                     ${this._renderStatBar('Luftfeuchte', hum, '%', 20, 90, '#3b82f6', '💧', humTarget)}
                     ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3.0, '#10b981', '🍃', vpdTarget)}
-                    ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6', '🪴') : ''}
+                    ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6', '🪴', { min: parseFloat(device.options.target_moisture || 60) - 2, max: parseFloat(device.options.target_moisture || 60) + 2 }) : ''}
                     
                     <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:16px; display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
                         
@@ -1233,43 +1233,26 @@ class LocalGrowBoxPanel extends HTMLElement {
 
             settingsGrid.appendChild(cardGeneral.card);
 
-            // Card 3: Advanced Settings (Hysteresis & Emergency Limits)
-            const cardAdvanced = createCard('Feintuning & Experten', '🛠️');
-            
-            const expandBtn = document.createElement('button');
-            expandBtn.className = 'btn small';
-            expandBtn.style.cssText = "padding:2px 8px; font-size:10px; background:rgba(255,255,255,0.1); width:auto;";
-            expandBtn.innerText = 'Einblenden';
-            cardAdvanced.header.appendChild(expandBtn);
+            // Move advanced settings into cardHardware to fulfill "immer aktiv und bei den entitys"
+            const hwDivider = document.createElement('div');
+            hwDivider.style.cssText = "border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 16px; padding-top: 16px;";
+            hwDivider.innerHTML = `<div style="font-weight:bold; font-size:12px; color:var(--primary-color); margin-bottom:8px;">🛠️ Grenzwerte & Feintuning</div>`;
+            cardHardware.body.appendChild(hwDivider);
 
-            const advBodyWrapper = document.createElement('div');
-            advBodyWrapper.style.display = 'none'; // Hidden by default
+            appendInput(cardHardware.body, 'Temp Hysterese (Lüfter °C)', 'temp_hysteresis', 'number', '', 'Ab welcher Abweichung nach oben soll der Abluft-Ventilator kühlen? (Standard: 1.0)');
+            appendInput(cardHardware.body, 'Feuchte Hysterese (Befeuchter %)', 'humidity_hysteresis', 'number', '', 'Ab welcher Abweichung nach unten soll der Befeuchter sprühen? (Standard: 5.0)');
+            appendInput(cardHardware.body, 'Abluft-Limit (Notfall Max %)', 'max_humidity', 'number', '', 'Bei wie viel % Luftfeuchtigkeit soll die Abluft sofort angehen um Schimmel zu verhindern? (Beispiel: 80)');
+            appendInput(cardHardware.body, 'Abluft Nachlauf/Hysterese (%)', 'fan_hysteresis', 'number', '', 'Wie stark muss die Feuchtigkeit unter das Notfall-Limit fallen, bis der Lüfter wieder stoppt? (Standard: 5.0)');
+            appendInput(cardHardware.body, 'Pumpen Dauer (Sek)', 'pump_duration', 'number', '', 'Wie viele Sekunden läuft die Wasserpumpe, wenn eine Bewässerung ansteht? (Standard: 5)');
 
-            appendInput(advBodyWrapper, 'Temp Hysterese (Lüfter °C)', 'temp_hysteresis', 'number', '', 'Ab welcher Abweichung nach oben soll der Abluft-Ventilator kühlen? (Standard: 1.0)');
-            appendInput(advBodyWrapper, 'Feuchte Hysterese (Befeuchter %)', 'humidity_hysteresis', 'number', '', 'Ab welcher Abweichung nach unten soll der Befeuchter sprühen? (Standard: 5.0)');
-            appendInput(advBodyWrapper, 'Abluft-Limit (Notfall Max %)', 'max_humidity', 'number', '', 'Bei wie viel % Luftfeuchtigkeit soll die Abluft sofort angehen um Schimmel zu verhindern? (Beispiel: 80)');
-            appendInput(advBodyWrapper, 'Abluft Nachlauf/Hysterese (%)', 'fan_hysteresis', 'number', '', 'Wie stark muss die Feuchtigkeit unter das Notfall-Limit fallen, bis der Lüfter wieder stoppt? (Standard: 5.0)');
-            appendInput(advBodyWrapper, 'Pumpen Dauer (Sek)', 'pump_duration', 'number', '', 'Wie viele Sekunden läuft die Wasserpumpe, wenn eine Bewässerung ansteht? (Standard: 5)');
-
-            // We hide the traditional legacy fallback defaults under advanced because recipes override them anyway.
             const hcDivider = document.createElement('div');
             hcDivider.style.cssText = "border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 16px; padding-top: 16px;";
             hcDivider.innerHTML = `<div style="font-weight:bold; font-size:12px; color:var(--text-secondary); margin-bottom:8px;">Manuelle Standard-Werte (werden von Rezepten überschrieben)</div>`;
-            advBodyWrapper.appendChild(hcDivider);
+            cardHardware.body.appendChild(hcDivider);
             
-            appendInput(advBodyWrapper, 'Standard Ziel Temperatur (°C)', 'target_temp', 'number', '');
-            appendInput(advBodyWrapper, 'Standard Ziel Feuchte (%)', 'target_humidity', 'number', '');
-            appendInput(advBodyWrapper, 'Standard Ziel Bodenfeuchte (%)', 'target_moisture', 'number', '');
-
-            cardAdvanced.body.appendChild(advBodyWrapper);
-            
-            expandBtn.onclick = () => {
-                const isHidden = advBodyWrapper.style.display === 'none';
-                advBodyWrapper.style.display = isHidden ? 'block' : 'none';
-                expandBtn.innerText = isHidden ? 'Ausblenden' : 'Einblenden';
-            };
-
-            settingsGrid.appendChild(cardAdvanced.card);
+            appendInput(cardHardware.body, 'Standard Ziel Temperatur (°C)', 'target_temp', 'number', '');
+            appendInput(cardHardware.body, 'Standard Ziel Feuchte (%)', 'target_humidity', 'number', '');
+            appendInput(cardHardware.body, 'Standard Ziel Bodenfeuchte (%)', 'target_moisture', 'number', '');
 
             section.appendChild(settingsGrid);
 
@@ -1299,46 +1282,56 @@ class LocalGrowBoxPanel extends HTMLElement {
                     display: flex; 
                     align-items: center; 
                     justify-content: space-between; 
-                    background: rgba(255,255,255,0.03); 
+                    background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.04) 100%); 
                     border: 1px solid rgba(255,255,255,0.05);
-                    border-radius: 8px; 
-                    padding: 12px 16px; 
-                    margin-bottom: 8px;
-                ">
-                    <div style="display:flex; align-items:center; gap:16px;">
-                        <span style="font-size:24px;">${icon}</span>
+                    border-radius: 12px; 
+                    padding: 16px 20px; 
+                    margin-bottom: 12px;
+                    transition: transform 0.2s, background 0.2s;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+                " onmouseover="this.style.transform='scale(1.02)'; this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.transform='scale(1)'; this.style.background='linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.04) 100%)'">
+                    <div style="display:flex; align-items:center; gap:20px;">
+                        <span style="font-size:32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">${icon}</span>
                         <div>
-                            <div style="font-weight:500; font-size:14px;">${label}</div>
-                            <div style="font-size:11px; color:var(--text-secondary);">${sub}</div>
+                            <div style="font-weight:700; font-size:16px; color:var(--text-primary); letter-spacing:0.5px;">${label}</div>
+                            <div style="font-size:12px; color:var(--text-secondary); margin-top:4px; max-width:400px; line-height:1.4;">${sub}</div>
                         </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:12px; background: rgba(0,0,0,0.3); padding:8px 16px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
                         <input type="number" value="${val}" data-key="${configKey}" data-entry="${device.entryId}" 
-                            style="width:70px; text-align:center; font-weight:bold; background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.1); padding:8px; border-radius:6px;">
-                        <span style="font-size:12px; color:var(--text-secondary); width:50px;">Std.</span>
+                            style="width:80px; text-align:center; font-weight:800; font-size:18px; color:#38bdf8; background:transparent; border:none; border-bottom:2px solid rgba(56, 189, 248, 0.4); border-radius:0; padding:4px;">
+                        <span style="font-size:13px; color:var(--text-secondary); font-weight:600;">Stunden<br>Licht</span>
                     </div>
                 </div>
             `;
 
             section.innerHTML = `
-                <div class="section-title">${device.name} - Phasen Management</div>
-                <p style="color:var(--text-secondary); margin-bottom:24px; font-size:13px; line-height:1.5;">
-                    Definiere hier die tägliche Beleuchtungsdauer für jede Wachstumsphase. 
-                    <br>Das System schaltet basierend auf der aktuellen Phase automatisch um.
-                </p>
-
-                <div style="display:flex; flex-direction:column; gap:8px; max-width:600px;">
+                <div class="card" style="max-width:900px; margin: 0 auto; background: var(--card-bg); overflow: hidden;">
+                    <div style="background: linear-gradient(90deg, rgba(3, 169, 244, 0.1) 0%, rgba(3, 169, 244, 0) 100%); padding: 24px;">
+                        <h2 style="margin:0; font-size:24px; color:var(--text-primary); display:flex; align-items:center; gap:12px;">
+                            <span>⏱️</span> ${device.name} - Lichtzyklen
+                        </h2>
+                        <p style="color:var(--text-secondary); margin:12px 0 0 0; font-size:14px; line-height:1.6;">
+                            Definiere hier die tägliche Beleuchtungsdauer für jede Wachstumsphase. 
+                            Das System schaltet im Automatik-Modus exakt nach diesem Plan.
+                        </p>
+                    </div>
+                    
+                    <div style="padding: 24px;">
+                        <div style="display:flex; flex-direction:column; gap:8px;">
                     ${renderPhaseRow('Keimling', 'Hohe Luftfeuchte (65-80%), 20-25°C, sanftes Licht', '🌱', 'phase_seedling_hours', device.options.phase_seedling_hours !== undefined ? device.options.phase_seedling_hours : 18)}
                     ${renderPhaseRow('Wachstum', 'Viel Stickstoff, 18h Licht, RLF 50-70%', '🌿', 'phase_vegetative_hours', device.options.phase_vegetative_hours !== undefined ? device.options.phase_vegetative_hours : 18)}
                     ${renderPhaseRow('Blüte', '12h Licht zwingend, RLF <50% (Schimmelgefahr!), P-K Dünger', '🌸', 'phase_flowering_hours', device.options.phase_flowering_hours !== undefined ? device.options.phase_flowering_hours : 12)}
                     ${renderPhaseRow('Trocknen', 'Dunkel & Kühl (18-20°C), 50-60% RLF, 10-14 Tage', '🍂', 'phase_drying_hours', device.options.phase_drying_hours !== undefined ? device.options.phase_drying_hours : 0)}
                     ${renderPhaseRow('Veredelung', 'Im Glas/Bag, RLF stabil bei 58-62% halten', '🏺', 'phase_curing_hours', device.options.phase_curing_hours !== undefined ? device.options.phase_curing_hours : 0)}
-                </div>
-                
-                 <div style="margin-top:24px; max-width:600px; display:flex; justify-content:flex-end;">
-                    <button class="btn active" id="save-p-${device.id}" style="width:auto; display:inline-flex; padding:12px 32px;">
-                        Speichern
-                    </button>
+                        </div>
+                        
+                        <div style="margin-top:32px; display:flex; justify-content:flex-end;">
+                            <button class="btn active" id="save-p-${device.id}" style="width:auto; display:inline-flex; padding:12px 32px;">
+                                Einstellungen Speichern
+                            </button>
+                        </div>
+                    </div>
                 </div>
             `;
 
@@ -1489,13 +1482,31 @@ class LocalGrowBoxPanel extends HTMLElement {
             }
 
             container.innerHTML = '';
+            
+            const outerWrapper = document.createElement('div');
+            outerWrapper.style.cssText = "max-width: 800px; margin: 0 auto; padding: 20px;";
+            
+            const header = document.createElement('div');
+            header.style.cssText = "padding:16px 20px; font-size:16px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between; background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 100%); border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05);";
+            header.innerHTML = `
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:24px;">📋</span> 
+                    <span>Protokoll Historie</span>
+                </div>
+                <button class="btn" id="btn-refresh-logs" style="padding: 8px 16px; font-size: 13px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3);">
+                    🔄 Aktualisieren
+                </button>
+            `;
+            outerWrapper.appendChild(header);
+
             const listContainer = document.createElement('div');
-            listContainer.style.maxWidth = '800px';
-            listContainer.style.margin = '0 auto';
-            listContainer.style.background = 'var(--card-bg)';
-            listContainer.style.borderRadius = '12px';
-            listContainer.style.border = '1px solid rgba(255,255,255,0.05)';
-            listContainer.style.overflow = 'hidden';
+            listContainer.style.position = 'relative';
+            listContainer.style.paddingLeft = '100px';
+
+            // Vertical Timeline Line
+            const timelineLine = document.createElement('div');
+            timelineLine.style.cssText = "position: absolute; left: 120px; text-align:right; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.05); z-index: 0;";
+            listContainer.appendChild(timelineLine);
 
             // Sort combined logs chronologically (newest first)
             allLogs.sort((a, b) => {
@@ -1507,19 +1518,6 @@ class LocalGrowBoxPanel extends HTMLElement {
                 return parseDate(b.line) - parseDate(a.line);
             });
 
-            const header = document.createElement('div');
-            header.style.cssText = "padding:16px 20px; font-size:16px; font-weight:600; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--text-primary); display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.2);";
-            header.innerHTML = `
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <span style="font-size:22px; filter: drop-shadow(0 0 5px rgba(255,255,255,0.2));">📋</span> 
-                    <span>Protokoll-Historie</span>
-                </div>
-                <button class="btn" id="btn-refresh-logs" style="padding: 6px 16px; font-size: 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05);">
-                    🔄 Aktualisieren
-                </button>
-            `;
-            listContainer.appendChild(header);
-
             if (allLogs.length === 0) {
                 const empty = document.createElement('div');
                 empty.style.cssText = "padding:32px; text-align:center; color:var(--text-secondary);";
@@ -1528,9 +1526,9 @@ class LocalGrowBoxPanel extends HTMLElement {
             } else {
                 for (const entry of allLogs) {
                     const item = document.createElement('div');
-                    item.style.cssText = "padding: 14px 20px; border-bottom: 1px solid rgba(255,255,255,0.02); display:flex; align-items:center; gap:16px; transition:background 0.2s;";
-                    item.onmouseenter = () => item.style.background = 'rgba(255,255,255,0.02)';
-                    item.onmouseleave = () => item.style.background = 'transparent';
+                    item.style.cssText = "position: relative; padding: 16px; margin-bottom: 16px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 12px; display:flex; align-items:center; gap:16px; transition:transform 0.2s; z-index: 1;";
+                    item.onmouseenter = () => item.style.transform = 'translateX(4px)';
+                    item.onmouseleave = () => item.style.transform = 'translateX(0)';
 
                     let timeStr = "";
                     let msgStr = entry.line;
@@ -1550,26 +1548,30 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                     // Highlight keywords playfully
                     if (msgStr.includes('eingeschaltet')) {
-                        msgStr = msgStr.replace('eingeschaltet', '<span style="color:#10b981; font-weight:600;">eingeschaltet</span>');
+                        msgStr = msgStr.replace('eingeschaltet', '<span style="color:#4ade80; font-weight:600;">eingeschaltet</span>');
                     }
                     if (msgStr.includes('ausgeschaltet')) {
                         msgStr = msgStr.replace('ausgeschaltet', '<span style="color:#ef4444; font-weight:600;">ausgeschaltet</span>');
                     }
 
                     item.innerHTML = `
-                        <div style="color:var(--text-secondary); font-size:12px; min-width:80px; text-align:right; font-variant-numeric: tabular-nums; opacity:0.8;">
-                            ${timeStr}
+                        <div style="position: absolute; left: -100px; width: 80px; text-align: right; color:var(--text-secondary); font-size:11px; font-variant-numeric: tabular-nums; opacity:0.7;">
+                            ${timeStr.split(' ')[0]}<br>
+                            <span style="font-weight:700; font-size:13px; color:var(--text-primary); opacity:1;">${timeStr.split(' ')[1]}</span>
                         </div>
-                        <div style="display:flex; align-items:center; justify-content:center; position:relative; width: 32px; height: 32px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 50%;">
-                            <div style="font-size:16px; line-height:1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
+                        
+                        <div style="position: absolute; left: -26px; width: 14px; height: 14px; background: var(--card-bg); border: 2px solid ${icon === '💡' ? '#fbbf24' : icon === '💧' ? '#3b82f6' : icon === '🌪️' ? '#9ca3af' : icon === '💦' ? '#38bdf8' : '#a855f7'}; border-radius: 50%; z-index: 2;"></div>
+                        
+                        <div style="display:flex; align-items:center; justify-content:center; width: 44px; height: 44px; background: rgba(255,255,255,0.03); border-radius: 12px;">
+                            <div style="font-size:20px; line-height:1; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));">
                                 ${icon}
                             </div>
                         </div>
                         <div style="display:flex; flex-direction:column; justify-content: center; gap:4px; flex:1;">
-                            <span style="font-size:10px; font-weight:700; color:#3bacf6; letter-spacing:1px; text-transform:uppercase; background: rgba(59, 172, 246, 0.1); padding: 2px 6px; border-radius: 4px; display: inline-block; width: max-content;">
+                            <span style="font-size:11px; font-weight:800; color:#cbd5e1; letter-spacing:0.5px; text-transform:uppercase;">
                                 ${entry.devName}
                             </span>
-                            <span style="font-size:14px; color:var(--text-primary); margin-top: 2px; line-height: 1.4;">
+                            <span style="font-size:14px; color:var(--text-primary); line-height: 1.4;">
                                 ${msgStr}
                             </span>
                         </div>
@@ -1578,7 +1580,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                 }
             }
 
-            container.appendChild(listContainer);
+            outerWrapper.appendChild(listContainer);
+            container.appendChild(outerWrapper);
             
             // Attach refresh event AFTER appending to DOM
             setTimeout(() => {
@@ -1663,6 +1666,22 @@ class LocalGrowBoxPanel extends HTMLElement {
                                 <li><strong>💧 Pumpe:</strong> Startet den Gießvorgang für die eingestellte Dauer (Sekunden).</li>
                                 <li><strong>📷 Bild:</strong> Manueller Kamera-Upload für die Box-Vorschau.</li>
                             </ul>
+                        </div>
+                    </div>
+
+                    <!-- Photo & Gallery Section -->
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="card-title">📸 Fotos & Tagebuch</div>
+                        </div>
+                        <div class="card-body">
+                            <p style="color:var(--text-secondary); line-height:1.6; font-size: 13px;">
+                                Im Web-Interface hochgeladene oder von ESP32-CAMs erstellte Bilder werden automatisch in deinem Home Assistant Verzeichnis gespeichert unter:
+                                <br><br>
+                                <code style="background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px; font-family:monospace; color:#38bdf8;">/config/www/local_grow_box_images/grows/</code>
+                                <br><br>
+                                Von dort aus erstellt das Tagebuch die Bilder-Galerien.
+                            </p>
                         </div>
                     </div>
 
