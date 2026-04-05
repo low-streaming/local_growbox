@@ -88,6 +88,7 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 // Fetch actual config via custom command because standard list might exclude options
                 let combinedOptions = {};
+                let tankData = { enabled: false, capacity_ml: 10000, current_ml: 10000, flow_ml_s: 20 };
                 if (entry) {
                     try {
                         const confResp = await this._hass.callWS({
@@ -95,10 +96,16 @@ class LocalGrowBoxPanel extends HTMLElement {
                             entry_id: entry.entry_id
                         });
                         combinedOptions = confResp.config || {};
-                        // console.log(`[FETCH] -> Fetched Config:`, combinedOptions);
                     } catch (e) {
                         console.warn(`[FETCH] Failed to fetch config for ${device.name}:`, e);
                     }
+                    try {
+                        const tankResp = await this._hass.callWS({
+                            type: 'local_grow_box/get_tank',
+                            entry_id: entry.entry_id
+                        });
+                        tankData = tankResp.tank || tankData;
+                    } catch (e) {}
                 }
 
                 const findEntity = (uniqueIdSuffix) => {
@@ -111,6 +118,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     id: device.id,
                     entryId: entry ? entry.entry_id : null,
                     options: combinedOptions,
+                    tankData: tankData,
                     entities: {
                         phase: findEntity('_phase'),
                         master: findEntity('_master_switch'),
@@ -829,6 +837,26 @@ class LocalGrowBoxPanel extends HTMLElement {
                         </div>
                         `}
                     </div>
+
+                    ${(device.options.pump_entity) ? `
+                        <div style="margin-top:16px; padding:12px; border-radius:10px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255,255,255,0.05);">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px; text-transform:uppercase; font-weight:700; color:var(--text-secondary);">
+                                <span>🪣 Virtueller Wassertank</span>
+                                <div>
+                                    ${device.tankData?.enabled ? `<span style="cursor:pointer; opacity:0.9; margin-right:12px; color:#38bdf8;" id="tank-refill-${device.id}">Füllen 💧</span>` : ''}
+                                    <span style="cursor:pointer; opacity:0.7;" id="tank-config-${device.id}">${device.tankData?.enabled ? '⚙️' : 'Aktivieren'}</span>
+                                </div>
+                            </div>
+                            ${device.tankData?.enabled ? `
+                                <div style="height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
+                                    <div style="height:100%; width:${Math.min(100, Math.max(0, (device.tankData.current_ml / device.tankData.capacity_ml)*100))}%; background:${(device.tankData.current_ml / device.tankData.capacity_ml) < 0.15 ? '#ef4444' : '#3b82f6'}; transition:all 0.5s;"></div>
+                                </div>
+                                <div style="text-align:right; font-size:10px; opacity:0.7; margin-top:4px;">
+                                    ${(device.tankData.current_ml / 1000).toFixed(1)} L / ${(device.tankData.capacity_ml / 1000).toFixed(1)} L übrig
+                                </div>
+                            ` : `<div style="font-size:11px; opacity:0.5;">Pumpe erkannt. Reservoirstand kann hier virtuell getrackt werden.</div>`}
+                        </div>
+                    ` : ''}
                 </div>
                 
                 <div class="controls">
@@ -859,6 +887,12 @@ class LocalGrowBoxPanel extends HTMLElement {
             const btnHumid = q(`#btn-humid-${device.id}`);
             if (btnHumid) btnHumid.onclick = () => this._toggle(device.entities.humidifier || device.options.humidifier_entity);
             q(`#btn-upload-${device.id}`).onclick = () => this._triggerUpload(device.id);
+
+            const btnTankConfig = q(`#tank-config-${device.id}`);
+            if (btnTankConfig) btnTankConfig.onclick = () => this._configureTank(device);
+            const btnTankRefill = q(`#tank-refill-${device.id}`);
+            if (btnTankRefill) btnTankRefill.onclick = () => this._refillTank(device);
+
             q('.card-image').style.cursor = 'pointer';
             q('.card-image').onclick = (e) => {
                 // Prevent click if clicking the select or badge
@@ -2319,6 +2353,61 @@ class LocalGrowBoxPanel extends HTMLElement {
             this._updateContent();
         } catch (err) {
             alert("Fehler: " + err.message);
+        }
+    }
+
+    async _configureTank(device) {
+        const isEnabled = device.tankData?.enabled || false;
+        
+        let msg = "Virtueller Wassertank Konfiguration\n\n";
+        msg += "Möchtest du den Wassertank-Track " + (isEnabled ? "deaktivieren (0)" : "aktivieren (1)") + "?\n";
+        msg += "Tippe 1 für Aktivieren, 0 für Deaktivieren.";
+        const enableStr = prompt(msg, isEnabled ? "1" : "0");
+        if (enableStr === null) return;
+        
+        const enable = enableStr.trim() === "1";
+        let updates = { enabled: enable };
+        
+        if (enable) {
+            const capL = (device.tankData?.capacity_ml || 10000) / 1000;
+            const capStr = prompt("Gesamt-Fassungsvermögen in Liter:", capL);
+            if (capStr !== null && !isNaN(parseFloat(capStr))) {
+                updates.capacity_ml = parseFloat(capStr) * 1000;
+                // Autofill tank when configuring bounds
+                updates.current_ml = updates.capacity_ml; 
+            }
+            
+            const flow = device.tankData?.flow_ml_s || 20;
+            const flowStr = prompt("Durchflussgeschwindigkeit deiner Pumpe (ml pro Sekunde):\n(Beispiel: Kleine Bewässerungspumpen schaffen ca. 20-30 ml/s)", flow);
+            if (flowStr !== null && !isNaN(parseFloat(flowStr))) {
+                updates.flow_ml_s = parseFloat(flowStr);
+            }
+        }
+        
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/update_tank',
+                entry_id: device.entryId,
+                updates: updates
+            });
+            await this._fetchDevices();
+        } catch (e) {
+            alert("Fehler beim Speichern der Tank-Config: " + e.message);
+        }
+    }
+
+    async _refillTank(device) {
+        if (!confirm("Bist du sicher, dass du den Wassertank physisch komplett randvoll gefüllt hast?")) return;
+        
+        try {
+            await this._hass.callWS({
+                type: 'local_grow_box/update_tank',
+                entry_id: device.entryId,
+                updates: { current_ml: device.tankData.capacity_ml }
+            });
+            await this._fetchDevices();
+        } catch (e) {
+            alert("Fehler beim Refill: " + e.message);
         }
     }
 

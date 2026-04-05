@@ -86,6 +86,10 @@ class GrowBoxManager:
         self._grows_file_path = hass.config.path(".storage", f"local_grow_box_grows_{self.entry.entry_id}.json")
         self._load_grows()
 
+        self.tank_state = {"enabled": False, "capacity_ml": 10000, "current_ml": 10000, "flow_ml_s": 20}
+        self._tank_file_path = hass.config.path(".storage", f"local_grow_box_tank_{self.entry.entry_id}.json")
+        self._load_tank()
+
         self._update_callbacks = []
         self._last_display_update = None
         self._last_daily_snapshot_date = None
@@ -138,6 +142,22 @@ class GrowBoxManager:
                 json.dump(self.logs, f)
         except Exception as e:
             pass # avoid spamming if permissions fail
+
+    def _load_tank(self):
+        if os.path.exists(self._tank_file_path):
+            try:
+                with open(self._tank_file_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    self.tank_state.update(data)
+            except Exception as e:
+                _LOGGER.error("Failed to load tank data: %s", e)
+
+    def _save_tank(self):
+        try:
+            with open(self._tank_file_path, "w", encoding="utf-8") as f:
+                json.dump(self.tank_state, f)
+        except Exception as e:
+            pass
 
     def _load_grows(self):
         """Load grows history from file."""
@@ -735,6 +755,19 @@ class GrowBoxManager:
                  await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": pump_entity})
                  self.last_pump_stop_time = now
                  self.pump_start_time = None
+                 
+                 if self.tank_state.get("enabled"):
+                     consumed = elapsed * float(self.tank_state.get("flow_ml_s", 20))
+                     curr = float(self.tank_state.get("current_ml", 10000))
+                     cap = float(self.tank_state.get("capacity_ml", 10000))
+                     new_ml = max(0, curr - consumed)
+                     
+                     # Only alert once when it crosses the 10% threshold, not continuously
+                     if curr > (cap * 0.1) and new_ml <= (cap * 0.1):
+                         self.add_log(f"⚠️ ACHTUNG: Wassertank fast leer! ({int(new_ml)}ml übrig)")
+                         
+                     self.tank_state["current_ml"] = new_ml
+                     self.hass.async_create_task(self.hass.async_add_executor_job(self._save_tank))
         else:
             # Pump is OFF
             self.pump_start_time = None
@@ -1115,6 +1148,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         websocket_api.async_register_command(hass, ws_apply_recipe)
         websocket_api.async_register_command(hass, ws_take_snapshot)
         websocket_api.async_register_command(hass, ws_run_ai_check)
+        websocket_api.async_register_command(hass, ws_get_tank)
+        websocket_api.async_register_command(hass, ws_update_tank)
     except Exception:
         pass # Expected if already registered
 
@@ -1355,6 +1390,38 @@ async def ws_reset_grow_energy(hass, connection, msg):
     if manager:
         manager.reset_grow_energy(msg["grow_id"])
         connection.send_result(msg["id"], {"grows": manager.grows})
+    else:
+        connection.send_error(msg["id"], "not_found", "Manager not found")
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/get_tank",
+    vol.Required("entry_id"): str,
+})
+@websocket_api.async_response
+async def ws_get_tank(hass, connection, msg):
+    """Get tank data."""
+    entry_id = msg["entry_id"]
+    manager = hass.data[DOMAIN].get(entry_id)
+    if manager:
+        connection.send_result(msg["id"], {"tank": manager.tank_state})
+    else:
+        connection.send_error(msg["id"], "not_found", "Manager not found")
+
+@websocket_api.websocket_command({
+    vol.Required("type"): "local_grow_box/update_tank",
+    vol.Required("entry_id"): str,
+    vol.Required("updates"): dict,
+})
+@websocket_api.async_response
+async def ws_update_tank(hass, connection, msg):
+    """Update tank data."""
+    entry_id = msg["entry_id"]
+    manager = hass.data[DOMAIN].get(entry_id)
+    if manager:
+        for k, v in msg["updates"].items():
+            manager.tank_state[k] = v
+        manager.hass.async_create_task(manager.hass.async_add_executor_job(manager._save_tank))
+        connection.send_result(msg["id"], {"success": True, "tank": manager.tank_state})
     else:
         connection.send_error(msg["id"], "not_found", "Manager not found")
 
