@@ -984,6 +984,14 @@ class LocalGrowBoxPanel extends HTMLElement {
             const section = document.createElement('div');
             section.className = 'settings-section';
 
+            const helpBlock = document.createElement('div');
+            helpBlock.style.cssText = "background: rgba(56, 189, 248, 0.05); border-left: 3px solid #38bdf8; padding: 16px; margin-bottom: 24px; border-radius: 4px;";
+            helpBlock.innerHTML = `
+                <h4 style="margin:0 0 8px 0; color:#38bdf8;">Willkommen in der Geräte-Konfiguration!</h4>
+                <p style="margin:0; font-size:13px; color:var(--text-secondary); line-height:1.5;">Hier verknüpfst du deine Home Assistant Geräte (Sensoren & smarte Steckdosen) mit der Grow Box. Die eigentlichen Zielwerte für Temperatur und Luftfeuchtigkeit brauchst du hier nicht zwingend einzugeben – diese steuerst du viel bequemer über den Reiter <strong>Rezepte</strong>!</p>
+            `;
+            section.appendChild(helpBlock);
+
             const title = document.createElement('div');
             title.className = 'section-title';
             title.innerText = `${device.name} - Konfiguration`;
@@ -991,20 +999,6 @@ class LocalGrowBoxPanel extends HTMLElement {
 
             const grid = document.createElement('div');
             grid.className = 'form-grid';
-
-            // Helper to create columns
-            const createCol = (titleText) => {
-                const div = document.createElement('div');
-                const h4 = document.createElement('h4');
-                h4.style.cssText = "margin:0 0 16px 0; color:var(--text-secondary);";
-                h4.innerText = titleText;
-                div.appendChild(h4);
-                return div;
-            };
-
-            const col1 = createCol('Klima & Sensoren');
-            const col2 = createCol('Bewässerung & Licht');
-            const col3 = createCol('Erweitert');
 
             // DOM-based Helper for Picker
             const appendPicker = (parent, label, configKey, domains) => {
@@ -1064,7 +1058,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             };
 
             // NEW: HA Selector Helper (Modern)
-            const appendSelector = (parent, label, configKey, domain, multiple = false) => {
+            const appendSelector = (parent, label, configKey, domain, multiple = false, helpText = '') => {
                 const group = document.createElement('div');
                 group.className = 'form-group';
                 group.style.marginBottom = '12px';
@@ -1088,11 +1082,19 @@ class LocalGrowBoxPanel extends HTMLElement {
                 });
 
                 group.appendChild(selector);
+
+                if (helpText) {
+                    const hz = document.createElement('div');
+                    hz.style.cssText = "font-size:11px; color:var(--text-secondary); margin-top:4px; margin-left:2px;";
+                    hz.innerText = helpText;
+                    group.appendChild(hz);
+                }
+
                 parent.appendChild(group);
             };
 
             // DOM-based Helper for Input
-            const appendInput = (parent, label, configKey, type = 'text', icon = '') => {
+            const appendInput = (parent, label, configKey, type = 'text', icon = '', helpText = '') => {
                 const group = document.createElement('div');
                 group.className = 'form-group';
                 group.style.marginBottom = '12px';
@@ -1119,6 +1121,14 @@ class LocalGrowBoxPanel extends HTMLElement {
                 });
 
                 group.appendChild(input);
+
+                if (helpText) {
+                    const hz = document.createElement('div');
+                    hz.style.cssText = "font-size:11px; color:var(--text-secondary); margin-top:4px; margin-left:2px;";
+                    hz.innerHTML = helpText;
+                    group.appendChild(hz);
+                }
+
                 parent.appendChild(group);
             };
 
@@ -1128,8 +1138,13 @@ class LocalGrowBoxPanel extends HTMLElement {
                 card.style.cssText = "background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 4px;";
                 
                 const header = document.createElement('div');
-                header.style.cssText = "display: flex; align-items: center; gap: 10px; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;";
-                header.innerHTML = `<span style="font-size: 20px;">${icon}</span> <span style="font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary-color);">${title}</span>`;
+                header.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;";
+                header.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size: 20px;">${icon}</span> 
+                        <span style="font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary-color);">${title}</span>
+                    </div>
+                `;
                 card.appendChild(header);
 
                 const body = document.createElement('div');
@@ -1138,24 +1153,32 @@ class LocalGrowBoxPanel extends HTMLElement {
                 body.style.gap = '8px';
                 card.appendChild(body);
 
-                return { card, body };
+                return { card, body, header };
             };
 
             const settingsGrid = document.createElement('div');
             settingsGrid.style.cssText = "display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; width: 100%;";
 
-            // Card 1: Klima & Geräte
-            const cardKlimaEntities = createCard('Klima & Geräte', '🌪️');
-            appendSelector(cardKlimaEntities.body, 'Temperatur Sensor', 'temp_sensor', ['sensor']);
-            appendSelector(cardKlimaEntities.body, 'Feuchtigkeits Sensor', 'humidity_sensor', ['sensor']);
-            appendSelector(cardKlimaEntities.body, 'Abluft Ventilator', 'fan_entity', ['switch', 'fan', 'input_boolean']);
-            appendSelector(cardKlimaEntities.body, 'Luftbefeuchter', 'humidifier_entity', ['switch', 'input_boolean', 'humidifier']);
-            appendSelector(cardKlimaEntities.body, 'Stromzähler (kWh)', 'energy_sensor', ['sensor'], true);
-            appendSelector(cardKlimaEntities.body, 'Leistungssensor (W)', 'power_sensor', ['sensor'], true);
+            // Card 1: Hardware
+            const cardHardware = createCard('Deine Hardware', '🔌');
+            appendSelector(cardHardware.body, 'Temperatur Sensor', 'temp_sensor', ['sensor']);
+            appendSelector(cardHardware.body, 'Luftfeuchtigkeits Sensor', 'humidity_sensor', ['sensor']);
+            appendSelector(cardHardware.body, 'Bodenfeuchte Sensor', 'moisture_sensor', ['sensor']);
+            appendSelector(cardHardware.body, 'Pflanzenbeleuchtung (Steckdose)', 'light_entity', ['switch', 'light', 'input_boolean']);
+            appendSelector(cardHardware.body, 'Abluft Ventilator (Steckdose)', 'fan_entity', ['switch', 'fan', 'input_boolean']);
+            appendSelector(cardHardware.body, 'Luftbefeuchter (Steckdose)', 'humidifier_entity', ['switch', 'input_boolean', 'humidifier']);
+            appendSelector(cardHardware.body, 'Wasserpumpe (Steckdose)', 'pump_entity', ['switch', 'input_boolean']);
+            appendSelector(cardHardware.body, 'Stromverbrauch (kWh Sensor)', 'energy_sensor', ['sensor'], true, 'Zählt Gesamtkosten. Bei Mehrfachauswahl werden diese addiert.');
+            appendSelector(cardHardware.body, 'Aktuelle Leistung (Watt Sensor)', 'power_sensor', ['sensor'], true, 'Optional, dient nur zur Anzeige oben rechts. Nicht für Kostenabrechnung.');
+            appendSelector(cardHardware.body, 'Kamera', 'camera_entity', ['camera'], false, 'Verbindet dein Dashboard mit der Live-Kamera.');
+            settingsGrid.appendChild(cardHardware.card);
+
+            // Card 2: Basis-Einstellungen & Energie
+            const cardGeneral = createCard(' Basis-Konfiguration & KI', '⚙️');
             
             const rowPrice = document.createElement('div');
             rowPrice.className = 'form-group';
-            rowPrice.innerHTML = `<label>Strompreis (€/kWh)</label>`;
+            rowPrice.innerHTML = `<label>Strompreis (€ / kWh)</label>`;
             const inputPrice = document.createElement('input');
             inputPrice.type = 'number';
             inputPrice.step = '0.01';
@@ -1166,41 +1189,20 @@ class LocalGrowBoxPanel extends HTMLElement {
                 this._draft[device.entryId].electric_price = parseFloat(e.target.value);
             };
             rowPrice.appendChild(inputPrice);
-            cardKlimaEntities.body.appendChild(rowPrice);
+            cardGeneral.body.appendChild(rowPrice);
 
-            settingsGrid.appendChild(cardKlimaEntities.card);
+            appendInput(cardGeneral.body, 'Licht Start-Uhrzeit (Stunde)', 'light_start_hour', 'number', '☀️', 'Beispiel: 6 bedeutet das Licht geht um 06:00 Uhr morgens an.');
+            appendInput(cardGeneral.body, 'Aktueller Grow Start (Datum)', 'phase_start_date', 'date', '🏁', 'Tipp: Kann im Tagebuch präziser pro Grow verwaltet werden.');
+            
+            // AI Settings nested inside General 
+            const aiDivider = document.createElement('div');
+            aiDivider.style.cssText = "border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 16px; padding-top: 16px;";
+            aiDivider.innerHTML = `<div style="font-weight:bold; font-size:12px; color:#a855f7; margin-bottom:8px;">🧠 KI Pflanzenanalyse</div>`;
+            cardGeneral.body.appendChild(aiDivider);
 
-            // Card 2: Klima-Sollwerte
-            const cardKlimaValues = createCard('Klima-Sollwerte', '🎯');
-            appendInput(cardKlimaValues.body, 'Ziel Temperatur (°C)', 'target_temp', 'number', '🌡️');
-            appendInput(cardKlimaValues.body, 'Temp Hysterese (Lüfter °C)', 'temp_hysteresis', 'number', '🌡️');
-            appendInput(cardKlimaValues.body, 'Ziel Feuchte (%)', 'target_humidity', 'number', '🎯');
-            appendInput(cardKlimaValues.body, 'Feuchte Hysterese (Befeuchter %)', 'humidity_hysteresis', 'number', '🔄');
-            appendInput(cardKlimaValues.body, 'Abluft-Limit (Max %)', 'max_humidity', 'number', '🌪️');
-            appendInput(cardKlimaValues.body, 'Abluft Hysterese (%)', 'fan_hysteresis', 'number', '💨');
-            settingsGrid.appendChild(cardKlimaValues.card);
-
-            // Card 3: Bewässerung & Licht
-            const cardWaterLight = createCard('Bewässerung & Licht', '💧');
-            appendSelector(cardWaterLight.body, 'Licht Quelle', 'light_entity', ['switch', 'light', 'input_boolean']);
-            appendSelector(cardWaterLight.body, 'Bodenfeuchte Sensor', 'moisture_sensor', ['sensor']);
-            appendSelector(cardWaterLight.body, 'Wasserpumpe', 'pump_entity', ['switch', 'input_boolean']);
-            appendInput(cardWaterLight.body, 'Ziel Bodenfeuchte (%)', 'target_moisture', 'number', '🌱');
-            appendInput(cardWaterLight.body, 'Pumpen Dauer (Sek)', 'pump_duration', 'number', '⏲️');
-            settingsGrid.appendChild(cardWaterLight.card);
-
-            // Card 4: Zeitplan & Erweitert
-            const cardAdvanced = createCard('Zeitplan & Erweitert', '📅');
-            appendInput(cardAdvanced.body, 'Licht Start (Stunde 0-23)', 'light_start_hour', 'number', '☀️');
-            appendInput(cardAdvanced.body, 'Phasen Startdatum', 'phase_start_date', 'date', '🏁');
-            appendSelector(cardAdvanced.body, 'Kamera', 'camera_entity', ['camera']);
-            settingsGrid.appendChild(cardAdvanced.card);
-
-            // Card 5: KI & Analyse (NEU)
-            const cardAI = createCard('KI & Analyse', '🧠');
             const rowProvider = document.createElement('div');
             rowProvider.className = 'form-group';
-            rowProvider.innerHTML = `<label>KI-Anbieter</label>`;
+            rowProvider.innerHTML = `<label>KI-Anbieter auswählen</label>`;
             const selectProvider = document.createElement('select');
             selectProvider.style.cssText = "width:100%; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:white; padding:10px; border-radius:6px;";
             selectProvider.innerHTML = `
@@ -1213,22 +1215,61 @@ class LocalGrowBoxPanel extends HTMLElement {
                 this._draft[device.entryId].ai_provider = e.target.value;
             };
             rowProvider.appendChild(selectProvider);
-            cardAI.body.appendChild(rowProvider);
+            cardGeneral.body.appendChild(rowProvider);
 
-            appendInput(cardAI.body, 'API Key', 'ai_api_key', 'password', '🔑');
+            appendInput(cardGeneral.body, 'API Key', 'ai_api_key', 'password', '🔑', 'Dein persönlicher Schlüssel von OpenAI oder Google.');
 
             const rowAuto = document.createElement('div');
             rowAuto.style.cssText = "display:flex; align-items:center; gap:10px; margin-top:8px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;";
             rowAuto.innerHTML = `
                 <input type="checkbox" id="ai-auto-${device.id}" ${device.options.ai_enabled ? 'checked' : ''} style="width:20px; height:20px; margin:0;">
-                <label for="ai-auto-${device.id}" style="font-size:12px; cursor:pointer;">Automatischer täglicher KI-Check</label>
+                <label for="ai-auto-${device.id}" style="font-size:12px; cursor:pointer;">Automatischer täglicher KI-Check (braucht Kamera)</label>
             `;
             rowAuto.querySelector('input').onchange = (e) => {
                 this._draft[device.entryId] = this._draft[device.entryId] || {};
                 this._draft[device.entryId].ai_enabled = e.target.checked;
             };
-            cardAI.body.appendChild(rowAuto);
-            settingsGrid.appendChild(cardAI.card);
+            cardGeneral.body.appendChild(rowAuto);
+
+            settingsGrid.appendChild(cardGeneral.card);
+
+            // Card 3: Advanced Settings (Hysteresis & Emergency Limits)
+            const cardAdvanced = createCard('Feintuning & Experten', '🛠️');
+            
+            const expandBtn = document.createElement('button');
+            expandBtn.className = 'btn small';
+            expandBtn.style.cssText = "padding:2px 8px; font-size:10px; background:rgba(255,255,255,0.1); width:auto;";
+            expandBtn.innerText = 'Einblenden';
+            cardAdvanced.header.appendChild(expandBtn);
+
+            const advBodyWrapper = document.createElement('div');
+            advBodyWrapper.style.display = 'none'; // Hidden by default
+
+            appendInput(advBodyWrapper, 'Temp Hysterese (Lüfter °C)', 'temp_hysteresis', 'number', '', 'Ab welcher Abweichung nach oben soll der Abluft-Ventilator kühlen? (Standard: 1.0)');
+            appendInput(advBodyWrapper, 'Feuchte Hysterese (Befeuchter %)', 'humidity_hysteresis', 'number', '', 'Ab welcher Abweichung nach unten soll der Befeuchter sprühen? (Standard: 5.0)');
+            appendInput(advBodyWrapper, 'Abluft-Limit (Notfall Max %)', 'max_humidity', 'number', '', 'Bei wie viel % Luftfeuchtigkeit soll die Abluft sofort angehen um Schimmel zu verhindern? (Beispiel: 80)');
+            appendInput(advBodyWrapper, 'Abluft Nachlauf/Hysterese (%)', 'fan_hysteresis', 'number', '', 'Wie stark muss die Feuchtigkeit unter das Notfall-Limit fallen, bis der Lüfter wieder stoppt? (Standard: 5.0)');
+            appendInput(advBodyWrapper, 'Pumpen Dauer (Sek)', 'pump_duration', 'number', '', 'Wie viele Sekunden läuft die Wasserpumpe, wenn eine Bewässerung ansteht? (Standard: 5)');
+
+            // We hide the traditional legacy fallback defaults under advanced because recipes override them anyway.
+            const hcDivider = document.createElement('div');
+            hcDivider.style.cssText = "border-top: 1px dashed rgba(255,255,255,0.1); margin-top: 16px; padding-top: 16px;";
+            hcDivider.innerHTML = `<div style="font-weight:bold; font-size:12px; color:var(--text-secondary); margin-bottom:8px;">Manuelle Standard-Werte (werden von Rezepten überschrieben)</div>`;
+            advBodyWrapper.appendChild(hcDivider);
+            
+            appendInput(advBodyWrapper, 'Standard Ziel Temperatur (°C)', 'target_temp', 'number', '');
+            appendInput(advBodyWrapper, 'Standard Ziel Feuchte (%)', 'target_humidity', 'number', '');
+            appendInput(advBodyWrapper, 'Standard Ziel Bodenfeuchte (%)', 'target_moisture', 'number', '');
+
+            cardAdvanced.body.appendChild(advBodyWrapper);
+            
+            expandBtn.onclick = () => {
+                const isHidden = advBodyWrapper.style.display === 'none';
+                advBodyWrapper.style.display = isHidden ? 'block' : 'none';
+                expandBtn.innerText = isHidden ? 'Ausblenden' : 'Einblenden';
+            };
+
+            settingsGrid.appendChild(cardAdvanced.card);
 
             section.appendChild(settingsGrid);
 
@@ -2118,6 +2159,17 @@ class LocalGrowBoxPanel extends HTMLElement {
                             ${g.photos && g.photos.length > 0 ? `<button class="btn" style="width:auto; padding:4px 10px; font-size:10px; display:inline-flex; margin-right:8px;" onclick='this.parentElement.parentElement.parentElement.querySelector(".row-gallery-${g.id}").style.display="table-row"; this.style.display="none";'>📸 ${g.photos.length}</button>` : ''}
                             <button class="btn" style="padding:4px 8px; font-size:10px;" id="del-grow-${g.id}">🗑️</button>
                             <button class="btn" style="padding:4px 8px; font-size:10px; margin-left:4px;" id="edit-hist-${g.id}">📝</button>
+                        </td>
+                    </tr>
+                    <tr class="row-gallery-${g.id}" style="display:none; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.3);">
+                        <td colspan="5" style="padding: 16px;">
+                            ${g.ai_reports && g.ai_reports.length > 0 ? `
+                                <div style="background: rgba(168, 85, 247, 0.05); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+                                    <div style="font-weight:700; font-size:11px; color:#a855f7; margin-bottom:6px;">🧠 Letzter KI-Bericht</div>
+                                    <div style="font-size:12px; opacity:0.8;">${g.ai_reports[g.ai_reports.length-1].analysis}</div>
+                                </div>
+                            ` : ''}
+                            <div id="hist-gallery-${g.id}"></div>
                         </td>
                     </tr>
                 `;
