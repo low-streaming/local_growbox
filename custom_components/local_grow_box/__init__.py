@@ -1040,7 +1040,7 @@ class GrowBoxManager:
             "contents": [{
                 "parts": [
                     {"text": prompt},
-                    {"inline_data": {"mime_type": "image/jpeg", "data": b64_image}}
+                    {"inlineData": {"mimeType": "image/jpeg", "data": b64_image}}
                 ]
             }]
         }
