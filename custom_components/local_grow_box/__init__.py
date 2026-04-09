@@ -79,16 +79,9 @@ class GrowBoxManager:
         
         self.logs = []
         self._last_log_state = {}
-        self._log_file_path = hass.config.path(f".storage", f"local_grow_box_logs_{self.entry.entry_id}.json")
-        self._load_logs()
-        
-        self.grows = []
+        self._log_file_path = hass.config.path(".storage", f"local_grow_box_logs_{self.entry.entry_id}.json")
         self._grows_file_path = hass.config.path(".storage", f"local_grow_box_grows_{self.entry.entry_id}.json")
-        self._load_grows()
-
-        self.tank_state = {"enabled": False, "capacity_ml": 10000, "current_ml": 10000, "flow_ml_s": 20}
         self._tank_file_path = hass.config.path(".storage", f"local_grow_box_tank_{self.entry.entry_id}.json")
-        self._load_tank()
 
         self._update_callbacks = []
         self._last_display_update = None
@@ -214,7 +207,7 @@ class GrowBoxManager:
             "consumed_kwh": 0
         }
         self.grows.insert(0, new_grow)
-        self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
+        self.hass.async_add_executor_job(self._save_grows)
         self.add_log(f"Neuer Grow gestartet: {name} ({expected_weeks} Wochen geplant)")
 
     def stop_grow(self, grow_id, yield_grams=None):
@@ -257,7 +250,7 @@ class GrowBoxManager:
                     log_msg += f" | Ertrag: {g['yield_grams']}g"
                 self.add_log(log_msg)
                 
-                self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
+                self.hass.async_add_executor_job(self._save_grows)
                 break
     def reset_grow_energy(self, grow_id):
         """Reset energy offset for a specific grow."""
@@ -279,7 +272,7 @@ class GrowBoxManager:
                 g["consumed_kwh"] = 0
                 self.add_log(f"Zählerstand zurückgesetzt für: {g['name']}")
                 break
-        self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
+        self.hass.async_add_executor_job(self._save_grows)
 
     def add_grow_event(self, grow_id, event_type, note=""):
         """Add a milestone event to a grow."""
@@ -293,7 +286,7 @@ class GrowBoxManager:
                     "note": note
                 })
                 break
-        self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
+        self.hass.async_add_executor_job(self._save_grows)
 
     def update_grow(self, grow_id, updates):
         """Update grow details."""
@@ -303,12 +296,12 @@ class GrowBoxManager:
                     if k in g:
                         g[k] = v
                 break
-        self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
+        self.hass.async_add_executor_job(self._save_grows)
 
     def delete_grow(self, grow_id):
         """Remove a grow entry."""
         self.grows = [g for g in self.grows if g["id"] != grow_id]
-        self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
+        self.hass.async_add_executor_job(self._save_grows)
 
     def add_log(self, message: str):
         """Add a log entry with timestamp."""
@@ -327,10 +320,15 @@ class GrowBoxManager:
         if len(self.logs) > 1000:
             self.logs.pop()
             
-        self.hass.async_create_task(self.hass.async_add_executor_job(self._save_logs))
+        self.hass.async_add_executor_job(self._save_logs)
 
     async def async_setup(self):
         """Setup background tasks."""
+        # Load data in executor to avoid blocking the event loop
+        await self.hass.async_add_executor_job(self._load_logs)
+        await self.hass.async_add_executor_job(self._load_grows)
+        await self.hass.async_add_executor_job(self._load_tank)
+
         # Check more frequently (1s) to handle pump duration accurately
         self._remove_update_listener = async_track_time_interval(
             self.hass, self._async_update_logic, timedelta(seconds=1)
@@ -465,7 +463,7 @@ class GrowBoxManager:
 
                 # Persistence check
                 if active_grow["vpd_total_mins"] % 5 == 0:
-                    self.hass.async_create_task(self.hass.async_add_executor_job(self._save_grows))
+                    self.hass.async_add_executor_job(self._save_grows)
 
             # Push updates to HA sensors exactly once per minute
             self.async_update_listeners()
@@ -767,7 +765,7 @@ class GrowBoxManager:
                          self.add_log(f"⚠️ ACHTUNG: Wassertank fast leer! ({int(new_ml)}ml übrig)")
                          
                      self.tank_state["current_ml"] = new_ml
-                     self.hass.async_create_task(self.hass.async_add_executor_job(self._save_tank))
+                     self.hass.async_add_executor_job(self._save_tank)
         else:
             # Pump is OFF
             self.pump_start_time = None
