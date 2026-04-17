@@ -1,4 +1,8 @@
 {
-    "name": "Local Grow Box",
-    "render_readme": true
+  "name": "Local Grow Box",
+  "render_readme": true,
+  "category": "integration",
+  "domain": "local_grow_box",
+  "documentation": "https://github.com/openkairo/GrowRoom_Local",
+  "homeassistant": "2024.1.0"
 }

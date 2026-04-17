@@ -12,6 +12,13 @@ Dieses Update macht die Visualisierungen im Dashboard konsistent mit deinen Eins
 - **📊 Verbesserte Skalierung:** Der Feuchtigkeitsbalken wurde für einen größeren Bereich (20-90%) optimiert, um auch extreme Einstellungen korrekt darzustellen.
 - **📖 Hilfe-Update:** Die Info-Texte wurden korrigiert und erklären nun die dynamische Zielzonen-Visualisierung.
 
+**🛠️ Bugfixes & Stabilitäts-Update (Code-Audit):**
+- **🛡️ Initialisierungs-Fix:** Kritische Fehler beim Start (Tank- & Grow-Status) wurden behoben – die Integration läuft nun auch bei Neuinstallation stabil.
+- **🧹 Code-Bereinigung:** Doppelte Funktionen entfernt und die Zuverlässigkeit der Phasen-Berechnung verbessert.
+- **⏱️ Konsistente Overrides:** Manuelle Eingriffe (Licht/Pumpe) pausieren die Automatik nun zuverlässig für 15 Minuten.
+- **🔗 WebSocket-Zentralisierung:** Alle API-Befehle werden nun an einer zentralen Stelle registriert, was Kommunikationsfehler im Dashboard verhindert.
+- **🆔 Versions-Sync:** Dashboard-Version auf v2.1.8 abgeglichen.
+
 ---
 
 # 🇬🇧 English
@@ -27,3 +34,10 @@ This update aligns the dashboard visualizations with your actual settings and un
 - **⚙️ HA Options Sync:** All target and hysteresis values are now exposed in the official Home Assistant configuration dialog.
 - **📊 Improved Scaling:** The humidity bar range has been expanded (20-90%) to better represent extreme target settings.
 - **📖 Help Update:** Help texts have been corrected to accurately describe the dynamic target zone visualization.
+
+**🛠️ Stability & Bugfixes (Code Audit):**
+- **🛡️ Initialization Fix:** Resolved critical startup errors (Tank & Grow status) – the integration now runs stable even on fresh installs.
+- **🧹 Code Cleanup:** Removed redundant logic and improved the reliability of phase calculations.
+- **⏱️ Consistent Overrides:** Manual interventions (Light/Pump) now reliably pause automation for 15 minutes.
+- **🔗 WebSocket Consolidation:** All API commands are now registered centrally, preventing communication errors in the dashboard.
+- **🆔 Version Sync:** Aligned dashboard versioning to v2.1.8.
