@@ -4,7 +4,7 @@
 
 # Local Grow Box Integration 🌿 (v2.1.8)
 
-<img width="1024" height="1536" alt="localgrow" src="https://github.com/user-attachments/assets/87bc7e9b-7643-4085-a9df-32111ebdaa5b" />
+<img width="1024" alt="localgrow" src="logo.png" />
 
 **[🇩🇪 Deutsch](#-deutsch) | [🇬🇧 English](#-english)**
 
