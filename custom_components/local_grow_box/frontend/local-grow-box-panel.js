@@ -216,9 +216,9 @@ class LocalGrowBoxPanel extends HTMLElement {
         const targetBottom = getY(minTarget);
         
         let html = `
-            <rect x="0" y="${targetTop}" width="${width}" height="${targetBottom - targetTop}" fill="rgba(16, 185, 129, 0.15)" />
-            <line x1="0" y1="${targetTop}" x2="${width}" y2="${targetTop}" stroke="rgba(16, 185, 129, 0.3)" stroke-width="0.5" stroke-dasharray="2,2" />
-            <line x1="0" y1="${targetBottom}" x2="${width}" y2="${targetBottom}" stroke="rgba(16, 185, 129, 0.3)" stroke-width="0.5" stroke-dasharray="2,2" />
+            <rect x="0" y="${targetTop}" width="${width}" height="${targetBottom - targetTop}" fill="rgba(74, 222, 128, 0.12)" />
+            <line x1="0" y1="${targetTop}" x2="${width}" y2="${targetTop}" stroke="rgba(74, 222, 128, 0.4)" stroke-width="0.5" stroke-dasharray="2,2" />
+            <line x1="0" y1="${targetBottom}" x2="${width}" y2="${targetBottom}" stroke="rgba(74, 222, 128, 0.4)" stroke-width="0.5" stroke-dasharray="2,2" />
         `;
         
         // Path
@@ -227,7 +227,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             path += ` L ${getX(points[i].x)} ${getY(points[i].y)}`;
         }
         
-        html += `<path d="${path}" fill="none" stroke="var(--primary-color)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />`;
+        html += `<path d="${path}" fill="none" stroke="#38bdf8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 2px rgba(56, 189, 248, 0.3));" />`;
         
         svg.innerHTML = html;
     }
@@ -398,6 +398,42 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .info-icon { font-size: 20px; line-height: 1; opacity: 0.9; }
                 .info-content { display: flex; flex-direction: column; gap: 2px; }
                 .info-label { font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+                
+                /* Score Gauge */
+                .score-gauge {
+                    position: relative; width: 64px; height: 64px; margin: 8px auto;
+                    filter: drop-shadow(0 0 8px rgba(3, 169, 244, 0.2));
+                }
+                .score-gauge svg { width: 64px; height: 64px; transform: rotate(-90deg); }
+                .score-gauge .bg { fill: none; stroke: rgba(255, 255, 255, 0.05); stroke-width: 3.5; }
+                .score-gauge .fill { 
+                    fill: none; stroke-width: 3.5; stroke-linecap: round; 
+                    transition: stroke-dasharray 1s ease-out, stroke 0.5s ease;
+                }
+                .score-value {
+                    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+                    font-size: 15px; font-weight: 800; letter-spacing: -0.5px;
+                }
+
+                .status-label {
+                    font-size: 10px; font-weight: 700; text-transform: uppercase; 
+                    letter-spacing: 0.8px; margin-top: 4px; padding: 2px 8px; border-radius: 4px;
+                    display: inline-block;
+                }
+                
+                @keyframes pulse-soft {
+                    0% { transform: scale(1); opacity: 0.8; }
+                    50% { transform: scale(1.05); opacity: 1; }
+                    100% { transform: scale(1); opacity: 0.8; }
+                }
+
+                /* Layout Polish */
+                .diary-active-grid {
+                    display: grid; grid-template-columns: 1.4fr 1fr 1fr auto; gap: 24px; align-items: stretch;
+                }
+                .active-grow-card {
+                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+                }
                 .info-val { font-size: 13px; font-weight: 500; color: var(--text-primary); }
                 
                 /* Settings Form */
@@ -2099,19 +2135,25 @@ class LocalGrowBoxPanel extends HTMLElement {
                             ">⚖️ Reset</button>
                         </div>
 
-                        <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px;">
-                            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Klima-Score</div>
-                            <div style="position:relative; width:60px; height:60px; margin:8px auto;">
-                                <svg viewBox="0 0 36 36" style="width:60px; height:60px; transform: rotate(-90deg);">
-                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="3" />
-                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="${healthColor}" stroke-dasharray="${vpdScore}, 100" stroke-width="3" stroke-linecap="round" />
-                                </svg>
-                                <div style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); font-size:14px; font-weight:bold;">${vpdScore}%</div>
+                        <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.08); padding-left:20px; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">Klima-Score</div>
+                                <div class="score-gauge">
+                                    <svg viewBox="0 0 36 36">
+                                        <path class="bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                        <path class="fill" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
+                                              stroke="${healthColor}" 
+                                              stroke-dasharray="${vpdScore}, 100" />
+                                    </svg>
+                                    <div class="score-value" style="color:${healthColor}">${vpdScore}%</div>
+                                </div>
+                                <div class="status-label" style="background: ${healthColor}20; color: ${healthColor};">
+                                    ${vpdScore >= 90 ? '🏆 Perfekt' : (vpdScore >= 75 ? '✨ Optimal' : (vpdScore >= 50 ? '⚖️ Stabil' : '⚠️ Kritisch'))}
+                                </div>
                             </div>
-                            <div style="font-size:10px; opacity:0.6; margin-bottom:8px;">VPD-Qualität</div>
-                            <div style="background:rgba(0,0,0,0.2); border-radius:4px; padding:4px;">
+                            <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:6px; margin-top:12px; border: 1px solid rgba(255,255,255,0.05);">
                                 <svg id="vpd-sparkline-${device.id}" width="100" height="40" viewBox="0 0 100 40"></svg>
-                                <div style="font-size:9px; opacity:0.5; margin-top:2px;">Trend (24h)</div>
+                                <div style="font-size:9px; opacity:0.5; margin-top:2px;">VPD Trend (24h)</div>
                             </div>
                         </div>
 
@@ -2579,23 +2621,31 @@ class LocalGrowBoxPanel extends HTMLElement {
                 <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px;">
                     <div>
                         <h4 style="margin: 0 0 12px 0;">Rezept importieren</h4>
-                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Füge hier den JSON-Code eines Community-Rezepts ein.</p>
-                        <textarea id="import-area" style="width: 100%; height: 120px; background: #0b1121; border: 1px solid rgba(255,255,255,0.1); color: #4ade80; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 11px; resize: none; margin-bottom: 12px;" placeholder='{"name": "Mein Setup", "phases": ...}'></textarea>
+                        <div style="background: rgba(56, 189, 248, 0.05); border: 1px dashed rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 16px; margin-bottom: 12px; text-align: center;">
+                            <input type="file" id="recipe-file-input" accept=".json,.growbox" style="display: none;">
+                            <button type="button" class="btn" id="btn-upload-recipe" style="width: auto; padding: 8px 20px; background: rgba(56, 189, 248, 0.2);">📂 Datei auswählen</button>
+                            <div id="file-name-display" style="font-size: 11px; margin-top: 8px; color: var(--text-secondary); height: 14px;">Keine Datei ausgewählt</div>
+                        </div>
+                        <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; opacity: 0.7;">Oder JSON-Code direkt einfügen:</p>
+                        <textarea id="import-area" style="width: 100%; height: 80px; background: #0b1121; border: 1px solid rgba(255,255,255,0.1); color: #4ade80; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 10px; resize: none; margin-bottom: 12px;" placeholder='{"name": "Mein Setup", "phases": ...}'></textarea>
                         <div style="display: flex; gap: 12px;">
                             <select id="import-box" style="flex: 1;">
                                 ${this._devices.map(d => `<option value="${d.entryId}">${d.name}</option>`).join('')}
                             </select>
-                            <button type="button" class="btn active" id="btn-import-recipe" style="width: auto; padding: 0 24px;">Importieren</button>
+                            <button type="button" class="btn active" id="btn-import-recipe" style="width: auto; padding: 0 24px;">Rezept aktivieren</button>
                         </div>
                     </div>
                     <div style="border-left: 1px dashed rgba(255,255,255,0.1); padding-left: 32px;">
                         <h4 style="margin: 0 0 12px 0;">Teilen & Exportieren</h4>
-                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Erstelle einen Code aus deinen aktuellen Einstellungen einer Box.</p>
+                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Erstelle eine Datei oder einen Code aus deinen aktuellen Einstellungen.</p>
                         <select id="export-box" style="margin-bottom: 12px;">
                             ${this._devices.map(d => `<option value="${d.entryId}">${d.name}</option>`).join('')}
                         </select>
-                        <button type="button" class="btn" id="btn-export-recipe" style="width: 100%; margin-bottom: 16px;">Rezept-Code generieren</button>
-                        <div id="export-result" style="display: none;">
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <button type="button" class="btn active" id="btn-download-recipe" style="width: 100%;">💾 Als Datei speichern (.json)</button>
+                            <button type="button" class="btn" id="btn-export-recipe" style="width: 100%; border: 1px solid rgba(255,255,255,0.1); background: transparent;">📋 Nur Code anzeigen</button>
+                        </div>
+                        <div id="export-result" style="display: none; margin-top: 16px;">
                             <p style="font-size: 11px; margin-bottom: 4px; color: #4ade80;">Fertig! Kopiere diesen Code:</p>
                             <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; font-size: 10px; font-family: monospace; word-break: break-all; opacity: 0.8; border: 1px solid rgba(74, 222, 128, 0.2);" id="export-code"></div>
                         </div>
@@ -2629,10 +2679,46 @@ class LocalGrowBoxPanel extends HTMLElement {
         });
 
         // Listeners for import
+        const fileInput = recipesDiv.querySelector('#recipe-file-input');
+        const fileNameDisplay = recipesDiv.querySelector('#file-name-display');
+        let uploadedRecipe = null;
+
+        recipesDiv.querySelector('#btn-upload-recipe').onclick = () => fileInput.click();
+        
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            fileNameDisplay.innerText = `📄 ${file.name}`;
+            
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    uploadedRecipe = JSON.parse(event.target.result);
+                    // Autofill name if possible
+                    if (uploadedRecipe.name) fileNameDisplay.innerText = `✅ ${file.name} (Rezept: ${uploadedRecipe.name})`;
+                } catch (err) {
+                    alert("Konnte Datei nicht lesen. Ungültiges JSON-Format.");
+                    fileInput.value = "";
+                    fileNameDisplay.innerText = "Fehler beim Laden";
+                }
+            };
+            reader.readAsText(file);
+        };
+
         recipesDiv.querySelector('#btn-import-recipe').onclick = () => {
             const code = recipesDiv.querySelector('#import-area').value.trim();
             const entryId = recipesDiv.querySelector('#import-box').value;
-            if (!code) return;
+            
+            if (uploadedRecipe) {
+                this._applyRecipe(entryId, uploadedRecipe);
+                return;
+            }
+
+            if (!code) {
+                alert("Bitte wähle eine Datei aus oder füge einen Code ein.");
+                return;
+            }
+
             try {
                 const recipe = JSON.parse(code);
                 this._applyRecipe(entryId, recipe);
@@ -2641,14 +2727,12 @@ class LocalGrowBoxPanel extends HTMLElement {
             }
         };
 
-        // Listeners for export
-        recipesDiv.querySelector('#btn-export-recipe').onclick = () => {
-            const entryId = recipesDiv.querySelector('#export-box').value;
+        // Helper to generate current recipe object
+        const getCurrentRecipe = (entryId) => {
             const device = this._devices.find(d => d.entryId === entryId);
-            if (!device) return;
-
-            const recipe = {
-                name: "Community-Grow Profile",
+            if (!device) return null;
+            return {
+                name: `Rezept_${device.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}`,
                 phases: {
                     seedling: { 
                         target_temp: parseFloat(device.options.target_temp || 24), 
@@ -2670,6 +2754,27 @@ class LocalGrowBoxPanel extends HTMLElement {
                     }
                 }
             };
+        };
+
+        // Listeners for export
+        recipesDiv.querySelector('#btn-download-recipe').onclick = () => {
+            const entryId = recipesDiv.querySelector('#export-box').value;
+            const recipe = getCurrentRecipe(entryId);
+            if (!recipe) return;
+
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(recipe, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", recipe.name + ".growbox");
+            document.body.appendChild(downloadAnchorNode); 
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        };
+
+        recipesDiv.querySelector('#btn-export-recipe').onclick = () => {
+            const entryId = recipesDiv.querySelector('#export-box').value;
+            const recipe = getCurrentRecipe(entryId);
+            if (!recipe) return;
             
             recipesDiv.querySelector('#export-result').style.display = 'block';
             recipesDiv.querySelector('#export-code').innerText = JSON.stringify(recipe);

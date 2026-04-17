@@ -442,8 +442,12 @@ class GrowBoxManager:
                 
                 # Get phase targets
                 vmin, vmax = self._get_vpd_target_range(self.current_phase)
+                
+                # 1.0 points for Ideal Range, 0.5 points for Acceptable Range (+/- 0.2 kPa buffer)
                 if vmin <= self.vpd <= vmax:
                     active_grow["vpd_ideal_mins"] = active_grow.get("vpd_ideal_mins", 0) + 1
+                elif (vmin - 0.2) <= self.vpd <= (vmax + 0.2):
+                    active_grow["vpd_ideal_mins"] = active_grow.get("vpd_ideal_mins", 0) + 0.5
                 
                 # Energy Integration (Power to kWh)
                 power_entities = self.config.get(CONF_POWER_SENSOR)
