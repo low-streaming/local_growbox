@@ -1768,7 +1768,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     <div style="background:rgba(251, 191, 36, 0.1); border:1px solid rgba(251, 191, 36, 0.3); padding:10px; margin-bottom:20px; border-radius:8px; color:#fbbf24;">
                         <strong>💡 Tipp bei UI-Problemen:</strong> Falls Änderungen (wie gelöschte Boxen) nicht erscheinen, drücke bitte <strong>STRG + F5</strong> um den Browser-Cache zu leeren.
                     </div>
-                    Local Grow Box Integration v2.4.2
+                    Local Grow Box Integration v2.1.8
                 </div>
             </div>
         `;

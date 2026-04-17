@@ -79,6 +79,13 @@ class GrowBoxManager:
         
         self.logs = []
         self._last_log_state = {}
+        self.grows = []
+        self.tank_state = {
+            "enabled": False,
+            "capacity_ml": 10000,
+            "current_ml": 10000,
+            "flow_ml_s": 20
+        }
         self._log_file_path = hass.config.path(".storage", f"local_grow_box_logs_{self.entry.entry_id}.json")
         self._grows_file_path = hass.config.path(".storage", f"local_grow_box_grows_{self.entry.entry_id}.json")
         self._tank_file_path = hass.config.path(".storage", f"local_grow_box_tank_{self.entry.entry_id}.json")
@@ -87,13 +94,6 @@ class GrowBoxManager:
         self._last_display_update = None
         self._last_daily_snapshot_date = None
 
-    @property
-    def days_in_phase(self) -> int:
-        """Get days in current phase."""
-        if not self.phase_start_date:
-            return 0
-        delta = dt_util.now() - self.phase_start_date
-        return max(0, delta.days)
 
     def async_register_update_callback(self, callback):
         """Register callback for status updates."""
@@ -705,7 +705,7 @@ class GrowBoxManager:
             last_changed = current_state.last_changed
             if last_changed:
                 diff = (dt_util.utcnow() - last_changed).total_seconds()
-                if diff < 10:
+                if diff < 900:
                     _LOGGER.info("Light manual override detected (changed %.0fs ago). Skipping auto-control.", diff)
                     return
 
@@ -1097,51 +1097,47 @@ class GrowBoxManager:
             return data["candidates"][0]["content"]["parts"][0]["text"]
 
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
+    # Static Paths
     await hass.http.async_register_static_paths([
         StaticPathConfig("/local_grow_box", hass.config.path("custom_components/local_grow_box/frontend"), True)
     ])
     img_path = hass.config.path("www", "local_grow_box_images")
     if not os.path.exists(img_path):
         os.makedirs(img_path)
+
     await panel_custom.async_register_panel(
         hass, webcomponent_name="local-grow-box-panel", frontend_url_path="grow-room",
         module_url=f"/local_grow_box/local-grow-box-panel.js?v={int(dt_util.now().timestamp())}",
         sidebar_title="Grow Room", sidebar_icon="mdi:sprout", require_admin=False,
     )
-
+    
     # Register Websocket API
-    _LOGGER.debug("Registering Local Grow Box Websocket Commands")
-    try:
-        websocket_api.async_register_command(hass, ws_upload_image)
-        websocket_api.async_register_command(hass, ws_update_config)
-        websocket_api.async_register_command(hass, ws_get_config)
-        websocket_api.async_register_command(hass, ws_get_logs)
-        websocket_api.async_register_command(hass, ws_get_grows)
-        websocket_api.async_register_command(hass, ws_start_grow)
-        websocket_api.async_register_command(hass, ws_stop_grow)
-        websocket_api.async_register_command(hass, ws_update_grow)
-        websocket_api.async_register_command(hass, ws_delete_grow)
-        websocket_api.async_register_command(hass, ws_add_grow_event)
-    except Exception as e:
-        _LOGGER.warning("Failed to register websocket commands in async_setup (might be duplicate): %s", e)
+    async_register_websocket_commands(hass)
     
     return True
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    hass.data.setdefault(DOMAIN, {})
+def async_register_websocket_commands(hass: HomeAssistant):
+    """Register all websocket commands for the integration."""
+    _LOGGER.debug("Registering Local Grow Box Websocket Commands")
     
-    # FAILSAFE: Register commands globally. Using a set of names to register individually.
     cmds = [
         ws_upload_image, ws_update_config, ws_get_config, ws_get_logs, ws_get_grows,
         ws_start_grow, ws_stop_grow, ws_update_grow, ws_delete_grow, ws_add_grow_event,
         ws_reset_grow_energy, ws_apply_recipe, ws_take_snapshot, ws_run_ai_check,
         ws_get_tank, ws_update_tank
     ]
+    
     for cmd in cmds:
         try:
             websocket_api.async_register_command(hass, cmd)
         except Exception:
-            pass # Skip if already registered or other issue
+            pass # Skip if already registered
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    hass.data.setdefault(DOMAIN, {})
+    
+    # Ensure commands are registered
+    async_register_websocket_commands(hass)
 
     manager = GrowBoxManager(hass, entry)
     hass.data[DOMAIN][entry.entry_id] = manager
