@@ -41,6 +41,7 @@ from .const import (
     CONF_AI_PROVIDER, CONF_AI_API_KEY, CONF_AI_ENABLED,
     AI_PROVIDER_NONE, AI_PROVIDER_OPENAI, AI_PROVIDER_GEMINI,
     CONF_ACTIVE_RECIPE, CONF_TANK_LEVEL_SENSOR,
+    CONF_HEATER_ENTITY, CONF_HEATER_HYSTERESIS, DEFAULT_HEATER_HYSTERESIS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -400,6 +401,7 @@ class GrowBoxManager:
             self.config.get(CONF_FAN_ENTITY),
             self.config.get(CONF_PUMP_ENTITY),
             self.config.get(CONF_HUMIDIFIER_ENTITY),
+            self.config.get(CONF_HEATER_ENTITY),
         ]
         
         for entity_id in entities:
@@ -847,6 +849,9 @@ class GrowBoxManager:
         temp_hysteresis = self._get_config_value(CONF_TEMP_HYSTERESIS, DEFAULT_TEMP_HYSTERESIS, float)
         fan_hysteresis = self._get_config_value(CONF_FAN_HYSTERESIS, DEFAULT_FAN_HYSTERESIS, float)
         
+        heater_entity = self.config.get(CONF_HEATER_ENTITY)
+        heater_hysteresis = self._get_config_value(CONF_HEATER_HYSTERESIS, DEFAULT_HEATER_HYSTERESIS, float)
+        
         humidifier_entity = self.config.get(CONF_HUMIDIFIER_ENTITY)
 
         temp_state = self._get_safe_state(temp_entity)
@@ -918,6 +923,27 @@ class GrowBoxManager:
                   self.add_log(f"Luftbefeuchter eingeschaltet (H={current_humid}% < {start_threshold}%)")
                   await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": humidifier_entity})
                   self.humidifier_start_time = now
+
+        # Heater Logic
+        if heater_entity:
+            heater_state = self._get_safe_state(heater_entity)
+            if heater_state:
+                is_heater_on = heater_state.state == "on"
+                should_heater_on = False
+
+                if current_temp < (target_temp - heater_hysteresis):
+                    should_heater_on = True
+                elif current_temp >= target_temp:
+                    should_heater_on = False
+                else:
+                    should_heater_on = is_heater_on
+
+                if should_heater_on and not is_heater_on:
+                    self.add_log(f"Heizung eingeschaltet (T={current_temp}° < {target_temp - heater_hysteresis:.1f}°)")
+                    await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": heater_entity})
+                elif not should_heater_on and is_heater_on:
+                    self.add_log(f"Heizung ausgeschaltet (T={current_temp}° >= {target_temp}°)")
+                    await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": heater_entity})
 
 
     def set_master_switch(self, state: bool):

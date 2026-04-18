@@ -35,6 +35,8 @@ from .const import (
     CONF_LIGHT_START_HOUR,
     CONF_PHASE_START_DATE,
     CONF_TANK_LEVEL_SENSOR,
+    CONF_HEATER_ENTITY,
+    CONF_HEATER_HYSTERESIS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -77,6 +79,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ),
                     vol.Optional(CONF_HUMIDIFIER_ENTITY): selector.EntitySelector(
                         selector.EntitySelectorConfig(domain=["switch", "input_boolean", "humidifier"])
+                    ),
+                    vol.Optional(CONF_HEATER_ENTITY): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain=["switch", "input_boolean"])
                     ),
                     
                     # Water
@@ -158,6 +163,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional(CONF_HUMIDIFIER_ENTITY, description={"suggested_value": get_val(CONF_HUMIDIFIER_ENTITY)}): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["switch", "input_boolean", "humidifier"])
             ),
+            vol.Optional(CONF_HEATER_ENTITY, description={"suggested_value": get_val(CONF_HEATER_ENTITY)}): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain=["switch", "input_boolean"])
+            ),
             vol.Optional(CONF_PUMP_ENTITY, description={"suggested_value": get_val(CONF_PUMP_ENTITY)}): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain=["switch", "input_boolean"])
             ),
@@ -177,6 +185,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             vol.Optional(CONF_TEMP_HYSTERESIS, description={"suggested_value": get_val(CONF_TEMP_HYSTERESIS)}): vol.Coerce(float),
             vol.Optional(CONF_FAN_HYSTERESIS, description={"suggested_value": get_val(CONF_FAN_HYSTERESIS)}): vol.Coerce(float),
             vol.Optional(CONF_MAX_HUMIDITY, description={"suggested_value": get_val(CONF_MAX_HUMIDITY)}): vol.Coerce(float),
+            vol.Optional(CONF_HEATER_HYSTERESIS, description={"suggested_value": get_val(CONF_HEATER_HYSTERESIS)}): vol.Coerce(float),
             vol.Optional(CONF_TARGET_MOISTURE, description={"suggested_value": get_val(CONF_TARGET_MOISTURE)}): vol.Coerce(float),
             vol.Optional(CONF_PUMP_DURATION, description={"suggested_value": get_val(CONF_PUMP_DURATION)}): vol.Coerce(int),
             vol.Optional(CONF_LIGHT_START_HOUR, description={"suggested_value": get_val(CONF_LIGHT_START_HOUR)}): vol.All(vol.Coerce(int), vol.Range(min=0, max=23)),

@@ -985,7 +985,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 
                 <div class="card-body">
                     <div class="sensor-grid">
-                        ${this._renderSensorTile('Temperatur', temp, '°C', '🌡️', tempTarget)}
+                        ${this._renderSensorTile('Temperatur', temp, '°C', '🌡️', tempTarget, this._hass.states[device.options.heater_entity]?.state === 'on')}
                         ${this._renderSensorTile('Luftfeuchte', hum, '%', '💧', humTarget)}
                         ${this._renderSensorTile('Klima Score', vpd, 'VPD', '🍃', vpdTarget)}
                         ${device.options.moisture_sensor ? this._renderSensorTile('Boden', getVal(device.options.moisture_sensor), '%', '🌱', { min: parseFloat(device.options.target_moisture || 60) - 2, max: parseFloat(device.options.target_moisture || 60) + 2 }) : `
@@ -1040,6 +1040,21 @@ class LocalGrowBoxPanel extends HTMLElement {
                                     <span style="color: ${device.tankData.current_ml <= 0 ? '#ef4444' : 'var(--primary-color)'}; text-shadow: 0 0 8px ${device.tankData.current_ml <= 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 242, 255, 0.3)'};">${Math.round((device.tankData.current_ml / device.tankData.capacity_ml)*100)}%</span>
                                 </div>
                             ` : `<div style="font-size:11px; color: var(--text-secondary); text-align:center; padding: 4px 0; font-weight:600; opacity:0.6;">Tank-Tracking ist deaktiviert.</div>`}
+                        </div>
+                    ` : ''}
+
+                    ${(device.options.heater_entity) ? `
+                        <div class="info-box" style="margin-top:12px; width:100%; grid-column: span 3; display:flex; justify-content:space-between; align-items:center;">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span style="font-size:18px; ${this._hass.states[device.options.heater_entity]?.state === 'on' ? 'filter: drop-shadow(0 0 8px #f97316);' : 'opacity:0.3;'}">${this._hass.states[device.options.heater_entity]?.state === 'on' ? '🔥' : '❄️'}</span>
+                                <div style="display:flex; flex-direction:column;">
+                                    <span style="font-size:10px; text-transform:uppercase; font-weight:900; color:var(--text-secondary); letter-spacing:1px;">Heizung</span>
+                                    <span style="font-size:12px; font-weight:800; color:${this._hass.states[device.options.heater_entity]?.state === 'on' ? '#f97316' : 'var(--text-secondary)'}">${this._hass.states[device.options.heater_entity]?.state === 'on' ? 'HEIZT AKTIV' : 'STANDBY'}</span>
+                                </div>
+                            </div>
+                            <button class="btn ${this._hass.states[device.options.heater_entity]?.state === 'on' ? 'active' : ''}" style="width:auto; padding:6px 16px; font-size:10px;" onclick="this.getRootNode().host._toggle('${device.options.heater_entity}')">
+                                ${this._hass.states[device.options.heater_entity]?.state === 'on' ? 'STOP' : 'MANUELL'}
+                            </button>
                         </div>
                     ` : ''}
                 </div>
@@ -1185,7 +1200,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         }
     }
 
-    _renderSensorTile(label, val, unit, icon, targetRange) {
+    _renderSensorTile(label, val, unit, icon, targetRange, isHeating = false) {
         let isNull = (val === null || val === undefined);
         const displayVal = isNull ? '--' : `${val}`;
         
@@ -1206,6 +1221,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 <div class="sensor-label">
                     <span style="font-size: 16px; filter: drop-shadow(0 0 5px currentColor);">${icon}</span>
                     <span>${label}</span>
+                    ${isHeating ? `<span style="margin-left:8px; font-size:14px; animation: pulse 2s infinite;">🔥</span>` : ''}
                     ${!isNull ? `<span class="status-indicator ${statusClass}" style="margin-left:auto;"></span>` : ''}
                 </div>
                 <div class="sensor-value">
@@ -1436,6 +1452,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             appendSelector(cardTemp.body, 'Temperatur Sensor', 'temp_sensor', ['sensor']);
             appendInput(cardTemp.body, 'Standard Ziel Temperatur (°C)', 'target_temp', 'number', '', 'Wird evtl. von Rezepten überschrieben.');
             appendInput(cardTemp.body, 'Temp Hysterese (Lüfter °C)', 'temp_hysteresis', 'number', '', 'Ab welcher Abweichung nach oben soll der Abluft-Ventilator kühlen? (Standard: 1.0)');
+            appendSelector(cardTemp.body, 'Heizung (Steckdose)', 'heater_entity', ['switch', 'input_boolean']);
+            appendInput(cardTemp.body, 'Heizung Hysterese (°C)', 'heater_hysteresis', 'number', '', 'Ab welcher Abweichung nach unten soll die Heizung heizen? (Standard: 1.0)');
             settingsGrid.appendChild(cardTemp.card);
 
             // --- Card: Abluft & Luftfeuchte 🌪️ ---
@@ -1450,6 +1468,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             settingsGrid.appendChild(cardHum.card);
 
             // --- Card: Bewässerung & Boden 💧 ---
+            const cardWater = createCard('Bewässerung & Boden', '💧');
             appendSelector(cardWater.body, 'Bodenfeuchte Sensor', 'moisture_sensor', ['sensor']);
             appendInput(cardWater.body, 'Standard Ziel Bodenfeuchte (%)', 'target_moisture', 'number', '', 'Wird evtl. von Rezepten überschrieben.');
             appendSelector(cardWater.body, 'Wasserpumpe (Steckdose)', 'pump_entity', ['switch', 'input_boolean']);
@@ -2223,7 +2242,11 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 // VPD Health
                 const vpdTotal = activeGrow.vpd_total_mins || 0;
-                const vpdIdeal = a                activeCard.innerHTML = `
+                const vpdIdeal = activeGrow.vpd_ideal_mins || 0;
+                const vpdScore = vpdTotal > 0 ? Math.round((vpdIdeal / vpdTotal) * 100) : 100;
+                const healthColor = vpdScore > 80 ? "var(--accent-color)" : (vpdScore > 50 ? "#fbbf24" : "#ef4444");
+
+                activeCard.innerHTML = `
                     <div style="position:absolute; top:-30px; right:-30px; font-size:160px; opacity:0.04; pointer-events:none; filter: blur(5px); transform: rotate(15deg);">🌿</div>
                     
                     <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 28px; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px;">
@@ -2289,6 +2312,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                     <!-- AI Alert Module -->
                     <div id="ai-module-${activeGrow.id}"></div>
 
+                    <!-- Mission Log / Notes Module -->
+                    <div id="notes-module-${activeGrow.id}"></div>
+
                     <!-- Controls & Gallery Container -->
                     <div style="margin-top:28px; display:grid; grid-template-columns: 200px 1fr; gap:20px; border-top:1px solid var(--glass-border); padding-top:24px;">
                         <div style="display:flex; flex-direction:column; gap:10px;">
@@ -2299,11 +2325,6 @@ class LocalGrowBoxPanel extends HTMLElement {
                         </div>
                         <div id="gallery-container-${activeGrow.id}" style="min-height:100px;"></div>
                     </div>
-                `;
-EENDEN</button>
-                        </div>
-                    </div>
-                    <div id="gallery-container-${activeGrow.id}" style="margin-top:24px; border-top:1px solid var(--glass-border); padding-top:20px;"></div>
                 `;
                 section.appendChild(activeCard);
 
@@ -2321,6 +2342,19 @@ EENDEN</button>
                             <div style="font-size:13px; line-height:1.6; color:var(--text-primary); font-weight:500;">${latestReport.analysis}</div>
                         `;
                     }
+                }
+
+                // Mission Log Display
+                const notesModule = section.querySelector(`#notes-module-${activeGrow.id}`);
+                if (notesModule) {
+                    const notes = activeGrow.notes || "Keine Notizen vorhanden. Nutze den 'NOTIZ' Button für Einträge.";
+                    notesModule.style.cssText = "background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; margin-top: 20px; position:relative;";
+                    notesModule.innerHTML = `
+                        <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:900; letter-spacing:1px; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+                            <span style="color:var(--primary-color);">📓</span> MISSION LOG / NOTIZEN
+                        </div>
+                        <div style="font-size:13px; line-height:1.6; color:var(--text-primary); font-weight:500; font-family:'JetBrains Mono', monospace; white-space: pre-wrap;">${notes}</div>
+                    `;
                 }
                 
                 setTimeout(() => {
