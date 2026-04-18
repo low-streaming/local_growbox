@@ -734,8 +734,36 @@ class LocalGrowBoxPanel extends HTMLElement {
                         grid-template-columns: 1fr !important;
                         gap: 16px !important;
                     }
+                    .diary-controls-grid {
+                        grid-template-columns: 1fr !important;
+                        gap: 16px !important;
+                    }
                     .active-grow-card {
                         padding: 15px !important;
+                    }
+                    .scroll-wrapper {
+                        overflow-x: auto;
+                        -webkit-overflow-scrolling: touch;
+                        background: rgba(0,0,0,0.2);
+                        border-radius: 8px;
+                        margin-bottom: 20px;
+                    }
+                    .history-table {
+                        min-width: 600px;
+                    }
+                    /* Log Adjustments */
+                    .log-item {
+                        padding: 12px 16px !important;
+                        gap: 12px !important;
+                    }
+                    .log-time {
+                        min-width: 70px !important;
+                        padding-right: 12px !important;
+                    }
+                    .log-icon {
+                        width: 32px !important;
+                        height: 32px !important;
+                        font-size: 16px !important;
                     }
                     .btn {
                         padding: 14px !important; /* Larger touch targets */
@@ -1871,7 +1899,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 for (const entry of allLogs) {
                     const item = document.createElement('div');
                     item.className = 'log-item';
-                    item.style.cssText = "padding: 20px 24px; background: var(--glass-bg); border-radius: 16px; border: 1.5px solid var(--glass-border); display:flex; align-items:center; gap:20px; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(10px);";
+                    item.style.cssText = "background: var(--glass-bg); border-radius: 16px; border: 1.5px solid var(--glass-border); display:flex; align-items:center; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(10px);";
                     
                     let timeStr = "";
                     let msgStr = entry.line;
@@ -1888,20 +1916,20 @@ class LocalGrowBoxPanel extends HTMLElement {
                     item.style.borderLeft = `4px solid ${accentColor}`;
 
                     item.innerHTML = `
-                        <div style="min-width: 90px; color:var(--text-secondary); font-size:11px; font-weight: 800; border-right: 1.5px solid var(--glass-border); padding-right: 20px;">
+                        <div class="log-time" style="color:var(--text-secondary); font-size:11px; font-weight: 800; border-right: 1.5px solid var(--glass-border);">
                             <div style="color:var(--text-primary); font-size: 13px;">${timeStr.split(' ')[1]}</div>
                             <div style="opacity: 0.5; margin-top: 4px;">${timeStr.split(' ')[0]}</div>
                         </div>
                         
-                        <div style="width: 40px; height: 40px; background: rgba(0,0,0,0.2); border-radius: 50%; display: flex; align-items:center; justify-content:center; font-size: 20px; border: 1.5px solid var(--glass-border); flex-shrink: 0;">
+                        <div class="log-icon" style="background: rgba(0,0,0,0.2); border-radius: 50%; display: flex; align-items:center; justify-content:center; border: 1.5px solid var(--glass-border); flex-shrink: 0;">
                             ${icon}
                         </div>
                         
-                        <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
+                        <div style="display:flex; flex-direction:column; gap:4px; flex:1; overflow: hidden;">
                             <div style="font-size:10px; font-weight:900; color:${accentColor}; text-transform:uppercase; letter-spacing:1px; display: flex; align-items: center; gap: 8px;">
                                 ${entry.devName} <span class="status-indicator status-ok" style="width: 4px; height: 4px;"></span>
                             </div>
-                            <div style="font-size:14px; color:var(--text-primary); font-weight: 500; line-height: 1.4;">
+                            <div style="font-size:14px; color:var(--text-primary); font-weight: 500; line-height: 1.4; word-break: break-word;">
                                 ${msgStr.replace(/eingeschaltet/g, '<span style="color:var(--accent-color); font-weight:800;">ON</span>').replace(/ausgeschaltet/g, '<span style="color:#ef4444; font-weight:800;">OFF</span>')}
                             </div>
                         </div>
@@ -2378,7 +2406,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     <div id="notes-module-${activeGrow.id}"></div>
 
                     <!-- Controls & Gallery Container -->
-                    <div style="margin-top:28px; display:grid; grid-template-columns: 200px 1fr; gap:20px; border-top:1px solid var(--glass-border); padding-top:24px;">
+                    <div class="diary-controls-grid" style="margin-top:28px; display:grid; grid-template-columns: 200px 1fr; gap:20px; border-top:1px solid var(--glass-border); padding-top:24px;">
                         <div style="display:flex; flex-direction:column; gap:10px;">
                             <button class="btn active" style="justify-content:flex-start; font-size:11px;" id="add-event-${activeGrow.id}">📝 EVENT LOG</button>
                             <button class="btn" style="justify-content:flex-start; font-size:11px;" id="edit-grow-${activeGrow.id}">📓 NOTIZ</button>
@@ -2515,7 +2543,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             });
 
             historyTable.innerHTML = `
-                <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                <div class="scroll-wrapper">
+                <table class="history-table" style="width:100%; border-collapse:collapse; font-size:13px;">
                     <thead>
                         <tr style="background:rgba(255,255,255,0.05); color:var(--primary-color);">
                             <th style="padding:12px; text-align:left;">Name / Sorte</th>
@@ -2529,6 +2558,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         ${rows || '<tr><td colspan="5" style="padding:32px; text-align:center; color:var(--text-secondary);">Noch keine abgeschlossenen Grows.</td></tr>'}
                     </tbody>
                 </table>
+                </div>
             `;
             section.appendChild(historyTable);
             
