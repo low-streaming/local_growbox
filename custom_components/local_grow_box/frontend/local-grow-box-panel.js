@@ -7,6 +7,8 @@ class LocalGrowBoxPanel extends HTMLElement {
         this._draft = {}; // entryId -> { key: value }
         this.historyData = {};
         this.fetchingHistory = {};
+        this._renderScheduled = false;
+        this._fetchingDevices = false;
     }
 
     set hass(hass) {
@@ -33,33 +35,44 @@ class LocalGrowBoxPanel extends HTMLElement {
             this._fetchDevices();
         }
 
-        // Re-render logic
-        if (this._devices) {
-            // Stability Fix: Only re-render 'overview' and 'statistics' on every state update.
-            // Other tabs (settings, phases, logs, info, recipes) are static or input-heavy and should NOT
-            // be wiped and re-created every time a sensor value changes in the background.
-            const persistentTabs = ['settings', 'phases', 'logs', 'diary', 'info', 'recipes'];
-            if (persistentTabs.includes(this._activeTab)) {
-                // For dynamic elements inside persistent tabs (like entity pickers), 
-                // we still update their hass object so they stay functional.
-                if (this.shadowRoot) {
-                    this.shadowRoot.querySelectorAll('ha-entity-picker, ha-selector').forEach(el => {
-                        el.hass = this._hass;
-                    });
-                }
-                if (this._activeTab === 'diary') {
-                    this._updateDiaryValues();
-                }
-                return;
-            }
-
-            // Overview and Statistics get live updates
-            this._render();
+        // Re-render logic: Throttle to max ~3 updates per second to prevent browser crash
+        if (this._devices && !this._renderScheduled) {
+            this._renderScheduled = true;
+            setTimeout(() => {
+                this._renderScheduled = false;
+                this._actualUpdate();
+            }, 300);
         }
     }
 
+    _actualUpdate() {
+        if (!this._hass || !this._devices) return;
+
+        // Stability Fix: Only re-render 'overview' and 'statistics' on every state update.
+        // Other tabs (settings, phases, logs, info, recipes) are static or input-heavy and should NOT
+        // be wiped and re-created every time a sensor value changes in the background.
+        const persistentTabs = ['settings', 'phases', 'logs', 'diary', 'info', 'recipes'];
+        if (persistentTabs.includes(this._activeTab)) {
+            // For dynamic elements inside persistent tabs (like entity pickers), 
+            // we still update their hass object so they stay functional.
+            if (this.shadowRoot) {
+                this.shadowRoot.querySelectorAll('ha-entity-picker, ha-selector').forEach(el => {
+                    el.hass = this._hass;
+                });
+            }
+            if (this._activeTab === 'diary') {
+                this._updateDiaryValues();
+            }
+            return;
+        }
+
+        // Overview and Statistics get live updates
+        this._render();
+    }
+
     async _fetchDevices() {
-        if (!this._hass) return;
+        if (!this._hass || this._fetchingDevices) return;
+        this._fetchingDevices = true;
 
         // Ensure helpers are loaded (might trigger Custom Element upgrades for ha-selector)
         if (window.loadCardHelpers) {
@@ -137,6 +150,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             }
         } catch (err) {
             console.error("Error fetching grow boxes:", err);
+        } finally {
+            this._fetchingDevices = false;
         }
     }
 
