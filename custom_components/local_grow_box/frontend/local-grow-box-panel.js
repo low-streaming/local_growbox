@@ -994,14 +994,16 @@ class LocalGrowBoxPanel extends HTMLElement {
                                 <span style="color: var(--text-primary);">Tag ${daysInPhase}</span>
                             </div>
                         </div>
-                        <div id="tank-refill-${device.id}" style="
-                            background: rgba(0, 255, 65, 0.15); 
-                            padding: 8px; border-radius: 50%; 
-                            width: 32px; height: 32px; 
-                            display: flex; align-items: center; justify-content: center;
-                            cursor: pointer; border: 1px solid rgba(0, 255, 65, 0.3);
-                            box-shadow: 0 0 10px rgba(0, 255, 65, 0.1);
-                        " title="Tank füllen">💧</div>
+                        ${(!device.options.tank_level_sensor) ? `
+                            <div id="tank-refill-${device.id}" style="
+                                background: rgba(0, 255, 65, 0.15); 
+                                padding: 8px; border-radius: 50%; 
+                                width: 32px; height: 32px; 
+                                display: flex; align-items: center; justify-content: center;
+                                cursor: pointer; border: 1px solid rgba(0, 255, 65, 0.3);
+                                box-shadow: 0 0 10px rgba(0, 255, 65, 0.1);
+                            " title="Tank füllen">💧</div>
+                        ` : ''}
                     </div>
                 </div>
                 
@@ -1060,9 +1062,11 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <div style="margin-top:20px; padding:20px; border-radius:20px; background: rgba(0, 242, 255, 0.04); border: 1.5px solid rgba(0, 242, 255, 0.15); box-shadow: inset 0 0 20px rgba(0,242,255,0.03);">
                             <div style="display:flex; justify-content:space-between; margin-bottom:14px; font-size:11px; text-transform:uppercase; font-weight:900; color:var(--text-secondary); letter-spacing: 1.2px;">
                                 <span>Tank-Status</span>
-                                <span id="tank-config-${device.id}" style="cursor:pointer; color: var(--primary-color); border-bottom: 1px dashed currentColor; padding-bottom: 2px;">${device.tankData?.enabled ? 'Einstellungen' : 'Aktivieren'}</span>
+                                <span id="tank-config-${device.id}" style="cursor:pointer; color: var(--primary-color); border-bottom: 1px dashed currentColor; padding-bottom: 2px;">
+                                    ${device.options.tank_level_sensor ? 'Sensor aktiv' : (device.tankData?.enabled ? 'Einstellungen' : 'Aktivieren')}
+                                </span>
                             </div>
-                            ${device.tankData?.enabled ? `
+                            ${(device.tankData?.enabled || device.options.tank_level_sensor) ? `
                                 <div style="height:12px; background:rgba(0,0,0,0.4); border-radius:6px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05); position:relative;">
                                     <div style="height:100%; width:${Math.min(100, Math.max(0, (device.tankData.current_ml / device.tankData.capacity_ml)*100))}%; background: ${device.tankData.current_ml <= 0 ? 'linear-gradient(90deg, #ef4444, #f87171, #ef4444)' : 'linear-gradient(90deg, #3b82f6, var(--primary-color), #3b82f6)'}; background-size: 200% 100%; box-shadow: ${device.tankData.current_ml <= 0 ? '0 0 15px rgba(239, 68, 68, 0.5)' : '0 0 15px rgba(0, 242, 255, 0.3)'}; transition:all 1s cubic-bezier(0.4, 0, 0.2, 1); animation: waterFlow 3s linear infinite;"></div>
                                 </div>
@@ -1079,7 +1083,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                                     </span>
                                     <span style="color: ${device.tankData.current_ml <= 0 ? '#ef4444' : 'var(--primary-color)'}; text-shadow: 0 0 8px ${device.tankData.current_ml <= 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 242, 255, 0.3)'};">${Math.round((device.tankData.current_ml / device.tankData.capacity_ml)*100)}%</span>
                                 </div>
-                            ` : `<div style="font-size:11px; color: var(--text-secondary); text-align:center; padding: 4px 0; font-weight:600; opacity:0.6;">Tank-Tracking ist deaktiviert.</div>`}
+                            ` : `<div style="font-size:11px; color: var(--text-secondary); text-align:center; padding: 4px 0; font-weight:600; opacity:0.6;">${device.options.tank_level_sensor ? 'Sensorgesteuert' : 'Tank-Tracking ist deaktiviert.'}</div>`}
                         </div>
                     ` : ''}
 
@@ -1104,8 +1108,8 @@ class LocalGrowBoxPanel extends HTMLElement {
                         SYST-EIN
                     </button>
                     ${device.options.pump_entity ? `
-                    <button class="btn ${pumpState?.state === 'on' ? 'active' : ''}" id="btn-pump-${device.id}" ${device.tankData?.enabled && device.tankData.current_ml <= 0 ? 'disabled style="opacity:0.5; border-color:#ef4444; color:#ef4444;" title="Tank leer - Pumpe gesperrt"' : ''}>
-                        ${device.tankData?.enabled && device.tankData.current_ml <= 0 ? '🔒 ' : ''}PUMPE
+                    <button class="btn ${pumpState?.state === 'on' ? 'active' : ''}" id="btn-pump-${device.id}" ${( (device.tankData?.enabled || device.options.tank_level_sensor) && device.tankData.current_ml <= 0 ) ? 'disabled style="opacity:0.5; border-color:#ef4444; color:#ef4444;" title="Tank leer - Pumpe gesperrt"' : ''}>
+                        ${( (device.tankData?.enabled || device.options.tank_level_sensor) && device.tankData.current_ml <= 0 ) ? '🔒 ' : ''}PUMPE
                     </button>
                     ` : ''}
                     ${device.options.humidifier_entity ? `
@@ -2617,8 +2621,15 @@ class LocalGrowBoxPanel extends HTMLElement {
 
     async _configureTank(device) {
         const isEnabled = device.tankData?.enabled || false;
+        const hasSensor = device.options.tank_level_sensor;
         
         let msg = "Virtueller Wassertank Konfiguration\n\n";
+        
+        if (hasSensor) {
+            msg += "⚠️ HINWEIS: Ein physikalischer Sensor ist konfiguriert.\n";
+            msg += "Manuelle Einstellungen werden ignoriert, da der Sensor Vorrang hat.\n\n";
+        }
+        
         msg += "Möchtest du den Wassertank-Track " + (isEnabled ? "deaktivieren (0)" : "aktivieren (1)") + "?\n";
         msg += "Tippe 1 für Aktivieren, 0 für Deaktivieren.";
         const enableStr = prompt(msg, isEnabled ? "1" : "0");

@@ -746,8 +746,11 @@ class GrowBoxManager:
         is_on = pump_state.state == "on"
         duration = self._get_config_value(CONF_PUMP_DURATION, DEFAULT_PUMP_DURATION, float)
         
-        # 1. Sync Tank Level from External Sensor (if available)
         level_sensor = self.config.get(CONF_TANK_LEVEL_SENSOR)
+        is_manual_enabled = self.tank_state.get("enabled", False)
+        # Effectively enabled if either manual flag or physical sensor is present
+        is_tank_active = is_manual_enabled or level_sensor is not None
+
         if level_sensor:
             state = self._get_safe_state(level_sensor)
             if state and state.state not in ["unavailable", "unknown"]:
@@ -775,8 +778,8 @@ class GrowBoxManager:
                  self.last_pump_stop_time = now
                  self.pump_start_time = None
                  
-                 # Manual deduction only if NO external sensor is used
-                 if self.tank_state.get("enabled") and not level_sensor:
+                 # Manual deduction only if NO external sensor is used and tracking is enabled
+                 if is_manual_enabled and not level_sensor:
                      consumed = elapsed * float(self.tank_state.get("flow_ml_s", 20))
                      cap = float(self.tank_state.get("capacity_ml", 10000))
                      new_ml = max(0, curr_ml - consumed)
@@ -792,8 +795,8 @@ class GrowBoxManager:
             self.pump_start_time = None
             
             # --- PUMP PROTECTION / LOCK ---
-            # Block starting if tank is empty
-            if self.tank_state.get("enabled") and curr_ml <= 0:
+            # Block starting if tank is empty (if tracking or sensor active)
+            if is_tank_active and curr_ml <= 0:
                  # If we detect some logic trying to start it (moisture check or user), we log it
                  # (Manual toggle in frontend might still trigger, but logic won't)
                  return
@@ -818,7 +821,7 @@ class GrowBoxManager:
                 target = self._get_recipe_value(self.current_phase, "target_moisture", self._get_config_value(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE, float))
                 if val < target:
                      # Final check before firing: Is tank empty?
-                     if self.tank_state.get("enabled") and curr_ml <= 0:
+                     if is_tank_active and curr_ml <= 0:
                           self.add_log("Pumpe gesperrt - Wassertank leer!")
                           return
 
