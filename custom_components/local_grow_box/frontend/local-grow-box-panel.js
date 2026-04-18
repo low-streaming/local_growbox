@@ -320,7 +320,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                     display: flex; align-items: center; 
                     position: sticky; top: 0; z-index: 100;
                     box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
-                    flex-wrap: wrap; gap: 16px;
+                    flex-wrap: nowrap; gap: 16px;
                 }
                 .header h1 { 
                     margin: 0; 
@@ -355,10 +355,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                 }
                 .tab:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
                 .tab.active { 
-                    background: rgba(0, 242, 255, 0.2);
-                    color: var(--primary-color);
-                    box-shadow: 0 0 20px rgba(0, 242, 255, 0.15);
-                    border: 1px solid rgba(0, 242, 255, 0.4);
+                    background: var(--primary-color);
+                    color: #000;
+                    box-shadow: 0 0 15px rgba(0, 242, 255, 0.4);
                 }
 
                 .content { padding: 40px; max-width: 1500px; margin: 0 auto; position: relative; z-index: 10; }
@@ -500,11 +499,52 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 /* Mobile Optimizations */
                 @media (max-width: 600px) {
-                    .header { padding: 16px; }
-                    .tabs { overflow-x: auto; max-width: 100%; border: none; background: none; }
-                    .tab { white-space: nowrap; padding: 8px 12px; }
-                    .content { padding: 16px; }
-                    .grid { grid-template-columns: 1fr; gap: 20px; }
+                    .header { 
+                        padding: 12px; 
+                        flex-direction: column;
+                        align-items: stretch;
+                        gap: 12px;
+                    }
+                    .header h1 { font-size: 20px; text-align: center; justify-content: center; }
+                    .tabs { 
+                        overflow-x: auto; 
+                        max-width: 100%; 
+                        padding: 4px;
+                        border-radius: 10px;
+                        justify-content: flex-start;
+                        scrollbar-width: none;
+                    }
+                    .tabs::-webkit-scrollbar { display: none; }
+                    .tab { 
+                        padding: 8px 14px; 
+                        font-size: 10px; 
+                        white-space: nowrap; 
+                    }
+                    .content { padding: 12px; }
+                    .grid { grid-template-columns: 1fr; gap: 16px; }
+                    .sensor-grid { gap: 12px; }
+                    .sensor-tile { padding: 14px; }
+                    .sensor-value { font-size: 20px; }
+                    .card-header { padding: 16px; }
+                    .card-body { padding: 0 16px 16px 16px; }
+                    .controls { padding: 16px; gap: 8px; flex-wrap: wrap; }
+                    .btn { padding: 10px; flex: 1 1 45%; font-size: 11px; }
+
+                    .diary-active-grid { 
+                        grid-template-columns: 1fr; 
+                        gap: 12px; 
+                    }
+                    .settings-section { padding: 16px; }
+                    .section-title { font-size: 12px; }
+                    .form-grid { grid-template-columns: 1fr; }
+
+                    .community-export-section { 
+                        border-left: none !important; 
+                        padding-left: 0 !important; 
+                        border-top: 1.5px solid var(--glass-border); 
+                        padding-top: 32px; 
+                        margin-top: 32px;
+                    }
                 }
 
                 .info-box {
@@ -1277,6 +1317,9 @@ class LocalGrowBoxPanel extends HTMLElement {
             helpBlock.innerHTML = `
                 <h4 style="margin:0 0 8px 0; color:#38bdf8;">Willkommen in der Geräte-Konfiguration!</h4>
                 <p style="margin:0; font-size:13px; color:var(--text-secondary); line-height:1.5;">Hier verknüpfst du deine Home Assistant Geräte (Sensoren & smarte Steckdosen) mit der Grow Box. Die eigentlichen Zielwerte für Temperatur und Luftfeuchtigkeit brauchst du hier nicht zwingend einzugeben – diese steuerst du viel bequemer über den Reiter <strong>Rezepte</strong>!</p>
+                <button class="btn" style="width: 100%; max-width: 400px; margin-top: 12px;" onclick="this.getRootNode().host.shadowRoot.getElementById('grow-import-file').click()">
+                    REZEPT-DATEI WÄHLEN (.GROWBOX)
+                </button>
             `;
             section.appendChild(helpBlock);
 
@@ -1445,7 +1488,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             };
 
             const settingsGrid = document.createElement('div');
-            settingsGrid.style.cssText = "display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 24px; width: 100%;";
+            settingsGrid.style.cssText = "display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); gap: 24px; width: 100%;";
 
             // --- Card: Temperatur & Klima 🌡️ ---
             const cardTemp = createCard('Temperatur & Klima', '🌡️');
@@ -2261,7 +2304,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         </div>
                     </div>
 
-                    <div class="diary-active-grid" style="display:grid; grid-template-columns: 1.5fr 1fr 1fr; gap:32px;">
+                    <div class="diary-active-grid">
                         <!-- Segment 1: Progress -->
                         <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 16px; padding: 20px;">
                             <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:900; letter-spacing:1.5px; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
@@ -2793,14 +2836,14 @@ class LocalGrowBoxPanel extends HTMLElement {
 
             <div class="settings-section" style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 24px; padding: 32px; backdrop-filter: blur(10px);">
                 <div class="section-title" style="border-bottom: 1px solid var(--glass-border); padding-bottom: 16px; margin-bottom: 32px; color: var(--accent-color); font-weight: 900; letter-spacing: 1px;">🌍 Community Hub & Import</div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 40px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 350px), 1fr)); gap: 40px;">
                     <div>
                         <h4 style="margin: 0 0 16px 0; font-weight: 800; text-transform: uppercase; color: #fff; font-size: 14px; display: flex; align-items: center; gap: 10px;">
                             <span style="color: var(--primary-color);">01</span> Profil Import
                         </h4>
                         <div style="background: rgba(0, 242, 255, 0.02); border: 1px dashed rgba(0, 242, 255, 0.3); border-radius: 16px; padding: 32px; margin-bottom: 16px; text-align: center;">
                             <input type="file" id="recipe-file-input" accept=".json,.growbox" style="display: none;">
-                            <button type="button" class="btn" id="btn-upload-recipe" style="width: auto; padding: 10px 24px; font-weight: 800;">REZEPT-DATEI WÄHLEN (.growbox)</button>
+                            <button type="button" class="btn" id="btn-upload-recipe" style="width: 100%; max-width: 400px; padding: 10px 24px; font-weight: 800;">REZEPT-DATEI WÄHLEN (.growbox)</button>
                             <div id="file-name-display" style="font-size: 11px; margin-top: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">KEIN ASSET GELADEN</div>
                         </div>
                         <p style="font-size: 10px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6;">Direct Matrix Input (JSON):</p>
@@ -2812,7 +2855,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                             <button type="button" class="btn active" id="btn-import-recipe" style="width: auto; padding: 0 24px; font-weight: 900;">INJECT</button>
                         </div>
                     </div>
-                    <div style="border-left: 1px solid var(--glass-border); padding-left: 40px;">
+                    <div class="community-export-section" style="border-left: 1.5px solid var(--glass-border); padding-left: 40px;">
                         <h4 style="margin: 0 0 16px 0; font-weight: 800; text-transform: uppercase; color: #fff; font-size: 14px; display: flex; align-items: center; gap: 10px;">
                             <span style="color: var(--accent-color);">02</span> Export & Teilen
                         </h4>
