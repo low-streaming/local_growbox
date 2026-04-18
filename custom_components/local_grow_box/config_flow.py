@@ -34,6 +34,7 @@ from .const import (
     CONF_TARGET_MOISTURE,
     CONF_LIGHT_START_HOUR,
     CONF_PHASE_START_DATE,
+    CONF_TANK_LEVEL_SENSOR,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -83,6 +84,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         selector.EntitySelectorConfig(domain=["switch", "input_boolean"])
                     ),
                     vol.Optional(CONF_MOISTURE_SENSOR): selector.EntitySelector(
+                        selector.EntitySelectorConfig(domain="sensor")
+                    ),
+                    vol.Optional(CONF_TANK_LEVEL_SENSOR): selector.EntitySelector(
                         selector.EntitySelectorConfig(domain="sensor")
                     ),
                     
@@ -158,6 +162,9 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 selector.EntitySelectorConfig(domain=["switch", "input_boolean"])
             ),
             vol.Optional(CONF_MOISTURE_SENSOR, description={"suggested_value": get_val(CONF_MOISTURE_SENSOR)}): selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            ),
+            vol.Optional(CONF_TANK_LEVEL_SENSOR, description={"suggested_value": get_val(CONF_TANK_LEVEL_SENSOR)}): selector.EntitySelector(
                 selector.EntitySelectorConfig(domain="sensor")
             ),
             vol.Optional(CONF_CAMERA_ENTITY, description={"suggested_value": get_val(CONF_CAMERA_ENTITY)}): selector.EntitySelector(

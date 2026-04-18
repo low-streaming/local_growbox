@@ -58,6 +58,7 @@ CONF_CUSTOM3_HOURS = "custom3_phase_hours"
 # Advanced Features
 CONF_PUMP_DURATION = "pump_duration" # In seconds
 CONF_MOISTURE_SENSOR = "moisture_sensor"
+CONF_TANK_LEVEL_SENSOR = "tank_level_sensor"
 CONF_TARGET_MOISTURE = "target_moisture" # In %
 CONF_LIGHT_START_HOUR = "light_start_hour"
 CONF_ACTIVE_RECIPE = "active_recipe"

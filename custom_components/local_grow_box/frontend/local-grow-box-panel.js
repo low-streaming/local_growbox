@@ -235,156 +235,277 @@ class LocalGrowBoxPanel extends HTMLElement {
     _renderStructure() {
         const style = `
             <style>
-                @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&display=swap');
                 
                 :host {
-                    --primary-color: #03a9f4;
-                    --accent-color: #ff9800;
-                    --bg-color: #111827;
-                    --card-bg: #1f2937;
-                    --text-primary: #f9fafb;
-                    --text-secondary: #9ca3af;
-                    --success-color: #10b981;
-                    --danger-color: #ef4444;
-
-                    /* Force HA Light Theme compatibility */
-                    --primary-text-color: #f9fafb;
-                    --secondary-text-color: #9ca3af;
-                    --paper-input-container-color: rgba(255, 255, 255, 0.5);
-                    --paper-input-container-focus-color: #03a9f4;
-                    --mdc-theme-primary: #03a9f4;
-                    --mdc-text-field-ink-color: #ffffff;
-                    --mdc-select-ink-color: #ffffff;
-                    --mdc-text-field-label-ink-color: #9ca3af;
-                    --mdc-text-field-fill-color: rgba(255, 255, 255, 0.05);
-
-                    font-family: 'Roboto', sans-serif;
+                    /* Logo Matched Neon Colors */
+                    --primary-color: #00f2ff; /* Cyan Neon */
+                    --accent-color: #00ff41;  /* Green Neon */
+                    --warn-color: #fbbf24;    /* Amber */
+                    --bg-dark: #050914;
+                    --card-bg: rgba(13, 18, 30, 0.8);
+                    --glass-bg: rgba(255, 255, 255, 0.03);
+                    --glass-border: rgba(255, 255, 255, 0.1);
+                    
+                    --text-primary: #f8fafc;
+                    --text-secondary: #94a3b8;
+                    --success-glow: 0 0 15px rgba(0, 255, 65, 0.3);
+                    --cyan-glow: 0 0 15px rgba(0, 242, 255, 0.3);
+                    
+                    font-family: 'Outfit', sans-serif;
                     display: block;
-                    /* Modern Tech Pattern Background */
-                    background-color: #0b1121;
-                    background-image: 
-                        radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.08) 0px, transparent 50%), 
-                        radial-gradient(at 100% 0%, rgba(168, 85, 247, 0.08) 0px, transparent 50%), 
-                        radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-                    background-size: 100% 100%, 100% 100%, 24px 24px;
-                    background-attachment: fixed;
+                    background-color: var(--bg-dark);
+                    position: relative;
+                    overflow-x: hidden;
                     min-height: 100vh;
                     color: var(--text-primary);
                 }
-                
-                select option {
-                    background-color: var(--card-bg);
-                    color: var(--text-primary);
+
+                /* Floating Neon Blobs */
+                :host::before, :host::after {
+                    content: "";
+                    position: fixed;
+                    width: 500px;
+                    height: 500px;
+                    border-radius: 50%;
+                    filter: blur(120px);
+                    z-index: -1;
+                    opacity: 0.15;
+                    pointer-events: none;
                 }
+                :host::before {
+                    background: var(--primary-color);
+                    top: -100px;
+                    left: -100px;
+                    animation: drift 25s ease-in-out infinite alternate;
+                }
+                :host::after {
+                    background: var(--accent-color);
+                    bottom: -150px;
+                    right: -100px;
+                    animation: drift 35s ease-in-out infinite alternate-reverse;
+                }
+                @keyframes drift {
+                    0% { transform: translate(0, 0) scale(1); }
+                    100% { transform: translate(100px, 50px) scale(1.2); }
+                }
+                /* Cyber Circuit Background Pattern */
+                .main-container {
+                    background-image: 
+                        url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M10 10 L30 10 L30 30 M70 10 L90 10 L90 30 M10 70 L10 90 L30 90 M90 70 L90 90 L70 90' stroke='rgba(0, 242, 255, 0.04)' stroke-width='0.5' fill='none'/%3E%3C/svg%3E");
+                    background-attachment: fixed;
+                    min-height: 100vh;
+                }
+
+                /* Scanline Overlay */
+                .scanlines {
+                    position: fixed;
+                    inset: 0;
+                    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+                    background-size: 100% 4px, 3px 100%;
+                    pointer-events: none;
+                    z-index: 999;
+                    opacity: 0.1;
+                }
+
+                /* Typography Polish */
+                h1, h2, h3, h4 { letter-spacing: -0.02em; }
                 
-                /* Layout */
+                /* Advanced Header */
                 .header { 
-                    background-color: var(--card-bg); 
-                    padding: 16px 24px; 
-                    border-bottom: 1px solid rgba(255,255,255,0.05);
+                    background: rgba(11, 17, 33, 0.85);
+                    backdrop-filter: blur(25px);
+                    padding: 24px 32px; 
+                    border-bottom: 1px solid var(--glass-border);
                     display: flex; align-items: center; 
+                    position: sticky; top: 0; z-index: 100;
+                    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+                    flex-wrap: wrap; gap: 16px;
                 }
                 .header h1 { 
                     margin: 0; 
-                    font-size: 24px; 
+                    font-size: 28px; 
                     font-weight: 800; 
-                    background: linear-gradient(135deg, #4ade80 0%, #3b82f6 100%);
+                    background: linear-gradient(135deg, var(--accent-color) 0%, var(--primary-color) 100%);
                     -webkit-background-clip: text;
                     -webkit-text-fill-color: transparent;
-                    display: flex; align-items: center; gap: 8px;
-                    letter-spacing: -0.5px;
+                    display: flex; align-items: center; gap: 14px;
                     text-transform: uppercase;
+                    filter: drop-shadow(0 0 12px rgba(0, 242, 255, 0.4));
+                    animation: shine 5s linear infinite;
+                    background-size: 200% auto;
+                }
+                @keyframes shine {
+                    to { background-position: 200% center; }
                 }
                 
                 .tabs { 
-                    display: flex; gap: 8px; margin-left: auto; margin-right: 0; 
-                    background: rgba(0,0,0,0.3); padding: 4px; border-radius: 20px;
-                    border: 1px solid rgba(255,255,255,0.05);
+                    display: flex; gap: 8px; margin-left: auto;
+                    background: rgba(0,0,0,0.5); padding: 6px; border-radius: 14px;
+                    border: 1.5px solid var(--glass-border);
                 }
                 .tab { 
-                    cursor: pointer; padding: 6px 16px; border-radius: 16px;
-                    opacity: 0.7; transition: all 0.2s; text-transform: uppercase; 
-                    font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+                    cursor: pointer; padding: 10px 24px; border-radius: 10px;
+                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                    text-transform: uppercase; 
+                    font-size: 12px; font-weight: 800; letter-spacing: 1.2px;
                     color: var(--text-secondary);
-                    border: 1px solid transparent;
+                    position: relative;
+                    overflow: hidden;
                 }
-                .tab:hover { opacity: 1; color: var(--text-primary); background: rgba(255,255,255,0.05); }
+                .tab:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
                 .tab.active { 
-                    opacity: 1; 
-                    background: var(--primary-color); 
-                    color: white; 
-                    box-shadow: 0 2px 8px rgba(3, 169, 244, 0.25);
-                    border-color: rgba(255,255,255,0.1);
+                    background: rgba(0, 242, 255, 0.2);
+                    color: var(--primary-color);
+                    box-shadow: 0 0 20px rgba(0, 242, 255, 0.15);
+                    border: 1px solid rgba(0, 242, 255, 0.4);
                 }
 
-                .content { padding: 24px; max-width: 1200px; margin: 0 auto; }
+                .content { padding: 40px; max-width: 1500px; margin: 0 auto; position: relative; z-index: 10; }
                 
-                /* Cards */
-                .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 24px; }
+                /* Premium Cards with 3D Interaction */
+                .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 40px; }
                 
                 .card {
                     background: var(--card-bg);
-                    border-radius: 12px;
+                    backdrop-filter: blur(20px);
+                    border-radius: 24px;
                     overflow: hidden;
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                    border: 1px solid rgba(255,255,255,0.05);
+                    border: 1.5px solid var(--glass-border);
+                    transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+                    position: relative;
+                    transform-style: preserve-3d;
                 }
+                .card:hover {
+                    transform: translateY(-8px) scale(1.01) rotateX(2deg);
+                    border-color: rgba(0, 242, 255, 0.5);
+                    box-shadow: 
+                        0 30px 60px -12px rgba(0, 0, 0, 0.6),
+                        0 0 20px rgba(0, 242, 255, 0.1);
+                }
+                .card::before {
+                    content: ""; position: absolute; inset: 0;
+                    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,255,255,0.08) 0%, transparent 80%);
+                    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+                }
+                .card:hover::before { opacity: 1; }
                 
+                /* Image Section */
                 .card-image {
-                    height: 200px; background: #000; position: relative;
+                    height: 260px; background: #000; position: relative;
+                    border-bottom: 1px solid var(--glass-border);
                 }
-                .card-image img { width: 100%; height: 100%; object-fit: cover; opacity: 0.8; }
+                .card-image img { width: 100%; height: 100%; object-fit: cover; opacity: 0.85; transition: transform 0.6s ease; }
+                .card:hover .card-image img { transform: scale(1.05); }
+                .card-image::after {
+                    content: ""; position: absolute; inset: 0;
+                    background: linear-gradient(0deg, var(--bg-dark) 0%, transparent 65%);
+                }
+
                 .live-badge {
-                    position: absolute; top: 12px; right: 12px;
-                    background: rgba(220, 38, 38, 0.9); padding: 4px 8px;
-                    border-radius: 4px; font-size: 10px; font-weight: bold;
+                    position: absolute; top: 20px; right: 20px;
+                    background: rgba(239, 68, 68, 0.3); 
+                    color: #fff; padding: 6px 14px;
+                    border-radius: 20px; font-size: 11px; font-weight: 800;
+                    border: 1.5px solid rgba(239, 68, 68, 0.5);
+                    backdrop-filter: blur(8px);
+                    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+                    animation: pulse-red 2s infinite;
+                    z-index: 2;
+                }
+                @keyframes pulse-red {
+                    0% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.4); }
+                    50% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.7); }
+                    100% { box-shadow: 0 0 5px rgba(239, 68, 68, 0.4); }
                 }
                 
                 .card-header {
-                    padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.05);
-                    display: flex; justify-content: space-between; align-items: center;
+                    padding: 28px; display: flex; justify-content: space-between; align-items: flex-start;
                 }
-                .card-title { font-size: 18px; font-weight: 500; }
-                .card-subtitle { font-size: 12px; color: var(--text-secondary); }
+                .card-title { font-size: 24px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.8px; }
+                .card-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; font-weight: 500; opacity: 0.7; }
                 
-                .card-body { padding: 16px; }
+                .card-body { padding: 0 28px 28px 28px; }
                 
-                .stat-row { display: flex; justify-content: space-between; margin-bottom: 12px; align-items: center; }
-                .stat-label { color: var(--text-secondary); font-size: 13px; display: flex; align-items: center; gap: 8px; }
-                .stat-value { font-weight: 500; font-size: 15px; }
+                /* Advanced Sensor Tiles */
+                .sensor-grid {
+                    display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;
+                }
+                .sensor-tile {
+                    background: rgba(255, 255, 255, 0.03);
+                    padding: 20px; border-radius: 20px;
+                    border: 1.5px solid var(--glass-border);
+                    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+                    position: relative;
+                    overflow: hidden;
+                }
+                .sensor-tile:hover {
+                    background: rgba(255, 255, 255, 0.07);
+                    transform: translateY(-4px) scale(1.02);
+                }
+                .sensor-tile.glow-ok { border-color: rgba(0, 255, 65, 0.4); box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.05); }
+                .sensor-tile.glow-warn { border-color: rgba(251, 191, 36, 0.4); box-shadow: inset 0 0 20px rgba(251, 191, 36, 0.05); }
+
+                .sensor-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 800; display: flex; align-items: center; gap: 8px; letter-spacing: 0.5px; }
+                .sensor-value { font-size: 22px; font-weight: 900; margin-top: 12px; color: #fff; display: flex; align-items: baseline; }
+                .sensor-unit { font-size: 14px; opacity: 0.5; margin-left: 4px; font-weight: 600; }
                 
-                .bar-bg { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; margin-top: 4px; }
-                .bar-fill { height: 100%; border-radius: 3px; background: var(--primary-color); }
+                .status-indicator { width: 10px; height: 10px; border-radius: 50%; display: inline-block; position: relative; }
+                .status-ok { background: var(--accent-color); box-shadow: 0 0 15px var(--accent-color); }
+                .status-warn { background: var(--warn-color); box-shadow: 0 0 15px var(--warn-color); }
+                .status-ok::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; border: 1px solid var(--accent-color); animation: ripple 2s infinite; }
                 
-                /* Controls */
+                @keyframes ripple {
+                    0% { transform: scale(1); opacity: 1; }
+                    100% { transform: scale(2.5); opacity: 0; }
+                }
+
+                /* Controls Bar with Neon Glow */
                 .controls { 
-                    padding: 16px; 
-                    background: rgba(0,0,0,0.2); 
-                    display: grid; 
-                    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); 
-                    gap: 12px; 
-                    border-top: 1px solid rgba(255,255,255,0.05);
+                    padding: 24px 28px; background: rgba(0, 0, 0, 0.3); 
+                    display: flex; gap: 14px; border-top: 1.5px solid var(--glass-border);
                 }
                 .btn {
-                    padding: 12px; border-radius: 8px; border: none; cursor: pointer;
-                    background: rgba(255,255,255,0.05); color: var(--text-primary);
-                    font-size: 13px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 8px;
-                    transition: all 0.2s;
-                    border: 1px solid rgba(255,255,255,0.05);
+                    padding: 12px; border-radius: 12px; border: 1.5px solid var(--glass-border);
+                    background: rgba(255, 255, 255, 0.05); color: var(--text-primary);
+                    font-size: 13px; font-weight: 800; cursor: pointer;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+                    display: flex; align-items: center; justify-content: center; gap: 10px;
+                    text-transform: uppercase; letter-spacing: 0.8px;
                 }
-                .btn:hover { background: rgba(255,255,255,0.1); transform: translateY(-1px); }
-                .btn.active { 
-                    background: rgba(3, 169, 244, 0.2); 
-                    color: #38bdf8; 
-                    border-color: rgba(3, 169, 244, 0.4);
+                .btn:hover:not(:disabled) {
+                    background: rgba(255, 255, 255, 0.1);
+                    border-color: var(--primary-color);
+                    transform: translateY(-3px);
+                    box-shadow: 0 10px 20px -10px rgba(0, 242, 255, 0.3);
                 }
-                
-                /* Enhanced UI Elements */
-                .status-badge {
-                    font-size: 11px; padding: 4px 10px; border-radius: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px;
+                .btn.active {
+                    background: rgba(0, 242, 255, 0.2);
+                    color: var(--primary-color);
+                    border-color: var(--primary-color);
+                    box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+                    animation: btn-pulse 2s infinite;
                 }
-                .status-badge.online { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
-                .status-badge.offline { background: rgba(107, 114, 128, 0.15); color: #9ca3af; border: 1px solid rgba(107, 114, 128, 0.2); }
+                @keyframes btn-pulse {
+                    0% { box-shadow: 0 0 10px rgba(0, 242, 255, 0.2); }
+                    50% { box-shadow: 0 0 25px rgba(0, 242, 255, 0.4); }
+                    100% { box-shadow: 0 0 10px rgba(0, 242, 255, 0.2); }
+                }
+
+                @keyframes pulse-soft {
+                    0% { opacity: 0.4; transform: scale(1); }
+                    50% { opacity: 1; transform: scale(1.05); }
+                    100% { opacity: 0.4; transform: scale(1); }
+                }
+
+                /* Mobile Optimizations */
+                @media (max-width: 600px) {
+                    .header { padding: 16px; }
+                    .tabs { overflow-x: auto; max-width: 100%; border: none; background: none; }
+                    .tab { white-space: nowrap; padding: 8px 12px; }
+                    .content { padding: 16px; }
+                    .grid { grid-template-columns: 1fr; gap: 20px; }
+                }
 
                 .info-box {
                     background: rgba(255, 255, 255, 0.03);
@@ -437,8 +558,16 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .info-val { font-size: 13px; font-weight: 500; color: var(--text-primary); }
                 
                 /* Settings Form */
-                .settings-section { background: var(--card-bg); border-radius: 12px; padding: 24px; margin-bottom: 24px; }
-                .section-title { font-size: 16px; color: var(--primary-color); margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px; }
+                .settings-section { 
+                    background: var(--card-bg); border-radius: 20px; padding: 32px; margin-bottom: 32px; 
+                    border: 1px solid var(--glass-border);
+                }
+                .section-title { 
+                    font-size: 14px; color: var(--primary-color); margin-bottom: 24px; 
+                    border-bottom: 1.5px solid var(--glass-border); padding-bottom: 12px;
+                    font-weight: 900; text-transform: uppercase; letter-spacing: 1.5px;
+                    display: flex; align-items: center; justify-content: space-between;
+                }
                 
                 .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
                 .form-group { margin-bottom: 16px; }
@@ -469,24 +598,43 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 /* Modal */
                 .modal {
-                    display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%;
-                    background-color: rgba(0,0,0,0.9); backdrop-filter: blur(8px);
+                    display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%;
+                    background-color: rgba(11, 17, 33, 0.9); backdrop-filter: blur(15px);
                     align-items: center; justify-content: center;
                 }
-                .modal.visible { display: flex; animation: fadeIn 0.2s; }
+                .modal.visible { display: flex; animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
                 .modal-content {
-                    background: var(--card-bg); padding: 16px; border-radius: 12px; 
-                    max-width: 95%; max-height: 95vh; overflow: auto;
-                    position: relative; border: 1px solid rgba(255,255,255,0.1);
-                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+                    background: var(--glass-bg); padding: 32px; border-radius: 24px; 
+                    max-width: 90%; max-height: 90vh; overflow: auto;
+                    position: relative; border: 1.5px solid var(--glass-border);
+                    box-shadow: 0 40px 60px -15px rgba(0, 0, 0, 0.7);
+                    animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
                 }
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+                
                 .close-modal {
-                    position: absolute; top: -40px; right: 0; color: #fff; font-size: 30px; font-weight: bold; cursor: pointer;
-                    background: rgba(0,0,0,0.5); width: 40px; height: 40px; border-radius: 50%;
+                    position: absolute; top: 20px; right: 20px; color: var(--text-secondary); font-size: 24px; cursor: pointer;
+                    width: 40px; height: 40px; border-radius: 12px;
                     display: flex; align-items: center; justify-content: center;
+                    background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+                    transition: all 0.2s ease;
                 }
-                .close-modal:hover { background: rgba(255,255,255,0.2); }
+                .close-modal:hover { background: rgba(255,255,255,0.1); color: #fff; transform: rotate(90deg); }
+
+                /* Custom Thumbnails */
+                .photo-thumb:hover {
+                    border-color: var(--primary-color) !important;
+                    box-shadow: 0 0 15px rgba(0, 242, 255, 0.3) !important;
+                    transform: translateY(-5px);
+                }
+                .photo-thumb:hover img { transform: scale(1.1); }
+                
+                .log-item:hover {
+                    border-color: var(--primary-color) !important;
+                    background: rgba(0, 242, 255, 0.03) !important;
+                    transform: translateX(5px);
+                }
 
                 /* Mobile Responsive */
                 @media (max-width: 600px) {
@@ -518,11 +666,14 @@ class LocalGrowBoxPanel extends HTMLElement {
                         background: var(--primary-color);
                     }
                     .content { padding: 12px; }
-                    .card-body { padding: 12px; }
+                    .card-body { padding: 16px; }
                     .controls {
-                        grid-template-columns: 1fr;
-                        gap: 8px;
+                        display: grid;
+                        grid-template-columns: 1fr 1fr;
+                        gap: 10px;
+                        padding: 16px;
                     }
+                    .btn { padding: 14px 8px; font-size: 11px; }
                     /* Mobile Diary Adjustments */
                     .diary-active-grid {
                         grid-template-columns: 1fr !important;
@@ -537,23 +688,23 @@ class LocalGrowBoxPanel extends HTMLElement {
                 }
             </style>
             
-            <div class="header">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <h1>🌱 <span>Grow Room</span></h1>
+            <div class="scanlines"></div>
+            <div class="main-container">
+                <div class="header">
+                    <h1>🌿 <span>Grow Box Central</span></h1>
+                    <div class="tabs">
+                        <div class="tab active" data-tab="overview">Dashboard</div>
+                        <div class="tab" data-tab="diary">Tagebuch</div>
+                        <div class="tab" data-tab="statistics">Analyse</div>
+                        <div class="tab" data-tab="recipes">Rezepte 📋</div>
+                        <div class="tab" data-tab="phases">Zeitplan</div>
+                        <div class="tab" data-tab="settings">Hardware</div>
+                        <div class="tab" data-tab="logs">Log-Buch</div>
+                    </div>
                 </div>
-                <div class="tabs">
-                    <div class="tab active" data-tab="overview">Übersicht</div>
-                    <div class="tab" data-tab="diary">Tagebuch</div>
-                    <div class="tab" data-tab="statistics">Statistiken</div>
-                    <div class="tab" data-tab="recipes">Rezepte 📋</div>
-                    <div class="tab" data-tab="phases">Phasen</div>
-                    <div class="tab" data-tab="settings">Geräte & Config</div>
-                    <div class="tab" data-tab="logs">Protokoll</div>
-                    <div class="tab" data-tab="info">Info / Hilfe</div>
-                </div>
+                
+                <div class="content" id="main-content"></div>
             </div>
-            
-            <div class="content" id="main-content"></div>
             
             <div id="save-toast" class="save-bar">
                 <span>✅</span> Einstellungen gespeichert!
@@ -653,7 +804,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             { id: 'vegetative', label: '🌿 Wachstum' },
             { id: 'flowering', label: '🌸 Blüte' },
             { id: 'drying', label: '🍂 Trocknen' },
-            { id: 'curing', label: '🏺 Veredelung' }
+            { id: 'curing', label: '🍯 Veredelung' }
         ];
 
         this._devices.forEach(device => {
@@ -778,139 +929,137 @@ class LocalGrowBoxPanel extends HTMLElement {
             card.innerHTML = `
                 <div class="card-image">
                     <img src="${imgUrl}" onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg'">
-                    ${isLive ? '<div class="live-badge">LIVE</div>' : ''}
-                    <div style="position:absolute; bottom:0; left:0; right:0; padding:12px; background:linear-gradient(to top, rgba(0,0,0,0.9), transparent); display:flex; justify-content:space-between; align-items:end;">
+                    ${isLive ? '<div class="live-badge">LIVE-BILD</div>' : ''}
+                    <div style="position:absolute; bottom:0; left:0; right:0; padding:20px; background:linear-gradient(to top, rgba(11, 17, 33, 0.95), transparent); display:flex; justify-content:space-between; align-items:flex-end; z-index:3;">
                         <div>
                              <select class="phase-select" id="phase-select-${device.id}" style="
-                                background: rgba(0,0,0,0.6); 
-                                border: 1px solid rgba(255,255,255,0.2); 
-                                color: white; 
-                                padding: 4px 8px; 
-                                border-radius: 4px; 
-                                font-size: 14px;
+                                background: rgba(0, 242, 255, 0.1); 
+                                border: 1px solid rgba(0, 242, 255, 0.3); 
+                                color: var(--primary-color); 
+                                padding: 6px 12px; 
+                                border-radius: 8px; 
+                                font-size: 13px;
+                                font-weight: 700;
                                 cursor: pointer;
                                 outline: none;
+                                backdrop-filter: blur(8px);
+                                text-transform: uppercase;
+                                letter-spacing: 0.5px;
                              ">
                                 ${phaseOptions}
                             </select>
-                            <div style="color:white; font-weight:500; font-size:13px; margin-top:6px; margin-left:2px; text-shadow: 0 1px 2px rgba(0,0,0,0.8);">Tag ${daysInPhase}</div>
+                            <div style="color:var(--text-secondary); font-weight:700; font-size:11px; margin-top:8px; margin-left:4px; text-transform: uppercase; letter-spacing: 1px;">
+                                <span style="color: var(--primary-color);">Woche</span> ${Math.floor(daysInPhase / 7) + 1} 
+                                <span style="margin: 0 4px; opacity: 0.3;">|</span>
+                                <span style="color: var(--text-primary);">Tag ${daysInPhase}</span>
+                            </div>
                         </div>
+                        <div id="tank-refill-${device.id}" style="
+                            background: rgba(0, 255, 65, 0.15); 
+                            padding: 8px; border-radius: 50%; 
+                            width: 32px; height: 32px; 
+                            display: flex; align-items: center; justify-content: center;
+                            cursor: pointer; border: 1px solid rgba(0, 255, 65, 0.3);
+                            box-shadow: 0 0 10px rgba(0, 255, 65, 0.1);
+                        " title="Tank füllen">💧</div>
                     </div>
                 </div>
                 
                 <div class="card-header">
-                    <div class="card-title">${device.name}</div>
-                    <div class="status-badge ${masterState && masterState.state === 'on' ? 'online' : 'offline'}">
-                        ${masterState && masterState.state === 'on' ? '● Online' : '○ Offline'}
+                    <div>
+                        <div class="card-title">${device.name}</div>
+                        <div class="card-subtitle">Local Grow Box Engine v2.1.8</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px;">
+                        <div class="status-badge ${masterState && masterState.state === 'on' ? 'online' : 'offline'}" style="display:flex; align-items:center; gap:6px;">
+                            <span class="status-indicator ${masterState && masterState.state === 'on' ? 'status-ok' : ''}" style="width:6px; height:6px;"></span>
+                            ${masterState && masterState.state === 'on' ? 'Bereit' : 'Standby'}
+                        </div>
+                        ${masterState && masterState.state === 'on' ? `
+                            <div style="font-size: 9px; font-weight: 900; color: ${Math.abs(vpd - vpdTarget.min) < 0.2 || Math.abs(vpd - vpdTarget.max) < 0.2 || (vpd >= vpdTarget.min && vpd <= vpdTarget.max) ? 'var(--accent-color)' : '#fbbf24'}; text-transform: uppercase; letter-spacing: 1.5px; background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 4px; border: 1px solid currentColor;">
+                                ${Math.abs(vpd - vpdTarget.min) < 0.2 || Math.abs(vpd - vpdTarget.max) < 0.2 || (vpd >= vpdTarget.min && vpd <= vpdTarget.max) ? 'SYSTEM STABIL' : 'KLIMA-ALARM'}
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
                 
                 <div class="card-body">
-                    ${this._renderStatBar('Temperatur', temp, '°C', 10, 45, '#ef4444', '🌡️', tempTarget)}
-                    ${this._renderStatBar('Luftfeuchte', hum, '%', 20, 90, '#3b82f6', '💧', humTarget)}
-                    ${this._renderStatBar('VPD', vpd, 'kPa', 0, 3.0, '#10b981', '🍃', vpdTarget)}
-                    ${device.options.moisture_sensor ? this._renderStatBar('Bodenfeuchte', getVal(device.options.moisture_sensor), '%', 0, 100, '#8b5cf6', '🪴', { min: parseFloat(device.options.target_moisture || 60) - 2, max: parseFloat(device.options.target_moisture || 60) + 2 }) : ''}
-                    
-                    <div style="display:flex; justify-content:center; gap: 24px; margin-top:24px; margin-bottom:12px; border-radius: 12px; background: rgba(0,0,0,0.2); padding: 16px;">
-                       <div style="font-size:40px; transition: all 0.5s ease; ${lightStatus === 'on' ? 'filter: drop-shadow(0 0 20px #fbbf24); transform: scale(1.1);' : 'opacity:0.2; filter: grayscale(100%);'}">💡</div>
-                       <div style="font-size:40px; display:inline-block; transition: all 0.5s ease; ${this._hass.states[device.options.fan_entity]?.state === 'on' ? 'animation: spin 1s linear infinite; filter: drop-shadow(0 0 10px #9ca3af);' : 'opacity:0.2; transform: scale(0.9);'}">🌪️</div>
-                       ${device.options.pump_entity ? `<div title="Pumpe" style="font-size:40px; transition: all 0.5s ease; ${pumpState?.state === 'on' ? 'filter: drop-shadow(0 0 15px #3b82f6); transform: scale(1.1);' : 'opacity:0.2; transform: scale(0.9);'}">💧</div>` : ''}
-                       ${device.options.humidifier_entity ? `<div title="Befeuchter" style="font-size:40px; transition: all 0.5s ease; ${this._hass.states[device.options.humidifier_entity]?.state === 'on' ? 'animation: slideUp 0.8s infinite alternate; filter: drop-shadow(0 0 15px #38bdf8);' : 'opacity:0.2; transform: scale(0.9);'}">💦</div>` : ''}
-                    </div>
-
-                    <div style="margin-top:16px; border-top:1px solid rgba(255,255,255,0.05); padding-top:16px; display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-                        
-                        <div class="info-box">
-                            <div class="info-icon">⚡</div>
-                            <div class="info-content">
-                                <div class="info-label">Leistung</div>
-                                <div class="info-val">${Math.round(this._getSummedValue(device.options.power_sensor) || 0)} W</div>
+                    <div class="sensor-grid">
+                        ${this._renderSensorTile('Temperatur', temp, '°C', '🌡️', tempTarget)}
+                        ${this._renderSensorTile('Luftfeuchte', hum, '%', '💧', humTarget)}
+                        ${this._renderSensorTile('Klima Score', vpd, 'VPD', '🍃', vpdTarget)}
+                        ${device.options.moisture_sensor ? this._renderSensorTile('Boden', getVal(device.options.moisture_sensor), '%', '🌱', { min: parseFloat(device.options.target_moisture || 60) - 2, max: parseFloat(device.options.target_moisture || 60) + 2 }) : `
+                            <div class="sensor-tile" style="opacity: 0.3; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">
+                                Kein Bodensensor
                             </div>
-                        </div>
-
-
-                        <div class="info-box">
-                            <div class="info-icon">${lightStatus === 'on' ? '💡' : '🌑'}</div>
-                            <div class="info-content">
-                                <div class="info-label">Licht</div>
-                                <div class="info-val" style="font-size:12px;">${lightInfo}</div>
-                            </div>
-                        </div>
-
-                         <div class="info-box">
-                            <div class="info-icon">${this._hass.states[device.options.fan_entity]?.state === 'on' ? '🌪️' : '💨'}</div>
-                            <div class="info-content">
-                                <div class="info-label">Abluft</div>
-                                <div class="info-val">${this._hass.states[device.options.fan_entity]?.state === 'on' ? 'An' : 'Aus'}</div>
-                            </div>
-                        </div>
-                        
-                        ${device.options.pump_entity ? `
-                        <div class="info-box">
-                            <div class="info-icon">${pumpState?.state === 'on' ? '💧' : '⛔'}</div>
-                            <div class="info-content">
-                                <div class="info-label">Pumpe</div>
-                                <div class="info-val">${pumpState?.state === 'on' ? 'Läuft' : 'Aus'}</div>
-                            </div>
-                        </div>
-                        ` : ''}
-
-                        ${device.options.humidifier_entity ? `
-                         <div class="info-box">
-                            <div class="info-icon">${this._hass.states[device.options.humidifier_entity]?.state === 'on' ? '💦' : '🌫️'}</div>
-                            <div class="info-content">
-                                <div class="info-label">Befeuchter</div>
-                                <div class="info-val">${this._hass.states[device.options.humidifier_entity]?.state === 'on' ? 'An' : 'Aus'}</div>
-                            </div>
-                        </div>
-                        ` : `
-                        <div class="info-box" style="opacity:0.4;">
-                            <div class="info-icon">🌫️</div>
-                            <div class="info-content">
-                                <div class="info-label">Befeuchter</div>
-                                <div class="info-val">Nicht konfiguriert</div>
-                            </div>
-                        </div>
                         `}
                     </div>
 
+                    <div style="margin-top:24px; display:grid; grid-template-columns: repeat(3, 1fr); gap:12px;">
+                        <div class="info-box">
+                            <div class="info-content">
+                                <div class="info-label">Leistung</div>
+                                <div class="info-val">${Math.round(this._getSummedValue(device.options.power_sensor) || 0)}W</div>
+                            </div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-content">
+                                <div class="info-label">Licht</div>
+                                <div class="info-val" style="color: ${isLightOn ? 'var(--accent-color)' : 'var(--text-secondary)'}">${isLightOn ? 'AN' : 'AUS'}</div>
+                            </div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-content">
+                                <div class="info-label">Abluft</div>
+                                <div class="info-val" style="color: ${this._hass.states[device.options.fan_entity]?.state === 'on' ? 'var(--primary-color)' : 'var(--text-secondary)'}">${this._hass.states[device.options.fan_entity]?.state === 'on' ? 'AKTIV' : 'AUS'}</div>
+                            </div>
+                        </div>
+                    </div>
+
                     ${(device.options.pump_entity) ? `
-                        <div style="margin-top:16px; padding:12px; border-radius:10px; background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255,255,255,0.05);">
-                            <div style="display:flex; justify-content:space-between; margin-bottom:8px; font-size:11px; text-transform:uppercase; font-weight:700; color:var(--text-secondary);">
-                                <span>🪣 Virtueller Wassertank</span>
-                                <div>
-                                    ${device.tankData?.enabled ? `<span style="cursor:pointer; opacity:0.9; margin-right:12px; color:#38bdf8;" id="tank-refill-${device.id}">Füllen 💧</span>` : ''}
-                                    <span style="cursor:pointer; opacity:0.7;" id="tank-config-${device.id}">${device.tankData?.enabled ? '⚙️' : 'Aktivieren'}</span>
-                                </div>
+                        <div style="margin-top:20px; padding:20px; border-radius:20px; background: rgba(0, 242, 255, 0.04); border: 1.5px solid rgba(0, 242, 255, 0.15); box-shadow: inset 0 0 20px rgba(0,242,255,0.03);">
+                            <div style="display:flex; justify-content:space-between; margin-bottom:14px; font-size:11px; text-transform:uppercase; font-weight:900; color:var(--text-secondary); letter-spacing: 1.2px;">
+                                <span>Tank-Status</span>
+                                <span id="tank-config-${device.id}" style="cursor:pointer; color: var(--primary-color); border-bottom: 1px dashed currentColor; padding-bottom: 2px;">${device.tankData?.enabled ? 'Einstellungen' : 'Aktivieren'}</span>
                             </div>
                             ${device.tankData?.enabled ? `
-                                <div style="height:6px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden;">
-                                    <div style="height:100%; width:${Math.min(100, Math.max(0, (device.tankData.current_ml / device.tankData.capacity_ml)*100))}%; background:${(device.tankData.current_ml / device.tankData.capacity_ml) < 0.15 ? '#ef4444' : '#3b82f6'}; transition:all 0.5s;"></div>
+                                <div style="height:12px; background:rgba(0,0,0,0.4); border-radius:6px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05); position:relative;">
+                                    <div style="height:100%; width:${Math.min(100, Math.max(0, (device.tankData.current_ml / device.tankData.capacity_ml)*100))}%; background: ${device.tankData.current_ml <= 0 ? 'linear-gradient(90deg, #ef4444, #f87171, #ef4444)' : 'linear-gradient(90deg, #3b82f6, var(--primary-color), #3b82f6)'}; background-size: 200% 100%; box-shadow: ${device.tankData.current_ml <= 0 ? '0 0 15px rgba(239, 68, 68, 0.5)' : '0 0 15px rgba(0, 242, 255, 0.3)'}; transition:all 1s cubic-bezier(0.4, 0, 0.2, 1); animation: waterFlow 3s linear infinite;"></div>
                                 </div>
-                                <div style="text-align:right; font-size:10px; opacity:0.7; margin-top:4px;">
-                                    ${(device.tankData.current_ml / 1000).toFixed(1)} L / ${(device.tankData.capacity_ml / 1000).toFixed(1)} L übrig
+                                <style>
+                                    @keyframes waterFlow {
+                                        0% { background-position: 0% center; }
+                                        100% { background-position: 200% center; }
+                                    }
+                                </style>
+                                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:800; margin-top:12px;">
+                                    <span style="color: ${device.tankData.current_ml <= 0 ? 'var(--warn-color)' : 'var(--text-primary)'};">
+                                        ${device.tankData.current_ml <= 0 ? '⚠️ LEER' : (device.tankData.current_ml / 1000).toFixed(1) + 'L'} 
+                                        <span style="opacity:0.4; font-weight:600; font-size:10px;">${device.tankData.current_ml <= 0 ? 'BITTE NACHFÜLLEN' : 'VERFÜGBAR'}</span>
+                                    </span>
+                                    <span style="color: ${device.tankData.current_ml <= 0 ? '#ef4444' : 'var(--primary-color)'}; text-shadow: 0 0 8px ${device.tankData.current_ml <= 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 242, 255, 0.3)'};">${Math.round((device.tankData.current_ml / device.tankData.capacity_ml)*100)}%</span>
                                 </div>
-                            ` : `<div style="font-size:11px; opacity:0.5;">Pumpe erkannt. Reservoirstand kann hier virtuell getrackt werden.</div>`}
+                            ` : `<div style="font-size:11px; color: var(--text-secondary); text-align:center; padding: 4px 0; font-weight:600; opacity:0.6;">Tank-Tracking ist deaktiviert.</div>`}
                         </div>
                     ` : ''}
                 </div>
                 
                 <div class="controls">
                     <button class="btn ${masterState?.state === 'on' ? 'active' : ''}" id="btn-master-${device.id}">
-                        ⚡ Master
+                        SYST-EIN
                     </button>
                     ${device.options.pump_entity ? `
-                    <button class="btn ${pumpState?.state === 'on' ? 'active' : ''}" id="btn-pump-${device.id}">
-                        💧 Pumpe
+                    <button class="btn ${pumpState?.state === 'on' ? 'active' : ''}" id="btn-pump-${device.id}" ${device.tankData?.enabled && device.tankData.current_ml <= 0 ? 'disabled style="opacity:0.5; border-color:#ef4444; color:#ef4444;" title="Tank leer - Pumpe gesperrt"' : ''}>
+                        ${device.tankData?.enabled && device.tankData.current_ml <= 0 ? '🔒 ' : ''}PUMPE
                     </button>
                     ` : ''}
                     ${device.options.humidifier_entity ? `
                     <button class="btn ${this._hass.states[device.options.humidifier_entity]?.state === 'on' ? 'active' : ''}" id="btn-humid-${device.id}">
-                        💦 Befeuchter
+                        NEBEL
                     </button>
                     ` : ''}
                     <button class="btn" id="btn-upload-${device.id}">
-                        📷 Bild
+                        KAMERA
                     </button>
                 </div>
             `;
@@ -976,6 +1125,15 @@ class LocalGrowBoxPanel extends HTMLElement {
                 }
             };
 
+            // Mouse Tracking for 3D Glow
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / rect.width) * 100;
+                const y = ((e.clientY - rect.top) / rect.height) * 100;
+                card.style.setProperty('--mouse-x', `${x}%`);
+                card.style.setProperty('--mouse-y', `${y}%`);
+            });
+
             grid.appendChild(card);
         });
 
@@ -1025,6 +1183,42 @@ class LocalGrowBoxPanel extends HTMLElement {
         modal.onclick = (e) => {
             if (e.target === modal) cleanup();
         }
+    }
+
+    _renderSensorTile(label, val, unit, icon, targetRange) {
+        let isNull = (val === null || val === undefined);
+        const displayVal = isNull ? '--' : `${val}`;
+        
+        let statusClass = 'status-ok';
+        let statusLabel = 'Optimal';
+        let glowClass = 'glow-ok';
+        
+        if (!isNull && targetRange) {
+            if (val < targetRange.min || val > targetRange.max) {
+                statusClass = 'status-warn';
+                statusLabel = val < targetRange.min ? 'Zu Niedrig' : 'Zu Hoch';
+                glowClass = 'glow-warn';
+            }
+        }
+
+        return `
+            <div class="sensor-tile ${glowClass}">
+                <div class="sensor-label">
+                    <span style="font-size: 16px; filter: drop-shadow(0 0 5px currentColor);">${icon}</span>
+                    <span>${label}</span>
+                    ${!isNull ? `<span class="status-indicator ${statusClass}" style="margin-left:auto;"></span>` : ''}
+                </div>
+                <div class="sensor-value">
+                    ${displayVal}<span class="sensor-unit">${unit}</span>
+                </div>
+                ${targetRange ? `
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-top: 12px; font-weight: 700; display:flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                        <span style="opacity:0.6;">ZIEL: ${targetRange.min} - ${targetRange.max}</span>
+                        <span style="color: ${statusClass === 'status-ok' ? 'var(--accent-color)' : 'var(--warn-color)'}; text-transform: uppercase; letter-spacing: 0.5px;">${statusLabel}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
     }
 
     _renderStatBar(label, val, unit, min, max, color, icon, targetRange) {
@@ -1213,14 +1407,14 @@ class LocalGrowBoxPanel extends HTMLElement {
             // NEW: Card Helper
             const createCard = (title, icon) => {
                 const card = document.createElement('div');
-                card.style.cssText = "background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 4px;";
+                card.style.cssText = "background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 20px; padding: 24px; display: flex; flex-direction: column; gap: 4px; backdrop-filter: blur(10px); position: relative; overflow: hidden;";
                 
                 const header = document.createElement('div');
-                header.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;";
+                header.style.cssText = "display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;";
                 header.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
                         <span style="font-size: 20px;">${icon}</span> 
-                        <span style="font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--primary-color);">${title}</span>
+                        <span style="font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--primary-color);">${title}</span>
                     </div>
                 `;
                 card.appendChild(header);
@@ -1228,7 +1422,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const body = document.createElement('div');
                 body.style.display = 'flex';
                 body.style.flexDirection = 'column';
-                body.style.gap = '8px';
+                body.style.gap = '12px';
                 card.appendChild(body);
 
                 return { card, body, header };
@@ -1255,23 +1449,23 @@ class LocalGrowBoxPanel extends HTMLElement {
             appendInput(cardHum.body, 'Abluft Nachlauf/Hysterese (%)', 'fan_hysteresis', 'number', '', 'Wie stark muss die LF unter das Notfall-Limit fallen, bis der Lüfter wieder stoppt? (Std: 5.0)');
             settingsGrid.appendChild(cardHum.card);
 
-            // --- Card: Bewässerung & Boden 🪴 ---
-            const cardWater = createCard('Bewässerung & Boden', '🪴');
+            // --- Card: Bewässerung & Boden 💧 ---
             appendSelector(cardWater.body, 'Bodenfeuchte Sensor', 'moisture_sensor', ['sensor']);
             appendInput(cardWater.body, 'Standard Ziel Bodenfeuchte (%)', 'target_moisture', 'number', '', 'Wird evtl. von Rezepten überschrieben.');
             appendSelector(cardWater.body, 'Wasserpumpe (Steckdose)', 'pump_entity', ['switch', 'input_boolean']);
+            appendSelector(cardWater.body, 'Füllstand Sensor (Tank)', 'tank_level_sensor', ['sensor'], false, 'Optional: Meldet den aktuellen Tank-Füllstand in % (0-100).');
             appendInput(cardWater.body, 'Pumpen Dauer (Sek)', 'pump_duration', 'number', '', 'Wie viele Sekunden läuft die Wasserpumpe beim Gießen? (Standard: 5)');
             settingsGrid.appendChild(cardWater.card);
 
             // --- Card: Licht & Basis-Setup 💡 ---
             const cardLight = createCard('Licht & Basis-Setup', '💡');
             appendSelector(cardLight.body, 'Pflanzenbeleuchtung (Steckdose)', 'light_entity', ['switch', 'light', 'input_boolean']);
-            appendInput(cardLight.body, 'Licht Start-Uhrzeit (Stunde)', 'light_start_hour', 'number', '☀️', 'Beispiel: 6 bedeutet das Licht geht um 06:00 Uhr morgens an.');
+            appendInput(cardLight.body, 'Licht Start-Uhrzeit (Stunde)', 'light_start_hour', 'number', '⏰', 'Beispiel: 6 bedeutet das Licht geht um 06:00 Uhr morgens an.');
             appendSelector(cardLight.body, 'Kamera', 'camera_entity', ['camera'], false, 'Verbindet dein Dashboard mit der Live-Kamera.');
-            appendInput(cardLight.body, 'Aktueller Grow Start (Datum)', 'phase_start_date', 'date', '🏁', 'Tipp: Kann im Tagebuch präziser pro Grow verwaltet werden.');
+            appendInput(cardLight.body, 'Grow Start-Datum', 'phase_start_date', 'date', '📅', 'Tipp: Kann im Tagebuch präziser pro Grow verwaltet werden.');
             settingsGrid.appendChild(cardLight.card);
 
-            // --- Card: Energie & Strom ⚡ ---
+            // --- Card: Energie & Kosten ⚡ ---
             const cardEnergy = createCard('Energie & Kosten', '⚡');
             appendSelector(cardEnergy.body, 'Stromverbrauch (kWh Sensor)', 'energy_sensor', ['sensor'], true, 'Zählt Gesamtkosten. Bei Mehrfachauswahl addiert.');
             appendSelector(cardEnergy.body, 'Aktuelle Leistung (Watt Sensor)', 'power_sensor', ['sensor'], true, 'Optional, dient zur Anzeige oben rechts im Dashboard.');
@@ -1317,7 +1511,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             rowAuto.style.cssText = "display:flex; align-items:center; gap:10px; margin-top:8px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;";
             rowAuto.innerHTML = `
                 <input type="checkbox" id="ai-auto-${device.id}" ${device.options.ai_enabled ? 'checked' : ''} style="width:20px; height:20px; margin:0;">
-                <label for="ai-auto-${device.id}" style="font-size:12px; cursor:pointer;">Automatischer täglicher KI-Check (braucht Kamera)</label>
+                <label for="ai-auto-${device.id}" style="font-size:12px; cursor:pointer;">Automatischer täglicher KI-Check (benötigt Kamera)</label>
             `;
             rowAuto.querySelector('input').onchange = (e) => {
                 this._draft[device.entryId] = this._draft[device.entryId] || {};
@@ -1348,59 +1542,62 @@ class LocalGrowBoxPanel extends HTMLElement {
         this._devices.forEach(device => {
             const section = document.createElement('div');
             section.className = 'settings-section';
+            section.style.background = 'transparent';
 
             const renderPhaseRow = (label, sub, icon, configKey, val) => `
                 <div style="
                     display: flex; 
                     align-items: center; 
                     justify-content: space-between; 
-                    background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.04) 100%); 
-                    border: 1px solid rgba(255,255,255,0.05);
-                    border-radius: 12px; 
-                    padding: 16px 20px; 
-                    margin-bottom: 12px;
-                    transition: transform 0.2s, background 0.2s;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-                " onmouseover="this.style.transform='scale(1.02)'; this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.transform='scale(1)'; this.style.background='linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.04) 100%)'">
+                    padding: 20px 24px; 
+                    background: var(--glass-bg); 
+                    border: 1.5px solid var(--glass-border); 
+                    border-radius: 16px; 
+                    margin-bottom: 14px;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    backdrop-filter: blur(10px);
+                " onmouseover="this.style.borderColor='var(--primary-color)'; this.style.transform='translateX(5px)'; this.style.background='rgba(0, 242, 255, 0.03)'" onmouseout="this.style.borderColor='var(--glass-border)'; this.style.transform='translateX(0)'; this.style.background='var(--glass-bg)'">
                     <div style="display:flex; align-items:center; gap:20px;">
-                        <span style="font-size:32px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">${icon}</span>
+                        <div style="width: 48px; height: 48px; background: rgba(0,0,0,0.2); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; border: 1.5px solid var(--glass-border);">
+                            ${icon}
+                        </div>
                         <div>
-                            <div style="font-weight:700; font-size:16px; color:var(--text-primary); letter-spacing:0.5px;">${label}</div>
-                            <div style="font-size:12px; color:var(--text-secondary); margin-top:4px; max-width:400px; line-height:1.4;">${sub}</div>
+                            <div style="font-size:11px; color:var(--primary-color); font-weight:900; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px;">${label}</div>
+                            <div style="font-size:13px; color:var(--text-secondary); font-weight: 500;">${sub}</div>
                         </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:12px; background: rgba(0,0,0,0.3); padding:8px 16px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
-                        <input type="number" value="${val}" data-key="${configKey}" data-entry="${device.entryId}" 
-                            style="width:80px; text-align:center; font-weight:800; font-size:18px; color:#38bdf8; background:transparent; border:none; border-bottom:2px solid rgba(56, 189, 248, 0.4); border-radius:0; padding:4px;">
-                        <span style="font-size:13px; color:var(--text-secondary); font-weight:600;">Stunden<br>Licht</span>
+                    <div style="display:flex; align-items:center; gap:16px; background: rgba(0,0,0,0.3); padding:8px 16px; border-radius:12px; border:1.5px solid var(--glass-border);">
+                        <input type="number" step="0.5" value="${val}" data-key="${configKey}"
+                            style="width:70px; text-align:center; font-weight:900; font-size:20px; color:#fff; background:transparent; border:none; border-bottom:2.5px solid var(--primary-color); border-radius:0; padding:4px;">
+                        <span style="font-size:10px; font-weight:800; color: var(--text-secondary); text-transform:uppercase; letter-spacing:1px;">Stunden</span>
                     </div>
                 </div>
             `;
 
             section.innerHTML = `
-                <div class="card" style="max-width:900px; margin: 0 auto; background: var(--card-bg); overflow: hidden;">
-                    <div style="background: linear-gradient(90deg, rgba(3, 169, 244, 0.1) 0%, rgba(3, 169, 244, 0) 100%); padding: 24px;">
-                        <h2 style="margin:0; font-size:24px; color:var(--text-primary); display:flex; align-items:center; gap:12px;">
-                            <span>⏱️</span> ${device.name} - Lichtzyklen
-                        </h2>
-                        <p style="color:var(--text-secondary); margin:12px 0 0 0; font-size:14px; line-height:1.6;">
-                            Definiere hier die tägliche Beleuchtungsdauer für jede Wachstumsphase. 
-                            Das System schaltet im Automatik-Modus exakt nach diesem Plan.
-                        </p>
+                <div class="card" style="max-width:900px; margin: 0 auto; background: var(--card-bg); border-radius: 24px; border: 1.5px solid var(--glass-border); overflow: hidden; backdrop-filter: blur(15px);">
+                    <div style="background: linear-gradient(90deg, rgba(0, 242, 255, 0.1) 0%, transparent 100%); padding: 32px; border-bottom: 1.5px solid var(--glass-border);">
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div style="font-size: 32px; filter: drop-shadow(0 0 10px var(--primary-color));">⏱️</div>
+                            <div>
+                                <h2 style="margin:0; font-size:24px; color:#fff; font-weight: 900; text-transform: uppercase; letter-spacing: -0.5px;">${device.name} Einstellungen</h2>
+                                <p style="color:var(--text-secondary); margin:4px 0 0 0; font-size:12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Konfiguration der Lichtzyklus-Architektur</p>
+                            </div>
+                        </div>
                     </div>
                     
-                    <div style="padding: 24px;">
-                        <div style="display:flex; flex-direction:column; gap:8px;">
-                    ${renderPhaseRow('Keimling', 'Hohe Luftfeuchte (65-80%), 20-25°C, sanftes Licht', '🌱', 'phase_seedling_hours', device.options.phase_seedling_hours !== undefined ? device.options.phase_seedling_hours : 18)}
-                    ${renderPhaseRow('Wachstum', 'Viel Stickstoff, 18h Licht, RLF 50-70%', '🌿', 'phase_vegetative_hours', device.options.phase_vegetative_hours !== undefined ? device.options.phase_vegetative_hours : 18)}
-                    ${renderPhaseRow('Blüte', '12h Licht zwingend, RLF <50% (Schimmelgefahr!), P-K Dünger', '🌸', 'phase_flowering_hours', device.options.phase_flowering_hours !== undefined ? device.options.phase_flowering_hours : 12)}
-                    ${renderPhaseRow('Trocknen', 'Dunkel & Kühl (18-20°C), 50-60% RLF, 10-14 Tage', '🍂', 'phase_drying_hours', device.options.phase_drying_hours !== undefined ? device.options.phase_drying_hours : 0)}
-                    ${renderPhaseRow('Veredelung', 'Im Glas/Bag, RLF stabil bei 58-62% halten', '🏺', 'phase_curing_hours', device.options.phase_curing_hours !== undefined ? device.options.phase_curing_hours : 0)}
+                    <div style="padding: 32px;">
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            ${renderPhaseRow('Keimling', 'Seedling Phase - LF 65-80%', '🌱', 'phase_seedling_hours', device.options.phase_seedling_hours !== undefined ? device.options.phase_seedling_hours : 18)}
+                            ${renderPhaseRow('Wachstum', 'Vegetative Phase - Fokus Stickstoff', '🌿', 'phase_vegetative_hours', device.options.phase_vegetative_hours !== undefined ? device.options.phase_vegetative_hours : 18)}
+                            ${renderPhaseRow('Blüte', 'Blüte Phase - 12/12 Zyklus Essentiell', '🌸', 'phase_flowering_hours', device.options.phase_flowering_hours !== undefined ? device.options.phase_flowering_hours : 12)}
+                            ${renderPhaseRow('Trocknen', 'Trocknungs Phase - Dunkel & Kühl', '🍂', 'phase_drying_hours', device.options.phase_drying_hours !== undefined ? device.options.phase_drying_hours : 0)}
+                            ${renderPhaseRow('Veredelung', 'Curing Phase - Luftfeuchte Stabil 58-62%', '🏺', 'phase_curing_hours', device.options.phase_curing_hours !== undefined ? device.options.phase_curing_hours : 0)}
                         </div>
                         
-                        <div style="margin-top:32px; display:flex; justify-content:flex-end;">
-                            <button class="btn active" id="save-p-${device.id}" style="width:auto; display:inline-flex; padding:12px 32px;">
-                                Einstellungen Speichern
+                        <div style="margin-top:40px; display:flex; justify-content:flex-end;">
+                            <button class="btn active" id="save-p-${device.id}" style="width:auto; display:inline-flex; padding:16px 48px; font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-radius: 14px;">
+                                PARAMETER ÜBERNEHMEN
                             </button>
                         </div>
                     </div>
@@ -1521,20 +1718,18 @@ class LocalGrowBoxPanel extends HTMLElement {
 
     async _renderLogs(container) {
         if (this._devices.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Keine Grow Box gefunden.</div>';
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary); font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">No Operational Units Found</div>';
             return;
         }
 
         container.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; color: var(--text-secondary);">
-                <div style="font-size: 32px; margin-bottom: 16px; animation: pulse 1.5s infinite;">🔄</div>
-                <div>Lade Protokoll...</div>
+            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: var(--primary-color);">
+                <div style="font-size: 40px; margin-bottom: 20px; animation: spin 2s linear infinite; filter: drop-shadow(0 0 10px var(--primary-color));">🔄</div>
+                <div style="font-weight: 900; text-transform: uppercase; letter-spacing: 2px; font-size: 12px;">Synchronisiere System-Logs...</div>
             </div>
-            <style>@keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }</style>
         `;
 
         try {
-            // Fetch logs for all devices
             let allLogs = [];
             for (const device of this._devices) {
                 if (!device.entryId) continue;
@@ -1549,34 +1744,34 @@ class LocalGrowBoxPanel extends HTMLElement {
                         });
                     }
                 } catch (err) {
-                    console.warn("Could not fetch logs for " + device.name, err);
+                    console.warn("Log sync failed for " + device.name);
                 }
             }
 
             container.innerHTML = '';
             
             const outerWrapper = document.createElement('div');
-            outerWrapper.style.cssText = "max-width: 800px; margin: 0 auto; padding: 20px;";
+            outerWrapper.style.cssText = "max-width: 900px; margin: 0 auto; padding: 20px;";
             
             const header = document.createElement('div');
-            header.style.cssText = "padding:16px 20px; font-size:16px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between; background: linear-gradient(135deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0.05) 100%); border-radius: 12px; margin-bottom: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border: 1px solid rgba(255,255,255,0.05);";
+            header.style.cssText = "padding:24px 32px; background: var(--glass-bg); border-radius: 24px; margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between; border: 1.5px solid var(--glass-border); backdrop-filter: blur(10px); position: relative; overflow: hidden;";
             header.innerHTML = `
-                <div style="display:flex; align-items:center; gap:12px;">
-                    <span style="font-size:24px;">📋</span> 
-                    <span>Protokoll Historie</span>
+                <div style="display:flex; align-items:center; gap:20px;">
+                    <div style="width: 48px; height: 48px; background: rgba(0, 242, 255, 0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(0, 242, 255, 0.2);">📋</div>
+                    <div>
+                        <div style="font-size:18px; font-weight:900; color: #fff; letter-spacing: -0.5px; text-transform: uppercase;">System Ledger</div>
+                        <div style="font-size:11px; color: var(--primary-color); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px;">Echtzeit Event Dechiffrierung</div>
+                    </div>
                 </div>
-                <button class="btn" id="btn-refresh-logs" style="padding: 8px 16px; font-size: 13px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.3);">
-                    🔄 Aktualisieren
-                </button>
+                <button class="btn active" id="btn-refresh-logs" style="width: auto; padding: 10px 20px; font-weight: 900; font-size: 11px;">SYNC AKTUALISIEREN</button>
             `;
             outerWrapper.appendChild(header);
 
             const listContainer = document.createElement('div');
             listContainer.style.display = 'flex';
             listContainer.style.flexDirection = 'column';
-            listContainer.style.gap = '12px';
+            listContainer.style.gap = '14px';
 
-            // Sort combined logs chronologically (newest first)
             allLogs.sort((a, b) => {
                 const parseDate = (str) => {
                     const match = str.match(/^\[(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2}):(\d{2})\]/);
@@ -1588,61 +1783,46 @@ class LocalGrowBoxPanel extends HTMLElement {
 
             if (allLogs.length === 0) {
                 const empty = document.createElement('div');
-                empty.style.cssText = "padding:32px; text-align:center; color:var(--text-secondary);";
-                empty.innerText = "Bisher keine Ereignisse protokolliert.";
+                empty.style.cssText = "padding:60px; text-align:center; color:var(--text-secondary); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; background: var(--glass-bg); border-radius: 20px; border: 1px solid var(--glass-border);";
+                empty.innerText = "Keine kritischen biologischen Events aufgezeichnet.";
                 listContainer.appendChild(empty);
             } else {
                 for (const entry of allLogs) {
                     const item = document.createElement('div');
-                    item.style.cssText = "padding: 16px; background: linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%); border-left: 2px solid rgba(255,255,255,0.2); border-radius: 4px 8px 8px 4px; display:flex; align-items:center; gap:16px; transition:transform 0.2s, background 0.2s;";
-                    item.onmouseenter = () => { item.style.transform = 'translateY(-2px)'; item.style.background = 'linear-gradient(90deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)'; };
-                    item.onmouseleave = () => { item.style.transform = 'translateY(0)'; item.style.background = 'linear-gradient(90deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)'; };
-
+                    item.className = 'log-item';
+                    item.style.cssText = "padding: 20px 24px; background: var(--glass-bg); border-radius: 16px; border: 1.5px solid var(--glass-border); display:flex; align-items:center; gap:20px; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); backdrop-filter: blur(10px);";
+                    
                     let timeStr = "";
                     let msgStr = entry.line;
-
                     const match = entry.line.match(/^\[(.*?)\]\s+(.*)$/);
-                    if (match) {
-                        timeStr = match[1];
-                        msgStr = match[2];
-                    }
+                    if (match) { timeStr = match[1]; msgStr = match[2]; }
 
-                    // Choose icon based on content
-                    let icon = '📝';
-                    let accentColor = '#64748b';
+                    let icon = '📝'; let accentColor = '#64748b';
                     if (msgStr.includes('Licht')) { icon = '💡'; accentColor = '#fbbf24'; }
                     else if (msgStr.includes('Pumpe')) { icon = '💧'; accentColor = '#3b82f6'; }
                     else if (msgStr.includes('Abluft')) { icon = '🌪️'; accentColor = '#9ca3af'; }
                     else if (msgStr.includes('Befeuchter')) { icon = '💦'; accentColor = '#38bdf8'; }
-                    else if (msgStr.includes('Grow') || msgStr.includes('Zählerstand')) { icon = '🌿'; accentColor = '#4ade80'; }
+                    else if (msgStr.includes('Grow') || msgStr.includes('Zählerstand')) { icon = '🌿'; accentColor = 'var(--accent-color)'; }
 
-                    item.style.borderLeftColor = accentColor;
-
-                    // Highlight keywords playfully
-                    if (msgStr.includes('eingeschaltet')) {
-                        msgStr = msgStr.replace('eingeschaltet', '<span style="color:#4ade80; font-weight:600;">eingeschaltet</span>');
-                    }
-                    if (msgStr.includes('ausgeschaltet')) {
-                        msgStr = msgStr.replace('ausgeschaltet', '<span style="color:#ef4444; font-weight:600;">ausgeschaltet</span>');
-                    }
+                    item.style.borderLeft = `4px solid ${accentColor}`;
 
                     item.innerHTML = `
-                        <div style="min-width: 110px; color:var(--text-secondary); font-size:12px; text-align:right; font-variant-numeric: tabular-nums; opacity:0.8; border-right: 1px solid rgba(255,255,255,0.1); padding-right: 16px;">
-                            <div style="font-weight:700; color:var(--text-primary); opacity:1;">${timeStr.split(' ')[1]}</div>
-                            <div style="font-size:10px; margin-top:2px;">${timeStr.split(' ')[0]}</div>
+                        <div style="min-width: 90px; color:var(--text-secondary); font-size:11px; font-weight: 800; border-right: 1.5px solid var(--glass-border); padding-right: 20px;">
+                            <div style="color:var(--text-primary); font-size: 13px;">${timeStr.split(' ')[1]}</div>
+                            <div style="opacity: 0.5; margin-top: 4px;">${timeStr.split(' ')[0]}</div>
                         </div>
                         
-                        <div style="display:flex; align-items:center; justify-content:center; width: 36px; height: 36px; background: rgba(0,0,0,0.2); border-radius: 50%; border: 1px solid rgba(255,255,255,0.05);">
-                            <div style="font-size:16px;">${icon}</div>
+                        <div style="width: 40px; height: 40px; background: rgba(0,0,0,0.2); border-radius: 50%; display: flex; align-items:center; justify-content:center; font-size: 20px; border: 1.5px solid var(--glass-border); flex-shrink: 0;">
+                            ${icon}
                         </div>
                         
-                        <div style="display:flex; flex-direction:column; justify-content: center; gap:4px; flex:1; padding-left: 8px;">
-                            <span style="font-size:10px; font-weight:800; color:${accentColor}; letter-spacing:0.5px; text-transform:uppercase;">
-                                ${entry.devName}
-                            </span>
-                            <span style="font-size:14px; color:var(--text-primary); line-height: 1.4;">
-                                ${msgStr}
-                            </span>
+                        <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
+                            <div style="font-size:10px; font-weight:900; color:${accentColor}; text-transform:uppercase; letter-spacing:1px; display: flex; align-items: center; gap: 8px;">
+                                ${entry.devName} <span class="status-indicator status-ok" style="width: 4px; height: 4px;"></span>
+                            </div>
+                            <div style="font-size:14px; color:var(--text-primary); font-weight: 500; line-height: 1.4;">
+                                ${msgStr.replace(/eingeschaltet/g, '<span style="color:var(--accent-color); font-weight:800;">ON</span>').replace(/ausgeschaltet/g, '<span style="color:#ef4444; font-weight:800;">OFF</span>')}
+                            </div>
                         </div>
                     `;
                     listContainer.appendChild(item);
@@ -1652,159 +1832,106 @@ class LocalGrowBoxPanel extends HTMLElement {
             outerWrapper.appendChild(listContainer);
             container.appendChild(outerWrapper);
             
-            // Attach refresh event AFTER appending to DOM
             setTimeout(() => {
-                const btn = document.getElementById('btn-refresh-logs');
+                const btn = this.shadowRoot.getElementById('btn-refresh-logs');
                 if (btn) btn.onclick = () => this._renderLogs(container);
             }, 0);
 
         } catch (e) {
             console.error("Log fetch failed", e);
-            container.innerHTML = `<div style="color:var(--danger-color); padding:24px;">Fehler beim Laden des Protokolls: ${e.message}</div>`;
+            container.innerHTML = `<div style="color:#ef4444; padding:40px; text-align:center; font-weight:900;">DECRYPTION ERROR: ${e.message}</div>`;
         }
     }
 
     _renderInfo(container) {
         container.innerHTML = `
-            <div style="max-width:900px; margin:0 auto; padding:16px;">
-                <h2 style="text-align:center; margin-bottom:32px; background: linear-gradient(135deg, #4ade80 0%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800; font-size: 28px;">
-                    Grow Guide & Hilfe-Center
-                </h2>
+            <div style="max-width:1000px; margin:0 auto; padding:16px;">
+                <div style="text-align:center; margin-bottom:48px; position:relative;">
+                    <div style="position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 200px; height: 2px; background: linear-gradient(90deg, transparent, var(--primary-color), transparent); opacity:0.6;"></div>
+                    <h2 style="padding-top: 24px; margin: 0; background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 950; font-size: 36px; text-transform: uppercase; letter-spacing: -1px;">
+                        System Dokumentation
+                    </h2>
+                    <p style="color: var(--text-secondary); font-size: 14px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; margin-top: 8px;">Neural Grow Guide & Hilfe</p>
+                </div>
                 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 32px;">
                     <!-- VPD Section -->
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title">🍃 VPD (Vapor Pressure Deficit)</div>
+                    <div class="card" style="background: var(--glass-bg); border: 1.5px solid var(--glass-border); border-radius: 24px; padding: 32px; backdrop-filter: blur(15px);">
+                        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px; border-bottom: 1.5px solid var(--glass-border); padding-bottom: 16px;">
+                            <span style="font-size: 32px; filter: drop-shadow(0 0 10px var(--accent-color));">🍃</span>
+                            <div style="font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--accent-color);">VPD Kalibrierung</div>
                         </div>
-                        <div class="card-body">
-                            <p style="color:var(--text-secondary); margin-bottom:16px; font-size: 13px; line-height: 1.5;">
-                                Der VPD-Wert beschreibt den Dampfdrucksättigungsdefizit – also wie "durstig" die Luft ist. Ein optimaler VPD sorgt dafür, dass die Pflanze Nährstoffe effizient transportieren kann.
+                        <div class="card-body" style="padding: 0;">
+                            <p style="color:var(--text-secondary); margin-bottom:24px; font-size: 13px; line-height: 1.7; font-weight: 500;">
+                                Vapor Pressure Deficit (VPD) gibt an, wie "durstig" deine Atmosphäre ist. Eine präzise Abstimmung maximiert den Nährstofftransport und das Wachstum.
                             </p>
-                            <table style="width:100%; text-align:left; border-collapse:collapse; color:white; font-size: 13px;">
-                                <tr style="border-bottom:1px solid rgba(255,255,255,0.1);">
-                                    <th style="padding:8px; color: var(--primary-color);">Phase</th>
-                                    <th style="padding:8px; color: var(--primary-color);">Ziel-Bereich (kPa)</th>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                                    <td style="padding:8px;">🌱 Keimling</td>
-                                    <td style="padding:8px; color:#4ade80; font-weight: 600;">0.4 - 0.8</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                                    <td style="padding:8px;">🌿 Wachstum</td>
-                                    <td style="padding:8px; color:#4ade80; font-weight: 600;">0.8 - 1.2</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                                    <td style="padding:8px;">🌸 Blüte</td>
-                                    <td style="padding:8px; color:#4ade80; font-weight: 600;">1.2 - 1.6</td>
-                                </tr>
-                                <tr style="border-bottom:1px solid rgba(255,255,255,0.05);">
-                                    <td style="padding:8px;">🍂 Trocknen</td>
-                                    <td style="padding:8px; color:#4ade80; font-weight: 600;">0.8 - 1.0</td>
-                                </tr>
-                            </table>
+                            <div style="background: rgba(0, 255, 65, 0.03); border: 1px solid rgba(0, 255, 65, 0.1); border-radius: 16px; padding: 20px;">
+                                <table style="width:100%; text-align:left; border-collapse:collapse; color:#fff; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    <tr style="border-bottom:1.5px solid rgba(0, 255, 65, 0.1);">
+                                        <th style="padding:12px; color: var(--accent-color); font-weight: 900;">Phase</th>
+                                        <th style="padding:12px; color: var(--accent-color); font-weight: 900; text-align: right;">Ziel (kPa)</th>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                                        <td style="padding:12px;">🌱 Keimling</td>
+                                        <td style="padding:12px; color:var(--accent-color); text-align: right;">0.4 - 0.8</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                                        <td style="padding:12px;">🌿 Wachstum</td>
+                                        <td style="padding:12px; color:var(--accent-color); text-align: right;">0.8 - 1.2</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                                        <td style="padding:12px;">🌸 Blüte</td>
+                                        <td style="padding:12px; color:var(--accent-color); text-align: right;">1.2 - 1.6</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:12px;">🍂 Trocknen</td>
+                                        <td style="padding:12px; color:var(--accent-color); text-align: right;">0.8 - 1.0</td>
+                                    </tr>
+                                </table>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- NEW: Smart Humidity Logic -->
-                    <div class="card" style="border-left: 4px solid #3b82f6;">
-                        <div class="card-header">
-                            <div class="card-title">💦 Intelligente Befeuchtung (Neu)</div>
+                    <!-- Humidity Section -->
+                    <div class="card" style="background: var(--glass-bg); border: 1.5px solid var(--glass-border); border-radius: 24px; padding: 32px; backdrop-filter: blur(15px);">
+                        <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 24px; border-bottom: 1.5px solid var(--glass-border); padding-bottom: 16px;">
+                            <span style="font-size: 32px; filter: drop-shadow(0 0 10px var(--primary-color));">💦</span>
+                            <div style="font-weight: 900; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: var(--primary-color);">Smart Misting</div>
                         </div>
-                        <div class="card-body">
-                            <p style="color:var(--text-secondary); margin-bottom:12px; font-size: 13px;">
-                                In v2.1.5 wurde die Steuerung des Luftbefeuchters optimiert, um ein Überfeuchten zu verhindern:
+                        <div class="card-body" style="padding: 0;">
+                            <p style="color:var(--text-secondary); margin-bottom:20px; font-size: 13px; line-height: 1.7; font-weight: 500;">
+                                Unsere pulsbasierte Verdunstungslogik verhindert Staunässe:
                             </p>
-                            <ul style="color:var(--text-secondary); padding-left:20px; line-height:1.6; font-size: 13px;">
-                                <li><strong>Impuls-Logik:</strong> Der Befeuchter läuft für einen kurzen "Impuls" und wartet dann 10 Minuten.</li>
-                                <li><strong>Verteilung:</strong> Die Pause gibt dem Wasser Zeit, sich im Raum zu verteilen, bevor der Sensor erneut misst.</li>
-                                <li><strong>Ziel-Zone:</strong> Auf dem Dashboard zeigt der blaue Balken nun einen hellen Bereich basierend auf deiner eingestellten <strong>Hysterese</strong> (+/-) als Zielvorgabe an.</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Controls Section -->
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title">🎮 Dashboard-Steuerung</div>
-                        </div>
-                        <div class="card-body">
-                            <ul style="color:var(--text-secondary); padding-left:20px; line-height:1.6; font-size: 13px;">
-                                <li><strong>⚡ Master:</strong> Automatik AN/AUS. Im AUS-Zustand werden keine Geräte automatisch geschaltet.</li>
-                                <li><strong>💦 Befeuchter:</strong> (Neu) Direkter Schalter für den Luftbefeuchter. Überschreibt kurzzeitig die Automatik.</li>
-                                <li><strong>💧 Pumpe:</strong> Startet den Gießvorgang für die eingestellte Dauer (Sekunden).</li>
-                                <li><strong>📷 Bild:</strong> Manueller Kamera-Upload für die Box-Vorschau.</li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <!-- Photo & Gallery Section -->
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title">📸 Fotos & Tagebuch</div>
-                        </div>
-                        <div class="card-body">
-                            <p style="color:var(--text-secondary); line-height:1.6; font-size: 13px;">
-                                Im Web-Interface hochgeladene oder von ESP32-CAMs erstellte Bilder werden automatisch in deinem Home Assistant Verzeichnis gespeichert unter:
-                                <br><br>
-                                <code style="background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px; font-family:monospace; color:#38bdf8;">/config/www/local_grow_box_images/grows/</code>
-                                <br><br>
-                                Von dort aus erstellt das Tagebuch die Bilder-Galerien.
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Light Timer Section -->
-                    <div class="card">
-                        <div class="card-header">
-                            <div class="card-title">💡 Licht & Phasen</div>
-                        </div>
-                        <div class="card-body">
-                            <p style="color:var(--text-secondary); font-size: 13px; line-height:1.5;">
-                                Jede Phase hat ihre eigene Beleuchtungsdauer (z.B. 18h oder 12h). Diese stellst du unter <strong>"Phasen"</strong> ein.
-                                <br><br>
-                                Die <strong>Startzeit</strong> unter "Geräte & Config" legt fest, wann der "Tag" beginnt.
-                            </p>
-                        </div>
-                    </div>
-
-                    <!-- Watering Section -->
-                    <div class="card">
-                         <div class="card-header">
-                            <div class="card-title">🌱 Bewässerung-Logik</div>
-                        </div>
-                        <div class="card-body">
-                            <p style="color:var(--text-secondary); font-size: 13px; line-height:1.5;">
-                                Wenn die Bodenfeuchte unter den Zielwert fällt, wird die Pumpe aktiviert.
-                                <br><br>
-                                Nach jedem Gießen folgt eine <strong>15-minütige Sperre</strong>, damit das Wasser einsickern kann und der Sensor nicht sofort wieder auslöst.
-                            </p>
+                            <div style="display: grid; gap: 12px;">
+                                <div style="background: rgba(0, 242, 255, 0.05); padding: 14px; border-radius: 12px; border: 1px solid rgba(0, 242, 255, 0.1);">
+                                    <div style="font-size: 10px; font-weight: 900; color: var(--primary-color); margin-bottom: 4px; text-transform: uppercase;">Puls-Zyklen</div>
+                                    <div style="font-size: 12px; color: #fff; font-weight: 600;">Kurze aktive Stöße gefolgt von Verteilungspausen.</div>
+                                </div>
+                                <div style="background: rgba(0, 242, 255, 0.05); padding: 14px; border-radius: 12px; border: 1px solid rgba(0, 242, 255, 0.1);">
+                                    <div style="font-size: 10px; font-weight: 900; color: var(--primary-color); margin-bottom: 4px; text-transform: uppercase;">Zonen-Tracking</div>
+                                    <div style="font-size: 12px; color: #fff; font-weight: 600;">Visualisierung der Zielbereiche basierend auf aktiver Hysterese.</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Support Section -->
-                    <div class="card" style="border: 1px solid rgba(251, 191, 36, 0.3); background: rgba(251, 191, 36, 0.05);">
-                        <div class="card-header" style="border-bottom-color: rgba(251, 191, 36, 0.1);">
-                            <div class="card-title" style="color: #fbbf24;">💛 Support & OpenKairo</div>
-                        </div>
-                        <div class="card-body" style="text-align:center;">
-                            <p style="color:var(--text-secondary); margin-bottom:16px; font-size: 13px;">
-                                Gefällt dir das Projekt? Unterstütze die Entwicklung!
-                            </p>
-                            <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=info@low-streaming.de&currency_code=EUR" target="_blank" style="text-decoration:none;">
-                                <button class="btn" style="background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%); color: #111827; font-weight:bold; margin:0 auto; width:auto; padding:12px 24px; border:none; box-shadow: 0 4px 12px rgba(251, 191, 36, 0.2);">
-                                    ☕ Jetzt Spenden
-                                </button>
-                            </a>
-                        </div>
+                    <div class="card" style="grid-column: 1 / -1; background: rgba(0, 255, 65, 0.03); border: 1.5px solid rgba(0, 255, 65, 0.2); border-radius: 24px; padding: 40px; text-align: center; position: relative; overflow: hidden;">
+                        <div style="position: absolute; bottom: -20px; right: -20px; font-size: 140px; opacity: 0.03; font-weight: 900; letter-spacing: -5px; pointer-events: none;">OPENKAIRO</div>
+                        <h3 style="margin: 0 0 16px 0; color: var(--accent-color); font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">Die Evolution unterstützen</h3>
+                        <p style="color:var(--text-secondary); max-width: 600px; margin: 0 auto 32px auto; font-size: 14px; line-height: 1.7; font-weight: 500;">
+                            Local Grow Box ist ein Open-Source-Interface. Unterstütze die Entwicklung von Funktionen der nächsten Generation.
+                        </p>
+                        <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=info@low-streaming.de&currency_code=EUR" target="_blank" style="text-decoration:none;">
+                            <button class="btn active" style="width:auto; padding:16px 48px; font-weight:900; font-size: 14px; background: var(--accent-color); color: #0b1121; box-shadow: 0 0 30px rgba(0, 255, 65, 0.2); text-transform: uppercase; letter-spacing: 1px;">
+                                KAFFEE-MASCHINE FREISCHALTEN ☕
+                            </button>
+                        </a>
                     </div>
                 </div>
                 
-                <div style="text-align:center; margin-top:40px; opacity:0.8; font-size:12px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 20px;">
-                    <div style="background:rgba(251, 191, 36, 0.1); border:1px solid rgba(251, 191, 36, 0.3); padding:10px; margin-bottom:20px; border-radius:8px; color:#fbbf24;">
-                        <strong>💡 Tipp bei UI-Problemen:</strong> Falls Änderungen (wie gelöschte Boxen) nicht erscheinen, drücke bitte <strong>STRG + F5</strong> um den Browser-Cache zu leeren.
-                    </div>
-                    Local Grow Box Integration v2.1.8
+                <div style="text-align:center; margin-top:60px; opacity:0.6; font-size:11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;">
+                    Local Grow Box OS v2.1.8 | Intelligence by OpenKAIRO
                 </div>
             </div>
         `;
@@ -1857,7 +1984,7 @@ class LocalGrowBoxPanel extends HTMLElement {
         if (!this.historyData[entityId] && !this.fetchingHistory[entityId]) {
             this.fetchingHistory[entityId] = true;
             this.fetchHistoryData(entityId);
-            return '<div style="height: 150px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 15px;">Lade ' + label + '...</div>';
+            return '<div style="height: 150px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); background: var(--glass-bg); border-radius: 16px; border: 1px solid var(--glass-border); margin-bottom: 20px; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Lade ' + label + '...</div>';
         }
 
         const data = this.historyData[entityId] || [];
@@ -1865,16 +1992,15 @@ class LocalGrowBoxPanel extends HTMLElement {
 
         if (data.length === 0 || data.filter(d => !isNaN(parseFloat(d.state))).length === 0) {
             return `
-                <div class="chart-row" data-entity="${entityId}" style="margin-bottom: 20px; text-align: left; cursor: pointer;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
-                        <h4 style="color: ${colorHex}; margin: 0; font-size: 1.0em; text-transform: uppercase;">${label}</h4>
-                        <span style="color: #fff; font-size: 1.1em; font-weight: bold;">${currentState} ${unit}</span>
+                <div class="chart-row" data-entity="${entityId}" style="margin-bottom: 24px; text-align: left; cursor: pointer;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; padding: 0 4px;">
+                        <h4 style="color: ${colorHex}; margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800;">${label}</h4>
+                        <span style="color: #fff; font-size: 16px; font-weight: 800;">${currentState} ${unit}</span>
                     </div>
-                    <div style="height: 120px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="height: 140px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); background: var(--glass-bg); border-radius: 16px; border: 1px solid var(--glass-border);">
                         <div style="text-align:center;">
-                            <div style="font-size:20px; margin-bottom:8px;">⏳</div>
-                            Warte auf Datenpunkte...<br>
-                            <small style="opacity:0.5;">(Kann nach Neustart 1-2 Min dauern)</small>
+                            <div style="font-size:24px; margin-bottom:8px; animation: pulse-soft 2s infinite;">🕒</div>
+                            <span style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Warte auf Datenpunkte...</span>
                         </div>
                     </div>
                 </div>
@@ -1907,49 +2033,42 @@ class LocalGrowBoxPanel extends HTMLElement {
         const pathData = `M ${points[0]} L ${points.join(' L ')}`;
         const fillPathData = `M ${points[0].split(',')[0]},${height} L ${points.join(' L ')} L ${points[points.length - 1].split(',')[0]},${height} Z`;
         const safeId = entityId.replace(/\./g, '_');
-
         const lastState = validData[validData.length - 1].state;
 
         return `
-            <div class="chart-row" data-entity="${entityId}" style="margin-bottom: 20px; text-align: left; cursor: pointer;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 8px;">
-                    <h4 style="color: ${colorHex}; margin: 0; font-size: 1.0em; text-transform: uppercase;">${label}</h4>
-                    <span style="color: #fff; font-size: 1.1em; font-weight: bold;">
-                        ${lastState} ${unit}
-                    </span>
+            <div class="chart-row" data-entity="${entityId}" style="margin-bottom: 24px; text-align: left; cursor: pointer;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; padding: 0 4px;">
+                    <h4 style="color: ${colorHex}; margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800;">${label}</h4>
+                    <span style="color: #fff; font-size: 18px; font-weight: 800; letter-spacing: -0.5px;">${lastState} ${unit}</span>
                 </div>
-                <div style="position: relative; height: ${height + padding * 2}px; border-radius: 8px; background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.05); overflow: hidden;">
+                <div style="position: relative; height: ${height + padding * 2}px; border-radius: 16px; background: var(--glass-bg); border: 1px solid var(--glass-border); overflow: hidden; transition: border-color 0.3s ease;">
                     <svg viewBox="0 -${padding} ${width} ${height + padding * 2}" preserveAspectRatio="none" style="width: 100%; height: 100%; display: block;">
                         <defs>
                             <linearGradient id="grad_${safeId}" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" style="stop-color:${colorHex};stop-opacity:0.4" />
+                                <stop offset="0%" style="stop-color:${colorHex};stop-opacity:0.3" />
                                 <stop offset="100%" style="stop-color:${colorHex};stop-opacity:0.0" />
                             </linearGradient>
                         </defs>
                         <path d="${fillPathData}" fill="url(#grad_${safeId})" />
-                        <path d="${pathData}" fill="none" stroke="${colorHex}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/>
+                        <path d="${pathData}" fill="none" stroke="${colorHex}" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round" style="filter: drop-shadow(0 0 5px ${colorHex}50);"/>
                     </svg>
-                    <div style="position: absolute; top: 10px; left: 10px; color: rgba(255,255,255,0.8); font-size: 0.8em; font-weight: bold;">
-                        MAX: ${maxVal.toFixed(2)}
-                    </div>
-                    <div style="position: absolute; bottom: 10px; left: 10px; color: rgba(255,255,255,0.4); font-size: 0.8em;">
-                        MIN: ${minVal.toFixed(2)}
-                    </div>
+                    <div style="position: absolute; top: 12px; left: 16px; color: ${colorHex}; font-size: 10px; font-weight: 800; text-transform: uppercase; opacity: 0.6;">MAX: ${maxVal.toFixed(1)}</div>
+                    <div style="position: absolute; bottom: 12px; left: 16px; color: var(--text-secondary); font-size: 10px; font-weight: 800; text-transform: uppercase;">MIN: ${minVal.toFixed(1)}</div>
                 </div>
-            </div >
-            `;
+            </div>
+        `;
     }
 
     _renderStatistics(container) {
         if (!this._devices || this._devices.length === 0) {
-            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Keine Grow Box gefunden. Bitte Integration hinzufügen.</div>';
+            container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-secondary);">Keine Grow Box gefunden. Bitte Integration hinzuf??gen.</div>';
             return;
         }
 
         const statsDiv = document.createElement('div');
         statsDiv.innerHTML = `
             <div style="max-width:1200px; margin:0 auto; padding:16px;">
-                <h2 style="color:var(--text-primary); margin-bottom:12px;">📊 Statistiken & Graphen</h2>
+                <h2 style="color:var(--text-primary); margin-bottom:12px;">📈 Statistiken & Graphen</h2>
                 <p style="color:var(--text-secondary); margin-bottom:24px;">Übersicht über die Messwerte deiner Growbox im zeitlichen Verlauf (24h).</p>
                 <div class="grid" id="stats-grid"></div>
             </div>
@@ -1978,17 +2097,20 @@ class LocalGrowBoxPanel extends HTMLElement {
             cardWrapper.style.display = 'block';
 
             cardWrapper.innerHTML = `
-                <div style="border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 15px; margin-bottom: 20px;">
-                    <h3 style="margin:0; font-size:20px; color:#38bdf8;">${device.name}</h3>
+                <div style="border-bottom: 1px solid var(--glass-border); padding-bottom: 20px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 4px; height: 24px; background: var(--primary-color); border-radius: 2px; box-shadow: var(--cyan-glow);"></div>
+                    <h3 style="margin:0; font-size:18px; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">${device.name} Analytik</h3>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    ${tempSensor ? this._renderChart(tempSensor, '#ef4444', '🌡️ Temperatur', getUnit(tempSensor, '°C')) : ''}
-                    ${humSensor ? this._renderChart(humSensor, '#3b82f6', '💧 Luftfeuchte', getUnit(humSensor, '%')) : ''}
-                    ${vpdSensor ? this._renderChart(vpdSensor, '#10b981', '🍃 VPD', getUnit(vpdSensor, 'kPa')) : ''}
-                    ${moistSensor ? this._renderChart(moistSensor, '#8b5cf6', '🪴 Bodenfeuchte', getUnit(moistSensor, '%')) : ''}
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    ${tempSensor ? this._renderChart(tempSensor, '#ef4444', '🌡️ Temperatur-Verlauf', getUnit(tempSensor, '°C')) : ''}
+                    ${humSensor ? this._renderChart(humSensor, 'var(--primary-color)', '💧 Feuchtigkeits-Verlauf', getUnit(humSensor, '%')) : ''}
+                    ${vpdSensor ? this._renderChart(vpdSensor, 'var(--accent-color)', '🍃 Klima-Effizienz (VPD)', getUnit(vpdSensor, 'VPD')) : ''}
+                    ${moistSensor ? this._renderChart(moistSensor, '#8b5cf6', '🪴 Substratfeuchte', getUnit(moistSensor, '%')) : ''}
                 </div>
-                <div style="margin-top: 20px; text-align: left; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px;">
-                    <h4 style="margin: 0; color: var(--text-secondary); font-size: 0.85em;">Klicke auf einen Graphen, um die detaillierte Ansicht von Home Assistant zu öffnen.</h4>
+                <div style="margin-top: 24px; text-align: left; padding: 16px; background: rgba(0, 242, 255, 0.02); border-radius: 12px; border: 1px solid rgba(0, 242, 255, 0.1);">
+                    <h4 style="margin: 0; color: var(--primary-color); font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 14px;">💡</span> Interaktive Ansicht: Tippe auf einen Graphen für Details
+                    </h4>
                 </div>
             `;
 
@@ -2053,13 +2175,13 @@ class LocalGrowBoxPanel extends HTMLElement {
             
             const title = document.createElement('div');
             title.className = 'section-title';
-            title.style.display = 'flex';
-            title.style.justifyContent = 'space-between';
-            title.style.alignItems = 'center';
             title.innerHTML = `
-                <span>📖 ${device.name} - Tagebuch</span>
-                <button class="btn active" style="width:auto; padding:8px 16px; font-size:12px;" id="start-grow-${device.id}">
-                    ➕ Neuer Grow
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <span style="font-size:20px; filter: drop-shadow(0 0 8px var(--primary-color));">📖</span>
+                    <span>${device.name} - LOGBUCH</span>
+                </div>
+                <button class="btn active" style="padding:8px 20px; font-size:11px; box-shadow: 0 0 15px rgba(0,242,255,0.2);" id="start-grow-${device.id}">
+                    🌱 NEUER GROW
                 </button>
             `;
             section.appendChild(title);
@@ -2070,7 +2192,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 const activeCard = document.createElement('div');
                 activeCard.id = `active-grow-card-${device.id}`;
                 activeCard.className = 'active-grow-card';
-                activeCard.style.cssText = "background: linear-gradient(135deg, rgba(3, 169, 244, 0.1) 0%, rgba(3, 169, 244, 0.02) 100%); border: 1px solid rgba(3, 169, 244, 0.3); border-radius: 12px; padding: 20px; margin-bottom: 24px; position:relative; overflow:hidden;";
+                activeCard.style.cssText = "background: rgba(0, 242, 255, 0.02); border: 1px solid rgba(0, 242, 255, 0.15); border-radius: 20px; padding: 24px; margin-bottom: 24px; position:relative; overflow:hidden; backdrop-filter: blur(10px);";
                 
                 const startDate = new Date(activeGrow.start_date);
                 const now = new Date();
@@ -2101,86 +2223,104 @@ class LocalGrowBoxPanel extends HTMLElement {
 
                 // VPD Health
                 const vpdTotal = activeGrow.vpd_total_mins || 0;
-                const vpdIdeal = activeGrow.vpd_ideal_mins || 0;
-                const vpdScore = vpdTotal > 0 ? Math.round((vpdIdeal / vpdTotal) * 100) : 100;
-                const healthColor = vpdScore > 80 ? "#4ade80" : (vpdScore > 50 ? "#fbbf24" : "#ef4444");
-
-                activeCard.innerHTML = `
-                    <div style="position:absolute; top:-10px; right:-10px; font-size:80px; opacity:0.05; pointer-events:none;">🌿</div>
-                    <div class="diary-active-grid" style="display:grid; grid-template-columns: 1.2fr 1fr 1fr auto; gap:20px; align-items:center;">
+                const vpdIdeal = a                activeCard.innerHTML = `
+                    <div style="position:absolute; top:-30px; right:-30px; font-size:160px; opacity:0.04; pointer-events:none; filter: blur(5px); transform: rotate(15deg);">🌿</div>
+                    
+                    <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 28px; border-bottom: 1px solid var(--glass-border); padding-bottom: 20px;">
+                        <div style="background: var(--accent-color); width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: var(--success-glow);">🚀</div>
                         <div>
-                            <div style="font-size:12px; color:var(--primary-color); text-transform:uppercase; font-weight:700; letter-spacing:1px;">Aktueller Grow</div>
-                            <div style="font-size:24px; font-weight:800; margin:4px 0;">${activeGrow.name}</div>
-                            <div style="color:var(--text-secondary); font-size:14px;">${activeGrow.strain || 'Unbekannte Sorte'}</div>
-                            
-                            <div style="margin-top:16px;">
-                                <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:4px;">
-                                    <span>Fortschritt</span>
-                                    <span class="val-days">Tag ${days} / ${totalDays}</span>
-                                </div>
-                                <div style="height:8px; background:rgba(255,255,255,0.1); border-radius:4px; overflow:hidden;">
-                                    <div style="width:${progress}%; height:100%; background:linear-gradient(90deg, #4ade80, #38bdf8); border-radius:4px;"></div>
-                                </div>
-                            </div>
+                            <div style="font-size:11px; color:var(--accent-color); text-transform:uppercase; font-weight:900; letter-spacing:2.5px;">MISSION STATUS: AKTIV</div>
+                            <div style="font-size:28px; font-weight:950; color: #fff; letter-spacing: -1px; text-transform: uppercase;">${activeGrow.name}</div>
                         </div>
-                        
-                        <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.1); padding-left:20px; position:relative;">
-                            <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase;">Energie & Kosten</div>
-                            <div style="font-size:24px; font-weight:800; color:#fbbf24;"><span class="val-kwh">${powerStr}</span> <small style="font-size:12px;">kWh</small></div>
-                            <div style="font-size:16px; font-weight:600; color:#4ade80;">~ <span class="val-cost">${costStr}</span> €</div>
-                            <div style="font-size:10px; opacity:0.7; margin-top:4px;"><span class="val-watts">${wattStr}</span> W aktuell</div>
-                            <button id="reset-energy-${activeGrow.id}" style="
-                                position:absolute; top:-10px; right:0; background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.1); 
-                                color:white; font-size:10px; padding:2px 6px; border-radius:4px; cursor:pointer;
-                            ">⚖️ Reset</button>
-                        </div>
-
-                        <div style="text-align:center; border-left:1px solid rgba(255,255,255,0.08); padding-left:20px; display: flex; flex-direction: column; justify-content: space-between;">
-                            <div>
-                                <div style="font-size:12px; color:var(--text-secondary); text-transform:uppercase; font-weight:700; letter-spacing:0.5px;">Klima-Score</div>
-                                <div class="score-gauge">
-                                    <svg viewBox="0 0 36 36">
-                                        <path class="bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                        <path class="fill" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
-                                              stroke="${healthColor}" 
-                                              stroke-dasharray="${vpdScore}, 100" />
-                                    </svg>
-                                    <div class="score-value" style="color:${healthColor}">${vpdScore}%</div>
-                                </div>
-                                <div class="status-label" style="background: ${healthColor}20; color: ${healthColor};">
-                                    ${vpdScore >= 90 ? '🏆 Perfekt' : (vpdScore >= 75 ? '✨ Optimal' : (vpdScore >= 50 ? '⚖️ Stabil' : '⚠️ Kritisch'))}
-                                </div>
-                            </div>
-                            <div style="background:rgba(0,0,0,0.2); border-radius:8px; padding:6px; margin-top:12px; border: 1px solid rgba(255,255,255,0.05);">
-                                <svg id="vpd-sparkline-${device.id}" width="100" height="40" viewBox="0 0 100 40"></svg>
-                                <div style="font-size:9px; opacity:0.5; margin-top:2px;">VPD Trend (24h)</div>
-                            </div>
-                        </div>
-
-                        <div style="display:flex; flex-direction:column; justify-content:center; gap:8px;">
-                            <button class="btn active" id="add-event-${activeGrow.id}">➕ Event</button>
-                            <button class="btn" id="edit-grow-${activeGrow.id}">📝 Notizen</button>
-                            <button class="btn" id="take-snapshot-${activeGrow.id}">📸 Foto</button>
-                            <button class="btn" style="background:rgba(239, 68, 68, 0.1); color:#ef4444; border:1px solid #ef4444;" id="stop-grow-${activeGrow.id}">🚀 Beenden</button>
+                        <div style="margin-left: auto; text-align: right;">
+                             <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:800; letter-spacing:1px;">Genetik</div>
+                             <div style="font-size:15px; font-weight:700; color:var(--primary-color);">${activeGrow.strain || 'Unbekannt'}</div>
                         </div>
                     </div>
-                    <div id="gallery-container-${activeGrow.id}" style="margin-top:20px; border-top:1px solid rgba(255,255,255,0.05); padding-top:15px;"></div>
+
+                    <div class="diary-active-grid" style="display:grid; grid-template-columns: 1.5fr 1fr 1fr; gap:32px;">
+                        <!-- Segment 1: Progress -->
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 16px; padding: 20px;">
+                            <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:900; letter-spacing:1.5px; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                                <span style="color:var(--primary-color);">●</span> ZEITSTRAHL
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
+                                <span style="font-size:32px; font-weight:950; color:#fff;">TAG ${days}</span>
+                                <span style="font-size:12px; font-weight:800; color:var(--text-secondary);">ZIEL: ${totalDays} TAGE</span>
+                            </div>
+                            <div style="height:12px; background:rgba(0,0,0,0.3); border-radius:6px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05); position:relative;">
+                                <div style="width:${progress}%; height:100%; background:linear-gradient(90deg, var(--accent-color), var(--primary-color)); box-shadow: 0 0 15px rgba(0, 242, 255, 0.3); transition: width 1s ease;"></div>
+                            </div>
+                            <div style="font-size:10px; color:var(--text-secondary); margin-top:10px; text-align:right; font-weight:800; letter-spacing:1px;">PROGRESS: ${Math.round(progress)}%</div>
+                        </div>
+
+                        <!-- Segment 2: Energy -->
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 16px; padding: 20px; text-align: center;">
+                            <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:900; letter-spacing:1.5px; margin-bottom:12px; display:flex; align-items:center; justify-content:center; gap:8px;">
+                                <span style="color:#fbbf24;">●</span> ENERGIE & KOSTEN
+                            </div>
+                            <div style="font-size:32px; font-weight:950; color: #fff;"><span class="val-kwh">${powerStr}</span><small style="font-size:12px; color:var(--text-secondary); margin-left:4px;">kWh</small></div>
+                            <div style="font-size:18px; font-weight:900; color:var(--accent-color); margin-top:4px;">~ <span class="val-cost">${costStr}</span> €</div>
+                            <div style="font-size:9px; color: var(--text-secondary); font-weight:800; margin-top:10px; text-transform:uppercase; display:flex; align-items:center; justify-content:center; gap:6px;">
+                                <span class="val-watts" style="color:#fff; background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px;">${wattStr}</span> WATT CURRENT LOAD
+                            </div>
+                        </div>
+
+                        <!-- Segment 3: Bios-Index -->
+                        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--glass-border); border-radius: 16px; padding: 20px; text-align: center; display:flex; flex-direction:column; align-items:center;">
+                            <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:900; letter-spacing:1.5px; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                                <span style="color:${healthColor};">●</span> BIOS-INDEX
+                            </div>
+                            <div class="score-gauge" style="width: 56px; height: 56px; margin-bottom: 12px;">
+                                <svg viewBox="0 0 36 36">
+                                    <path class="bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path class="fill" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" 
+                                          stroke="${healthColor}" 
+                                          stroke-dasharray="${vpdScore}, 100" />
+                                </svg>
+                                <div class="score-value" style="font-size:14px; color:#fff;">${vpdScore}%</div>
+                            </div>
+                            <div style="background:rgba(0,0,0,0.3); border-radius:8px; padding:4px 8px; border: 1px solid var(--glass-border);">
+                                <svg id="vpd-sparkline-${device.id}" width="80" height="25" viewBox="0 0 100 40"></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Alert Module -->
+                    <div id="ai-module-${activeGrow.id}"></div>
+
+                    <!-- Controls & Gallery Container -->
+                    <div style="margin-top:28px; display:grid; grid-template-columns: 200px 1fr; gap:20px; border-top:1px solid var(--glass-border); padding-top:24px;">
+                        <div style="display:flex; flex-direction:column; gap:10px;">
+                            <button class="btn active" style="justify-content:flex-start; font-size:11px;" id="add-event-${activeGrow.id}">📝 EVENT LOG</button>
+                            <button class="btn" style="justify-content:flex-start; font-size:11px;" id="edit-grow-${activeGrow.id}">📓 NOTIZ</button>
+                            <button class="btn" style="justify-content:flex-start; font-size:11px;" id="take-snapshot-${activeGrow.id}">📸 FOTO SCAN</button>
+                            <button class="btn" style="background:rgba(239, 68, 68, 0.08); color:#ef4444; border-color:rgba(239, 68, 68, 0.3); justify-content:flex-start; font-size:11px;" id="stop-grow-${activeGrow.id}">🔴 BEENDEN</button>
+                        </div>
+                        <div id="gallery-container-${activeGrow.id}" style="min-height:100px;"></div>
+                    </div>
+                `;
+EENDEN</button>
+                        </div>
+                    </div>
+                    <div id="gallery-container-${activeGrow.id}" style="margin-top:24px; border-top:1px solid var(--glass-border); padding-top:20px;"></div>
                 `;
                 section.appendChild(activeCard);
 
-                // AI Report Display (NEU)
+                // AI Report Display (Integrated into Dashboard)
                 if (activeGrow.ai_reports && activeGrow.ai_reports.length > 0) {
                     const latestReport = activeGrow.ai_reports[activeGrow.ai_reports.length - 1];
-                    const aiCard = document.createElement('div');
-                    aiCard.style.cssText = "background: rgba(168, 85, 247, 0.05); border: 1px solid rgba(168, 85, 247, 0.2); border-radius: 12px; padding: 16px; margin-bottom: 24px; position:relative;";
-                    aiCard.innerHTML = `
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
-                            <span style="font-size:18px;">🧠</span>
-                            <span style="font-weight:700; font-size:12px; text-transform:uppercase; color:#a855f7;">KI-Gesundheitsbericht (Zuletzt: ${new Date(latestReport.date).toLocaleDateString()})</span>
-                        </div>
-                        <div style="font-size:13px; line-height:1.6; color:var(--text-primary); white-space: pre-wrap;">${latestReport.analysis}</div>
-                    `;
-                    section.appendChild(aiCard);
+                    const aiModule = section.querySelector(`#ai-module-${activeGrow.id}`);
+                    if (aiModule) {
+                        aiModule.style.cssText = "background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 12px; padding: 16px; margin-top: 24px; position:relative; animation: slideUp 0.4s ease-out;";
+                        aiModule.innerHTML = `
+                            <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                                <span style="font-size:18px; filter: drop-shadow(0 0 8px #a855f7);">🧠</span>
+                                <span style="font-weight:900; font-size:11px; text-transform:uppercase; color:#a855f7; letter-spacing:1px;">KI-Gesundheitsbericht (Stand: ${new Date(latestReport.date).toLocaleDateString()})</span>
+                            </div>
+                            <div style="font-size:13px; line-height:1.6; color:var(--text-primary); font-weight:500;">${latestReport.analysis}</div>
+                        `;
+                    }
                 }
                 
                 setTimeout(() => {
@@ -2230,7 +2370,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             (device.grows || []).filter(g => g.status === 'finished').forEach(g => {
                 const cost = g.total_cost || '--';
                 const energy = g.total_kwh || g.consumed_kwh || 0;
-                const events = (g.events || []).map(e => `• ${e.type}`).join(', ');
+                const events = (g.events || []).map(e => `🔹 ${e.type}`).join(', ');
                 
                 const startDt = new Date(g.start_date);
                 const endDt = new Date(g.end_date || g.start_date);
@@ -2239,9 +2379,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                 let yieldHtml = '';
                 if (g.yield_grams && parseFloat(g.total_cost) > 0) {
                     const costPerGram = (parseFloat(g.total_cost) / parseFloat(g.yield_grams)).toFixed(2);
-                    yieldHtml = `<div style="margin-top:6px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.1); font-size:11px; color:#c084fc; line-height: 1.4;">⚖️ ${g.yield_grams}g<br/><span style="color:#a855f7;">(${costPerGram} €/g)</span></div>`;
+                    yieldHtml = `<div style="margin-top:6px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.1); font-size:11px; color:#c084fc; line-height: 1.4;">⚖️ Ertrag: ${g.yield_grams}g<br/><span style="color:#a855f7;">(${costPerGram} €/g)</span></div>`;
                 } else if (g.yield_grams) {
-                    yieldHtml = `<div style="margin-top:6px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.1); font-size:11px; color:#c084fc;">⚖️ ${g.yield_grams}g</div>`;
+                    yieldHtml = `<div style="margin-top:6px; padding-top:6px; border-top:1px dashed rgba(255,255,255,0.1); font-size:11px; color:#c084fc;">⚖️ Ertrag: ${g.yield_grams}g</div>`;
                 }
 
                 rows += `
@@ -2259,9 +2399,9 @@ class LocalGrowBoxPanel extends HTMLElement {
                             ${yieldHtml}
                         </td>
                         <td style="padding:12px; text-align:right;">
-                            ${g.photos && g.photos.length > 0 ? `<button class="btn" style="width:auto; padding:4px 10px; font-size:10px; display:inline-flex; margin-right:8px;" onclick='this.parentElement.parentElement.parentElement.querySelector(".row-gallery-${g.id}").style.display="table-row"; this.style.display="none";'>📸 ${g.photos.length}</button>` : ''}
-                            <button class="btn" style="padding:4px 8px; font-size:10px;" id="del-grow-${g.id}">🗑️</button>
-                            <button class="btn" style="padding:4px 8px; font-size:10px; margin-left:4px;" id="edit-hist-${g.id}">📝</button>
+                            ${g.photos && g.photos.length > 0 ? `<button class="btn" style="width:auto; padding:4px 10px; font-size:10px; display:inline-flex; margin-right:8px;" onclick='this.parentElement.parentElement.parentElement.querySelector(".row-gallery-${g.id}").style.display="table-row"; this.style.display="none";'>🖼️ ${g.photos.length}</button>` : ''}
+                            <button class="btn" style="padding:4px 8px; font-size:10px;" id="del-grow-${g.id}">LÖSCHEN</button>
+                            <button class="btn" style="padding:4px 8px; font-size:10px; margin-left:4px;" id="edit-hist-${g.id}">NOTE</button>
                         </td>
                     </tr>
                     <tr class="row-gallery-${g.id}" style="display:none; border-bottom: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.3);">
@@ -2379,7 +2519,7 @@ class LocalGrowBoxPanel extends HTMLElement {
     }
 
     async _addEventDialog(entryId, growId) {
-        const types = ["Topping", "Dünger", "Wasser", "LST", "Defoliation", "Umgetopft", "Sonstiges"];
+        const types = ["Topping", "Dünger", "Wasser", "LST", "Entlaubung", "Umgetopft", "Sonstiges"];
         const type = prompt(`Event Typ wählen:\n${types.join(", ")}`, "Topping");
         if (!type) return;
         const note = prompt("Zusatz-Notiz (optional):", "");
@@ -2557,7 +2697,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 }
             },
             {
-                name: "🌸 Photoperiodisch (Classic)",
+                name: "🌿 Photoperiodisch (Classic)",
                 desc: "Der Klassiker: 18/6 in der Vegi, automatischer Switch auf 12/12 in der Blüte inkl. VPD-Anpassung.",
                 phases: {
                     seedling: { target_temp: 23, target_humidity: 70, vpd_range: [0.4, 0.8], light_hours: 18, target_moisture: 70 },
@@ -2566,7 +2706,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                 }
             },
             {
-                name: "❄️ Eco-Growing (Low-Temp)",
+                name: "❄️ Eco-Growing (Niedrig-Temp)",
                 desc: "Energiesparend bei kühleren Temperaturen. Reduzierte Zielwerte für Winter-Grows.",
                 phases: {
                     seedling: { target_temp: 21, target_humidity: 65, vpd_range: [0.4, 1.0], light_hours: 18, target_moisture: 65 },
@@ -2581,89 +2721,94 @@ class LocalGrowBoxPanel extends HTMLElement {
         recipesDiv.style.margin = '0 auto';
 
         recipesDiv.innerHTML = `
-            <div style="background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(56, 189, 248, 0.05) 100%); border: 1px solid rgba(56, 189, 248, 0.2); border-radius: 12px; padding: 24px; margin-bottom: 32px; text-align: center;">
-                <h2 style="margin: 0 0 8px 0; color: #38bdf8;">📋 Grow-Rezepte</h2>
-                <p style="color: var(--text-secondary); margin: 0; font-size: 14px;">Wähle ein Profil aus oder importiere Einstellungen aus der Community.</p>
+            <div style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 20px; padding: 40px; margin-bottom: 40px; text-align: center; position: relative; overflow: hidden; backdrop-filter: blur(20px);">
+                <div style="position: absolute; top: 0; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--primary-color), transparent); opacity: 0.5;"></div>
+                <h2 style="margin: 0 0 12px 0; color: var(--primary-color); font-weight: 900; text-transform: uppercase; letter-spacing: 2px;">🚀 Grow Engine Profile</h2>
+                <p style="color: var(--text-secondary); margin: 0; font-size: 14px; font-weight: 500;">Wähle ein vorkonfiguriertes biologisches Profil oder importiere Community-Einstellungen.</p>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 40px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; margin-bottom: 48px;">
                 ${buildInRecipes.map((r, idx) => `
-                    <div class="card" style="display: flex; flex-direction: column;">
-                        <div style="padding: 20px; flex: 1;">
-                            <h3 style="margin: 0 0 10px 0; font-size: 18px; color: var(--primary-color);">${r.name}</h3>
-                            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin-bottom: 16px;">${r.desc}</p>
+                    <div class="card" style="display: flex; flex-direction: column; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 24px; overflow: hidden; transition: transform 0.3s ease, border-color 0.3s ease;">
+                        <div style="padding: 24px; flex: 1;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 900; color: #fff; letter-spacing: -0.5px;">${r.name}</h3>
+                            <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 24px; min-height: 60px;">${r.desc}</p>
                             
-                            <div style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 12px; font-size: 11px;">
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px; opacity: 0.7;">
-                                    <span>Phase</span>
-                                    <span>Licht / Temp / RLF / Boden</span>
+                            <div style="background: rgba(0, 242, 255, 0.03); border: 1px solid rgba(0, 242, 255, 0.1); border-radius: 16px; padding: 16px; font-size: 11px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 12px; opacity: 0.5; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(0, 242, 255, 0.1); padding-bottom: 8px;">
+                                    <span>Lifecycle</span>
+                                    <span>Parameters</span>
                                 </div>
                                 ${Object.keys(r.phases).map(p => `
-                                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-top: 1px solid rgba(255,255,255,0.05);">
-                                        <span style="text-transform: capitalize;">${p}</span>
-                                        <span style="font-weight: 600;">${r.phases[p].light_hours}h | ${r.phases[p].target_temp}° | ${r.phases[p].target_humidity}% | ${r.phases[p].target_moisture}%</span>
+                                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.03);">
+                                        <span style="text-transform: uppercase; font-weight: 800; color: var(--primary-color); font-size: 10px; letter-spacing: 0.5px;">${p}</span>
+                                        <span style="font-weight: 700; color: #fff;">${r.phases[p].light_hours}h | ${r.phases[p].target_temp}°C | ${r.phases[p].target_humidity}%</span>
                                     </div>
                                 `).join('')}
                             </div>
                         </div>
-                        <div style="padding: 16px; border-top: 1px solid rgba(255,255,255,0.05); background: rgba(0,0,0,0.1);">
-                            <select id="recipe-box-${idx}" style="margin-bottom: 10px;">
+                        <div style="padding: 24px; border-top: 1px solid var(--glass-border); background: rgba(0,0,0,0.1); display: flex; flex-direction: column; gap: 12px;">
+                            <select id="recipe-box-${idx}" style="background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 12px; font-weight: 700; font-size: 13px;">
                                 ${this._devices.map(d => `<option value="${d.entryId}">${d.name}</option>`).join('')}
                             </select>
-                            <button type="button" class="btn active" style="width: 100%;" id="apply-recipe-${idx}">Rezept anwenden</button>
+                            <button type="button" class="btn active" style="width: 100%; height: 44px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;" id="apply-recipe-${idx}">PROFIL AKTIVIEREN</button>
                         </div>
                     </div>
                 `).join('')}
             </div>
 
-            <div class="settings-section">
-                <div class="section-title">🤝 Community & Sharing</div>
-                <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px;">
+            <div class="settings-section" style="background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 24px; padding: 32px; backdrop-filter: blur(10px);">
+                <div class="section-title" style="border-bottom: 1px solid var(--glass-border); padding-bottom: 16px; margin-bottom: 32px; color: var(--accent-color); font-weight: 900; letter-spacing: 1px;">🌍 Community Hub & Import</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 40px;">
                     <div>
-                        <h4 style="margin: 0 0 12px 0;">Rezept importieren</h4>
-                        <div style="background: rgba(56, 189, 248, 0.05); border: 1px dashed rgba(56, 189, 248, 0.3); border-radius: 8px; padding: 16px; margin-bottom: 12px; text-align: center;">
+                        <h4 style="margin: 0 0 16px 0; font-weight: 800; text-transform: uppercase; color: #fff; font-size: 14px; display: flex; align-items: center; gap: 10px;">
+                            <span style="color: var(--primary-color);">01</span> Profil Import
+                        </h4>
+                        <div style="background: rgba(0, 242, 255, 0.02); border: 1px dashed rgba(0, 242, 255, 0.3); border-radius: 16px; padding: 32px; margin-bottom: 16px; text-align: center;">
                             <input type="file" id="recipe-file-input" accept=".json,.growbox" style="display: none;">
-                            <button type="button" class="btn" id="btn-upload-recipe" style="width: auto; padding: 8px 20px; background: rgba(56, 189, 248, 0.2);">📂 Datei auswählen</button>
-                            <div id="file-name-display" style="font-size: 11px; margin-top: 8px; color: var(--text-secondary); height: 14px;">Keine Datei ausgewählt</div>
+                            <button type="button" class="btn" id="btn-upload-recipe" style="width: auto; padding: 10px 24px; font-weight: 800;">REZEPT-DATEI WÄHLEN (.growbox)</button>
+                            <div id="file-name-display" style="font-size: 11px; margin-top: 12px; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">KEIN ASSET GELADEN</div>
                         </div>
-                        <p style="font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; opacity: 0.7;">Oder JSON-Code direkt einfügen:</p>
-                        <textarea id="import-area" style="width: 100%; height: 80px; background: #0b1121; border: 1px solid rgba(255,255,255,0.1); color: #4ade80; border-radius: 8px; padding: 12px; font-family: monospace; font-size: 10px; resize: none; margin-bottom: 12px;" placeholder='{"name": "Mein Setup", "phases": ...}'></textarea>
-                        <div style="display: flex; gap: 12px;">
-                            <select id="import-box" style="flex: 1;">
+                        <p style="font-size: 10px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6;">Direct Matrix Input (JSON):</p>
+                        <textarea id="import-area" style="width: 100%; height: 100px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: var(--accent-color); border-radius: 12px; padding: 16px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 11px; resize: none; margin-bottom: 16px;" placeholder='{"name": "Neural_Grow_v1", "phases": ...}'></textarea>
+                        <div style="display: flex; gap: 16px;">
+                            <select id="import-box" style="flex: 1; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 12px; font-weight: 700;">
                                 ${this._devices.map(d => `<option value="${d.entryId}">${d.name}</option>`).join('')}
                             </select>
-                            <button type="button" class="btn active" id="btn-import-recipe" style="width: auto; padding: 0 24px;">Rezept aktivieren</button>
+                            <button type="button" class="btn active" id="btn-import-recipe" style="width: auto; padding: 0 24px; font-weight: 900;">INJECT</button>
                         </div>
                     </div>
-                    <div style="border-left: 1px dashed rgba(255,255,255,0.1); padding-left: 32px;">
-                        <h4 style="margin: 0 0 12px 0;">Teilen & Exportieren</h4>
-                        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Erstelle eine Datei oder einen Code aus deinen aktuellen Einstellungen.</p>
-                        <select id="export-box" style="margin-bottom: 12px;">
+                    <div style="border-left: 1px solid var(--glass-border); padding-left: 40px;">
+                        <h4 style="margin: 0 0 16px 0; font-weight: 800; text-transform: uppercase; color: #fff; font-size: 14px; display: flex; align-items: center; gap: 10px;">
+                            <span style="color: var(--accent-color);">02</span> Export & Teilen
+                        </h4>
+                        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6;">Generiere eine tragbare Konfiguration aus deinem aktuellen Setup.</p>
+                        <select id="export-box" style="width: 100%; margin-bottom: 16px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 12px; font-weight: 700;">
                             ${this._devices.map(d => `<option value="${d.entryId}">${d.name}</option>`).join('')}
                         </select>
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <button type="button" class="btn active" id="btn-download-recipe" style="width: 100%;">💾 Als Datei speichern (.json)</button>
-                            <button type="button" class="btn" id="btn-export-recipe" style="width: 100%; border: 1px solid rgba(255,255,255,0.1); background: transparent;">📋 Nur Code anzeigen</button>
+                        <div style="display: flex; flex-direction: column; gap: 12px;">
+                            <button type="button" class="btn active" id="btn-download-recipe" style="width: 100%; font-weight: 900;">DATEI SPEICHERN (.growbox)</button>
+                            <button type="button" class="btn" id="btn-export-recipe" style="width: 100%; border: 1px solid var(--glass-border); background: transparent; font-weight: 800;">CODE KOPIEREN</button>
                         </div>
-                        <div id="export-result" style="display: none; margin-top: 16px;">
-                            <p style="font-size: 11px; margin-bottom: 4px; color: #4ade80;">Fertig! Kopiere diesen Code:</p>
-                            <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 6px; font-size: 10px; font-family: monospace; word-break: break-all; opacity: 0.8; border: 1px solid rgba(74, 222, 128, 0.2);" id="export-code"></div>
+                        <div id="export-result" style="display: none; margin-top: 24px; animation: slideUp 0.3s ease;">
+                            <p style="font-size: 11px; margin-bottom: 8px; color: var(--accent-color); font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Ready! Copy operational matrix:</p>
+                            <div style="background: rgba(0,0,0,0.4); padding: 16px; border-radius: 12px; font-size: 10px; font-family: monospace; word-break: break-all; color: var(--text-primary); border: 1px solid rgba(0, 255, 65, 0.2); max-height: 150px; overflow-y: auto;" id="export-code"></div>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <div style="margin-top: 24px; padding: 16px; background: rgba(56, 189, 248, 0.05); border-left: 3px solid var(--primary-color); border-radius: 4px;">
-                <h4 style="margin: 0 0 8px 0; color: var(--primary-color);">💡 Wie funktionieren Rezepte?</h4>
-                <p style="margin: 0 0 8px 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary);">
-                    Rezepte bestehen aus vordefinierten Zielwerten für jede deiner Wachstumsphasen (Keimling, Wachstum, Blüte usw.). 
-                    Wenn du ein Rezept auf eine Grow Box anwendest, werden die <strong>Zielwerte (Temperatur, Luftfeuchtigkeit, Bodenfeuchte und Lichtzyklus)</strong> 
-                    dieser Box <strong>sofort überschrieben</strong> und im Hintergrund fest gespeichert. 
+            <div style="margin-top: 40px; padding: 24px; background: rgba(0, 242, 255, 0.05); border-left: 4px solid var(--primary-color); border-radius: 16px; backdrop-filter: blur(5px);">
+                <h4 style="margin: 0 0 12px 0; color: var(--primary-color); font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">SYSTEM-KERN: BETRIEBSMODI</h4>
+                <p style="margin: 0 0 12px 0; font-size: 13px; line-height: 1.6; color: var(--text-secondary); font-weight: 500;">
+                    Engine-Profile sind biologische Anweisungssätze für deine Grow-Umgebung. Sie definieren die optimalen Zielwerte für jede Lebensphase. 
+                    Das Aktivieren eines Profils synchronisiert sofort alle Sensoren mit diesen Parametern.
                 </p>
-                <p style="margin: 0; font-size: 13px; line-height: 1.5; color: var(--text-secondary);">
-                    Die Box steuert ab diesem Zeitpunkt ihre angeschlossenen Geräte (Abluft, Befeuchter, Pumpe, Lampe) automatisch so, dass sie versuchen, diese neuen Zielwerte zu erreichen und zu halten. 
-                    Mithilfe der Export-Funktion kannst du dein aktuelles Klima-Setup kopieren und ganz einfach mit anderen Züchtern austauschen.
-                </p>
+                <div style="display: flex; gap: 20px; font-size: 11px; font-weight: 800; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8;">
+                    <span>🛡️ BIOS-SYNC</span>
+                    <span>🌡️ VPD-KALIBRIERUNG</span>
+                    <span>⏰ LICHT-AUTOMATIK</span>
+                </div>
             </div>
         `;
 
@@ -2688,14 +2833,14 @@ class LocalGrowBoxPanel extends HTMLElement {
         fileInput.onchange = (e) => {
             const file = e.target.files[0];
             if (!file) return;
-            fileNameDisplay.innerText = `📄 ${file.name}`;
+            fileNameDisplay.innerText = `📂 ${file.name}`;
             
             const reader = new FileReader();
             reader.onload = (event) => {
                 try {
                     uploadedRecipe = JSON.parse(event.target.result);
                     // Autofill name if possible
-                    if (uploadedRecipe.name) fileNameDisplay.innerText = `✅ ${file.name} (Rezept: ${uploadedRecipe.name})`;
+                    if (uploadedRecipe.name) fileNameDisplay.innerText = `📄 ${file.name} (Rezept: ${uploadedRecipe.name})`;
                 } catch (err) {
                     alert("Konnte Datei nicht lesen. Ungültiges JSON-Format.");
                     fileInput.value = "";
@@ -2792,7 +2937,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             });
 
             const toast = this.shadowRoot.getElementById('save-toast');
-            toast.innerText = `✅ Rezept "${recipe.name}" aktiviert!`;
+            toast.innerText = `🚀 Rezept "${recipe.name}" aktiviert!`;
             toast.classList.add('visible');
             setTimeout(() => toast.classList.remove('visible'), 3000);
             
@@ -2805,28 +2950,31 @@ class LocalGrowBoxPanel extends HTMLElement {
     }
     _renderPhotoGallery(container, device, grow) {
         if (!grow.photos || grow.photos.length === 0) {
-            container.innerHTML = '<div style="font-size:11px; color:var(--text-secondary); opacity:0.6;">Noch keine Fotos für diesen Grow vorhanden.</div>';
+            container.innerHTML = '<div style="font-size:11px; color:var(--text-secondary); opacity:0.6; padding: 20px; text-align: center; border: 1px dashed var(--glass-border); border-radius: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Initialer Asset-Scan: Keine Bilder gefunden</div>';
             return;
         }
 
         const photosStr = JSON.stringify(grow.photos).replace(/'/g, "\\'");
 
         container.innerHTML = `
-            <div style="font-size:11px; color:var(--text-secondary); margin-bottom:10px; text-transform:uppercase; font-weight:700; letter-spacing:0.5px; display: flex; justify-content: space-between; align-items:center;">
-                <span>Foto-Chronik</span>
-                <button class="btn" style="padding:4px 10px; font-size:10px; width:auto; border-radius:4px;" onclick='this.getRootNode().host._playTimelapse("${grow.id}", ${photosStr})'>
-                    🎞️ Zeitraffer ansehen
+            <div style="margin-bottom:16px; display: flex; justify-content: space-between; align-items:center; flex-wrap: wrap; gap: 10px;">
+                <div style="font-size:10px; color:var(--text-secondary); text-transform:uppercase; font-weight:950; letter-spacing:1px; display: flex; align-items: center; gap: 8px;">
+                    <span style="color:var(--primary-color);">●</span> ASSET-ZEITSTRAHL
+                </div>
+                <button class="btn" style="padding:6px 14px; font-size:10px; width:auto; border-radius:10px; background: rgba(0, 242, 255, 0.05); border: 1px solid var(--primary-color); display: flex; align-items: center; gap: 6px;" onclick='this.getRootNode().host._playTimelapse("${grow.id}", ${photosStr})'>
+                    🎬 ZEITRAFFER
                 </button>
             </div>
-            <div style="display:flex; gap:12px; overflow-x:auto; padding-bottom:8px; scrollbar-width: thin;">
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap:12px; max-height: 200px; overflow-y:auto; padding: 4px; scrollbar-width: thin;">
                 ${grow.photos.map(photo => `
-                    <div style="flex:0 0 100px; height:75px; border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.1); cursor:pointer; transition:transform 0.2s; position:relative;" 
+                    <div class="photo-thumb" style="aspect-ratio: 4/3; border-radius:12px; overflow:hidden; border:1.5px solid var(--glass-border); cursor:pointer; transition:all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position:relative; box-shadow: 0 4px 6px rgba(0,0,0,0.2);" 
                          onclick='if(event.target.tagName !== "BUTTON") { const modal=this.getRootNode().host.shadowRoot.getElementById("camera-modal"); 
                                  modal.querySelector("img").src="/local/local_grow_box_images/grows/${grow.id}/${photo}"; 
                                  modal.querySelector("#modal-title").innerText="${photo}";
                                  modal.classList.add("visible"); }'>
-                        <img src="/local/local_grow_box_images/grows/${grow.id}/${photo}" style="width:100%; height:100%; object-fit:cover;">
-                        <button style="position:absolute; bottom:4px; right:4px; background:rgba(168, 85, 247, 0.8); border:none; border-radius:4px; color:white; font-size:10px; padding:2px 4px; cursor:pointer;" 
+                        <img src="/local/local_grow_box_images/grows/${grow.id}/${photo}" style="width:100%; height:100%; object-fit:cover; transition: transform 0.3s ease;">
+                        <button style="position:absolute; bottom:6px; right:6px; background:rgba(168, 85, 247, 0.9); border:none; border-radius:8px; color:white; font-size:12px; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; cursor:pointer; box-shadow: 0 0 10px rgba(168, 85, 247, 0.4); border: 1px solid rgba(255,255,255,0.2);" 
+                                title="Starte KI-Gesundheitsbericht"
                                 onclick='event.stopPropagation(); this.getRootNode().host._runAICheck("${device.entryId}", "${grow.id}", "${photo}")'>🧠</button>
                     </div>
                 `).join('')}
@@ -2865,7 +3013,7 @@ class LocalGrowBoxPanel extends HTMLElement {
              nextImg.onload = () => {
                  if (!isPlaying) return;
                  img.src = nextImg.src;
-                 title.innerHTML = `🎞️ Zeitraffer (Tag ${index+1}/${photos.length}) <br/> <span style="font-size:12px;opacity:0.7;">${photos[index]}</span>`;
+                 title.innerHTML = `🎬 Zeitraffer (Tag ${index+1}/${photos.length}) <br/> <span style="font-size:12px;opacity:0.7;">${photos[index]}</span>`;
                  index++;
                  if (index < photos.length) {
                      setTimeout(playNext, 400); // 400ms delay per frame
@@ -2930,3 +3078,4 @@ class LocalGrowBoxPanel extends HTMLElement {
 }
 
 customElements.define('local-grow-box-panel', LocalGrowBoxPanel);
+

@@ -40,7 +40,7 @@ from .const import (
     CONF_ENERGY_SENSOR, CONF_POWER_SENSOR, CONF_ELECTRIC_PRICE,
     CONF_AI_PROVIDER, CONF_AI_API_KEY, CONF_AI_ENABLED,
     AI_PROVIDER_NONE, AI_PROVIDER_OPENAI, AI_PROVIDER_GEMINI,
-    CONF_ACTIVE_RECIPE,
+    CONF_ACTIVE_RECIPE, CONF_TANK_LEVEL_SENSOR,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -744,6 +744,21 @@ class GrowBoxManager:
         is_on = pump_state.state == "on"
         duration = self._get_config_value(CONF_PUMP_DURATION, DEFAULT_PUMP_DURATION, float)
         
+        # 1. Sync Tank Level from External Sensor (if available)
+        level_sensor = self.config.get(CONF_TANK_LEVEL_SENSOR)
+        if level_sensor:
+            state = self._get_safe_state(level_sensor)
+            if state and state.state not in ["unavailable", "unknown"]:
+                try:
+                    # Expecting 0-100%
+                    pct = self._extract_float(state.state)
+                    cap = float(self.tank_state.get("capacity_ml", 10000))
+                    self.tank_state["current_ml"] = (pct / 100.0) * cap
+                except ValueError:
+                    pass
+
+        curr_ml = float(self.tank_state.get("current_ml", 10000))
+
         if is_on:
             # Start tracking if not already
             if not self.pump_start_time:
@@ -758,14 +773,14 @@ class GrowBoxManager:
                  self.last_pump_stop_time = now
                  self.pump_start_time = None
                  
-                 if self.tank_state.get("enabled"):
+                 # Manual deduction only if NO external sensor is used
+                 if self.tank_state.get("enabled") and not level_sensor:
                      consumed = elapsed * float(self.tank_state.get("flow_ml_s", 20))
-                     curr = float(self.tank_state.get("current_ml", 10000))
                      cap = float(self.tank_state.get("capacity_ml", 10000))
-                     new_ml = max(0, curr - consumed)
+                     new_ml = max(0, curr_ml - consumed)
                      
                      # Only alert once when it crosses the 10% threshold, not continuously
-                     if curr > (cap * 0.1) and new_ml <= (cap * 0.1):
+                     if curr_ml > (cap * 0.1) and new_ml <= (cap * 0.1):
                          self.add_log(f"⚠️ ACHTUNG: Wassertank fast leer! ({int(new_ml)}ml übrig)")
                          
                      self.tank_state["current_ml"] = new_ml
@@ -774,6 +789,13 @@ class GrowBoxManager:
             # Pump is OFF
             self.pump_start_time = None
             
+            # --- PUMP PROTECTION / LOCK ---
+            # Block starting if tank is empty
+            if self.tank_state.get("enabled") and curr_ml <= 0:
+                 # If we detect some logic trying to start it (moisture check or user), we log it
+                 # (Manual toggle in frontend might still trigger, but logic won't)
+                 return
+
             # Soak Time Check (15 min)
             if self.last_pump_stop_time:
                  time_off = (now - self.last_pump_stop_time).total_seconds()
@@ -793,6 +815,11 @@ class GrowBoxManager:
                 val = self._extract_float(state.state)
                 target = self._get_recipe_value(self.current_phase, "target_moisture", self._get_config_value(CONF_TARGET_MOISTURE, DEFAULT_TARGET_MOISTURE, float))
                 if val < target:
+                     # Final check before firing: Is tank empty?
+                     if self.tank_state.get("enabled") and curr_ml <= 0:
+                          self.add_log("Pumpe gesperrt - Wassertank leer!")
+                          return
+
                      _LOGGER.info("Moisture low (%.1f < %.1f). Starting Pump.", val, target)
                      self.add_log(f"Pumpe eingeschaltet (Bodenfeuchte {val}% < {target}%)")
                      await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": pump_entity})

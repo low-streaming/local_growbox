@@ -30,11 +30,57 @@ async def async_setup_entry(
         manager = hass.data[DOMAIN][entry.entry_id]
         async_add_entities([
             GrowBoxVPDSensor(hass, manager, entry.entry_id),
-            GrowBoxDaysInPhaseSensor(hass, manager, entry.entry_id)
+            GrowBoxDaysInPhaseSensor(hass, manager, entry.entry_id),
+            GrowBoxTankLevelSensor(hass, manager, entry.entry_id)
         ])
         _LOGGER.debug("Sensors added successfully")
     except Exception as e:
         _LOGGER.error("Error setting up sensors: %s", e)
+
+class GrowBoxTankLevelSensor(SensorEntity):
+    """Representation of the Tank Level Sensor."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Water Tank Level"
+    _attr_native_unit_of_measurement = "%"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:water-percent"
+    _attr_should_poll = False
+
+    def __init__(self, hass, manager, entry_id):
+        """Initialize the sensor."""
+        self.hass = hass
+        self.manager = manager
+        self._entry_id = entry_id
+        self._attr_unique_id = f"{entry_id}_tank_level"
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device info."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, self._entry_id)},
+            name=self.manager.entry.title,
+            manufacturer="Local Grow Box",
+            model="Grow Box Controller",
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the value of the sensor in percent."""
+        if not self.manager.tank_state.get("enabled"):
+            return None
+        
+        curr = float(self.manager.tank_state.get("current_ml", 0))
+        cap = float(self.manager.tank_state.get("capacity_ml", 10000))
+        if cap <= 0:
+            return 0
+        return round((curr / cap) * 100, 1)
+
+    async def async_added_to_hass(self) -> None:
+        """Register callbacks."""
+        self.async_on_remove(
+            self.manager.async_register_update_callback(self.async_write_ha_state)
+        )
 
 class GrowBoxVPDSensor(SensorEntity):
     """Representation of a VPD Sensor."""
