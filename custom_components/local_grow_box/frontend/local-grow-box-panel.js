@@ -765,6 +765,35 @@ class LocalGrowBoxPanel extends HTMLElement {
                         height: 32px !important;
                         font-size: 16px !important;
                     }
+                    /* Phase & Settings Mobile Adjustments */
+                    .phase-row {
+                        padding: 12px 16px !important;
+                        gap: 12px !important;
+                        flex-wrap: wrap;
+                    }
+                    .phase-input-box {
+                        margin-left: auto;
+                        padding: 4px 12px !important;
+                    }
+                    .phase-input-box input {
+                        font-size: 16px !important;
+                        width: 50px !important;
+                    }
+                    .form-grid {
+                        grid-template-columns: 1fr !important;
+                    }
+                    .form-group label {
+                        font-size: 11px !important;
+                    }
+                    .section-title {
+                        font-size: 16px !important;
+                        flex-direction: column;
+                        align-items: flex-start !important;
+                        gap: 10px;
+                    }
+                    .section-title h2 {
+                        font-size: clamp(16px, 5vw, 22px) !important;
+                    }
                     .btn {
                         padding: 14px !important; /* Larger touch targets */
                     }
@@ -1364,9 +1393,6 @@ class LocalGrowBoxPanel extends HTMLElement {
             helpBlock.innerHTML = `
                 <h4 style="margin:0 0 8px 0; color:#38bdf8;">Willkommen in der Geräte-Konfiguration!</h4>
                 <p style="margin:0; font-size:13px; color:var(--text-secondary); line-height:1.5;">Hier verknüpfst du deine Home Assistant Geräte (Sensoren & smarte Steckdosen) mit der Grow Box. Die eigentlichen Zielwerte für Temperatur und Luftfeuchtigkeit brauchst du hier nicht zwingend einzugeben – diese steuerst du viel bequemer über den Reiter <strong>Rezepte</strong>!</p>
-                <button class="btn" style="width: 100%; max-width: 400px; margin-top: 12px;" onclick="this.getRootNode().host.shadowRoot.getElementById('grow-import-file').click()">
-                    REZEPT-DATEI WÄHLEN (.GROWBOX)
-                </button>
             `;
             section.appendChild(helpBlock);
 
@@ -1654,7 +1680,7 @@ class LocalGrowBoxPanel extends HTMLElement {
             section.style.background = 'transparent';
 
             const renderPhaseRow = (label, sub, icon, configKey, val) => `
-                <div style="
+                <div class="phase-row" style="
                     display: flex; 
                     align-items: center; 
                     justify-content: space-between; 
@@ -1667,18 +1693,18 @@ class LocalGrowBoxPanel extends HTMLElement {
                     backdrop-filter: blur(10px);
                 " onmouseover="this.style.borderColor='var(--primary-color)'; this.style.transform='translateX(5px)'; this.style.background='rgba(0, 242, 255, 0.03)'" onmouseout="this.style.borderColor='var(--glass-border)'; this.style.transform='translateX(0)'; this.style.background='var(--glass-bg)'">
                     <div style="display:flex; align-items:center; gap:20px;">
-                        <div style="width: 48px; height: 48px; background: rgba(0,0,0,0.2); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:24px; border: 1.5px solid var(--glass-border);">
+                        <div style="width: 44px; height: 44px; background: rgba(0,0,0,0.2); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; border: 1.5px solid var(--glass-border); flex-shrink: 0;">
                             ${icon}
                         </div>
                         <div>
                             <div style="font-size:11px; color:var(--primary-color); font-weight:900; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px;">${label}</div>
-                            <div style="font-size:13px; color:var(--text-secondary); font-weight: 500;">${sub}</div>
+                            <div style="font-size:12px; color:var(--text-secondary); font-weight: 500;">${sub}</div>
                         </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:16px; background: rgba(0,0,0,0.3); padding:8px 16px; border-radius:12px; border:1.5px solid var(--glass-border);">
+                    <div class="phase-input-box" style="display:flex; align-items:center; gap:12px; background: rgba(0,0,0,0.3); padding:8px 16px; border-radius:12px; border:1.5px solid var(--glass-border);">
                         <input type="number" step="0.5" value="${val}" data-key="${configKey}"
                             style="width:70px; text-align:center; font-weight:900; font-size:20px; color:#fff; background:transparent; border:none; border-bottom:2.5px solid var(--primary-color); border-radius:0; padding:4px;">
-                        <span style="font-size:10px; font-weight:800; color: var(--text-secondary); text-transform:uppercase; letter-spacing:1px;">Stunden</span>
+                        <span style="font-size:10px; font-weight:800; color: var(--text-secondary); text-transform:uppercase; letter-spacing:1px;">Std</span>
                     </div>
                 </div>
             `;
@@ -1689,7 +1715,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         <div style="display: flex; align-items: center; gap: 16px;">
                             <div style="font-size: 32px; filter: drop-shadow(0 0 10px var(--primary-color));">⏱️</div>
                             <div>
-                                <h2 style="margin:0; font-size:24px; color:#fff; font-weight: 900; text-transform: uppercase; letter-spacing: -0.5px;">${device.name} Einstellungen</h2>
+                                <h2 style="margin:0; font-size:clamp(18px, 5vw, 24px); color:#fff; font-weight: 900; text-transform: uppercase; letter-spacing: -0.5px; line-height: 1.2;">${device.name} Einstellungen</h2>
                                 <p style="color:var(--text-secondary); margin:4px 0 0 0; font-size:12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Konfiguration der Lichtzyklus-Architektur</p>
                             </div>
                         </div>
@@ -1863,7 +1889,8 @@ class LocalGrowBoxPanel extends HTMLElement {
             outerWrapper.style.cssText = "max-width: 900px; margin: 0 auto; padding: 20px;";
             
             const header = document.createElement('div');
-            header.style.cssText = "padding:24px 32px; background: var(--glass-bg); border-radius: 24px; margin-bottom: 32px; display: flex; align-items: center; justify-content: space-between; border: 1.5px solid var(--glass-border); backdrop-filter: blur(10px); position: relative; overflow: hidden;";
+            header.className = 'header';
+            header.style.cssText = "background: var(--glass-bg); border-radius: 24px; margin-bottom: 32px; border: 1.5px solid var(--glass-border); backdrop-filter: blur(10px); position: relative; overflow: hidden; height: auto;";
             header.innerHTML = `
                 <div style="display:flex; align-items:center; gap:20px;">
                     <div style="width: 48px; height: 48px; background: rgba(0, 242, 255, 0.1); border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid rgba(0, 242, 255, 0.2);">📋</div>
