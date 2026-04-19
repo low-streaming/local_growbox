@@ -139,6 +139,7 @@ class LocalGrowBoxPanel extends HTMLElement {
                         pump: findEntity('_water_pump'),
                         humidifier: findEntity('_humidifier_switch'),
                         days: findEntity('_days_in_phase'),
+                        tank: findEntity('_tank_level'),
                     }
                 };
             }));
@@ -1136,26 +1137,43 @@ class LocalGrowBoxPanel extends HTMLElement {
                                 <span>Tank-Status</span>
                                 <span id="tank-config-${device.id}" style="cursor:pointer; color: var(--primary-color); border-bottom: 1px dashed currentColor; padding-bottom: 2px;">
                                     ${device.options.tank_level_sensor ? 'Sensor aktiv' : (device.tankData?.enabled ? 'Einstellungen' : 'Aktivieren')}
-                                </span>
+                                 </span>
                             </div>
-                            ${(device.tankData?.enabled || device.options.tank_level_sensor) ? `
-                                <div style="height:12px; background:rgba(0,0,0,0.4); border-radius:6px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05); position:relative;">
-                                    <div style="height:100%; width:${Math.min(100, Math.max(0, (device.tankData.current_ml / device.tankData.capacity_ml)*100))}%; background: ${device.tankData.current_ml <= 0 ? 'linear-gradient(90deg, #ef4444, #f87171, #ef4444)' : 'linear-gradient(90deg, #3b82f6, var(--primary-color), #3b82f6)'}; background-size: 200% 100%; box-shadow: ${device.tankData.current_ml <= 0 ? '0 0 15px rgba(239, 68, 68, 0.5)' : '0 0 15px rgba(0, 242, 255, 0.3)'}; transition:all 1s cubic-bezier(0.4, 0, 0.2, 1); animation: waterFlow 3s linear infinite;"></div>
-                                </div>
-                                <style>
-                                    @keyframes waterFlow {
-                                        0% { background-position: 0% center; }
-                                        100% { background-position: 200% center; }
-                                    }
-                                </style>
-                                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:800; margin-top:12px;">
-                                    <span style="color: ${device.tankData.current_ml <= 0 ? 'var(--warn-color)' : 'var(--text-primary)'};">
-                                        ${device.tankData.current_ml <= 0 ? '⚠️ LEER' : (device.tankData.current_ml / 1000).toFixed(1) + 'L'} 
-                                        <span style="opacity:0.4; font-weight:600; font-size:10px;">${device.tankData.current_ml <= 0 ? 'BITTE NACHFÜLLEN' : 'VERFÜGBAR'}</span>
-                                    </span>
-                                    <span style="color: ${device.tankData.current_ml <= 0 ? '#ef4444' : 'var(--primary-color)'}; text-shadow: 0 0 8px ${device.tankData.current_ml <= 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 242, 255, 0.3)'};">${Math.round((device.tankData.current_ml / device.tankData.capacity_ml)*100)}%</span>
-                                </div>
-                            ` : `<div style="font-size:11px; color: var(--text-secondary); text-align:center; padding: 4px 0; font-weight:600; opacity:0.6;">${device.options.tank_level_sensor ? 'Sensorgesteuert' : 'Tank-Tracking ist deaktiviert.'}</div>`}
+                            ${(device.tankData?.enabled || device.options.tank_level_sensor) ? (() => {
+                                // Reactive logic: Prefer live HA state of the sensor over stale tankData
+                                let levelPct = 0;
+                                let levelLiters = 0;
+                                const cap = parseFloat(device.tankData?.capacity_ml || 10000);
+                                
+                                const tankState = this._hass.states[device.entities.tank];
+                                if (tankState && !isNaN(tankState.state)) {
+                                    levelPct = parseFloat(tankState.state);
+                                    levelLiters = (levelPct / 100.0) * (cap / 1000.0);
+                                } else {
+                                    // Fallback to tankData if sensor not found
+                                    levelPct = Math.round((device.tankData.current_ml / cap) * 100);
+                                    levelLiters = device.tankData.current_ml / 1000.0;
+                                }
+
+                                return `
+                                    <div style="height:12px; background:rgba(0,0,0,0.4); border-radius:6px; overflow:hidden; border: 1px solid rgba(255,255,255,0.05); position:relative;">
+                                        <div style="height:100%; width:${Math.min(100, Math.max(0, levelPct))}%; background: ${levelPct <= 0 ? 'linear-gradient(90deg, #ef4444, #f87171, #ef4444)' : 'linear-gradient(90deg, #3b82f6, var(--primary-color), #3b82f6)'}; background-size: 200% 100%; box-shadow: ${levelPct <= 0 ? '0 0 15px rgba(239, 68, 68, 0.5)' : '0 0 15px rgba(0, 242, 255, 0.3)'}; transition:all 1s cubic-bezier(0.4, 0, 0.2, 1); animation: waterFlow 3s linear infinite;"></div>
+                                    </div>
+                                    <style>
+                                        @keyframes waterFlow {
+                                            0% { background-position: 0% center; }
+                                            100% { background-position: 200% center; }
+                                        }
+                                    </style>
+                                    <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:800; margin-top:12px;">
+                                        <span style="color: ${levelPct <= 0 ? 'var(--warn-color)' : 'var(--text-primary)'};">
+                                            ${levelPct <= 0 ? '⚠️ LEER' : levelLiters.toFixed(1) + 'L'} 
+                                            <span style="opacity:0.4; font-weight:600; font-size:10px;">${levelPct <= 0 ? 'BITTE NACHFÜLLEN' : 'VERFÜGBAR'}</span>
+                                        </span>
+                                        <span style="color: ${levelPct <= 0 ? '#ef4444' : 'var(--primary-color)'}; text-shadow: 0 0 8px ${levelPct <= 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(0, 242, 255, 0.3)'};">${Math.round(levelPct)}%</span>
+                                    </div>
+                                `;
+                            })() : `<div style="font-size:11px; color: var(--text-secondary); text-align:center; padding: 4px 0; font-weight:600; opacity:0.6;">${device.options.tank_level_sensor ? 'Sensorgesteuert' : 'Tank-Tracking ist deaktiviert.'}</div>`}
                         </div>
                     ` : ''}
 

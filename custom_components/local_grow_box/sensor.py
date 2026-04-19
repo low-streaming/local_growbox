@@ -67,7 +67,11 @@ class GrowBoxTankLevelSensor(SensorEntity):
     @property
     def native_value(self) -> float | None:
         """Return the value of the sensor in percent."""
-        if not self.manager.tank_state.get("enabled"):
+        # Effectively active if either manual tracking or external sensor is configured
+        level_sensor = self.manager.config.get("tank_level_sensor")
+        is_manual = self.manager.tank_state.get("enabled", False)
+        
+        if not is_manual and not level_sensor:
             return None
         
         curr = float(self.manager.tank_state.get("current_ml", 0))
