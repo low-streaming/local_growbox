@@ -359,9 +359,9 @@ class GrowBoxManager:
             
         state = self.hass.states.get(entity_id)
         
-        # Robust check: If not found, try common domains (sensor, switch)
+        # Robust check: If not found, try common domains
         if not state and "." not in entity_id:
-            for domain in ["sensor", "switch", "binary_sensor"]:
+            for domain in ["sensor", "switch", "binary_sensor", "fan", "light", "input_boolean"]:
                 test_id = f"{domain}.{entity_id}"
                 state = self.hass.states.get(test_id)
                 if state:
@@ -892,40 +892,38 @@ class GrowBoxManager:
                      await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": fan_entity})
 
         # Humidifier Pulse Logic
-        if not humidifier_entity:
-            return
+        if humidifier_entity:
+            humidifier_state = self._get_safe_state(humidifier_entity)
+            if humidifier_state:
+                is_humidifier_on = humidifier_state.state not in ["off", "unavailable", "unknown"]
 
-        humidifier_state = self._get_safe_state(humidifier_entity)
-        if not humidifier_state:
-            return
+                if is_humidifier_on:
+                    if current_humid >= target_humidity:
+                        _LOGGER.info("Humidity reached target (%.1f >= %.1f). Turning OFF.", current_humid, target_humidity)
+                        self.add_log(f"Luftbefeuchter ausgeschaltet (H={current_humid}% >= {target_humidity}%)")
+                        await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": humidifier_entity})
+                        self.last_humidifier_stop_time = now
+                        self.humidifier_start_time = None
+                else:
+                    # Humidifier is OFF
+                    self.humidifier_start_time = None
+                    
+                    # Soak Time Check (10 min)
+                    should_humidify = True
+                    if self.last_humidifier_stop_time:
+                        time_off = (now - self.last_humidifier_stop_time).total_seconds()
+                        if time_off < 600: # 600s = 10 min
+                             should_humidify = False
 
-        is_humidifier_on = humidifier_state.state not in ["off", "unavailable", "unknown"]
-
-        if is_humidifier_on:
-             if current_humid >= target_humidity:
-                  _LOGGER.info("Humidity reached target (%.1f >= %.1f). Turning OFF.", current_humid, target_humidity)
-                  self.add_log(f"Luftbefeuchter ausgeschaltet (H={current_humid}% >= {target_humidity}%)")
-                  await self.hass.services.async_call("homeassistant", "turn_off", {"entity_id": humidifier_entity})
-                  self.last_humidifier_stop_time = now
-                  self.humidifier_start_time = None
-        else:
-             # Humidifier is OFF
-             self.humidifier_start_time = None
-             
-             # Soak Time Check (10 min)
-             if self.last_humidifier_stop_time:
-                 time_off = (now - self.last_humidifier_stop_time).total_seconds()
-                 if time_off < 600: # 600s = 10 min
-                      return
-
-             # Sensor Check
-             # Humidifier starts at target - hysteresis
-             start_threshold = target_humidity - humidity_hysteresis
-             if current_humid < start_threshold:
-                  _LOGGER.info("Humidity low (%.1f < %.1f). Starting Humidifier.", current_humid, start_threshold)
-                  self.add_log(f"Luftbefeuchter eingeschaltet (H={current_humid}% < {start_threshold}%)")
-                  await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": humidifier_entity})
-                  self.humidifier_start_time = now
+                    if should_humidify:
+                        # Sensor Check
+                        # Humidifier starts at target - hysteresis
+                        start_threshold = target_humidity - humidity_hysteresis
+                        if current_humid < start_threshold:
+                            _LOGGER.info("Humidity low (%.1f < %.1f). Starting Humidifier.", current_humid, start_threshold)
+                            self.add_log(f"Luftbefeuchter eingeschaltet (H={current_humid}% < {start_threshold}%)")
+                            await self.hass.services.async_call("homeassistant", "turn_on", {"entity_id": humidifier_entity})
+                            self.humidifier_start_time = now
 
         # Heater Logic
         if heater_entity:
