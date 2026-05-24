@@ -437,6 +437,31 @@ class LocalGrowBoxPanel extends HTMLElement {
                 .card-header {
                     padding: 28px; display: flex; justify-content: space-between; align-items: flex-start;
                 }
+                .header-top {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 16px;
+                    flex-wrap: wrap;
+                }
+                .back-btn {
+                    border: 1px solid rgba(255,255,255,0.15);
+                    background: rgba(255,255,255,0.05);
+                    color: var(--text-primary);
+                    border-radius: 14px;
+                    padding: 10px 18px;
+                    font-size: 13px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+                .back-btn:hover {
+                    background: rgba(255,255,255,0.12);
+                    border-color: rgba(56,189,248,0.35);
+                }
+                .back-btn:active {
+                    transform: translateY(1px);
+                }
                 .card-title { font-size: 24px; font-weight: 800; color: var(--text-primary); letter-spacing: -0.8px; }
                 .card-subtitle { font-size: 13px; color: var(--text-secondary); margin-top: 4px; font-weight: 500; opacity: 0.7; }
                 
@@ -804,7 +829,10 @@ class LocalGrowBoxPanel extends HTMLElement {
             <div class="scanlines"></div>
             <div class="main-container">
                 <div class="header">
-                    <h1>🌿 <span>Grow Box Central</span></h1>
+                    <div class="header-top">
+                        <h1>🌿 <span>Grow Box Central</span></h1>
+                        <button class="back-btn" type="button">🔙 Zurück zum Dashboard</button>
+                    </div>
                     <div class="tabs">
                         <div class="tab active" data-tab="overview">Dashboard</div>
                         <div class="tab" data-tab="diary">Tagebuch</div>
@@ -868,6 +896,24 @@ class LocalGrowBoxPanel extends HTMLElement {
                 this._updateContent();
             });
         });
+
+        const backBtn = this.shadowRoot.querySelector('.back-btn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => this._navigateHome());
+        }
+    }
+
+    _navigateHome() {
+        if (window.history.length > 1) {
+            window.history.back();
+            setTimeout(() => {
+                if (window.location.hash.includes('/panel/')) {
+                    window.location.hash = '/lovelace';
+                }
+            }, 250);
+        } else {
+            window.location.hash = '/lovelace';
+        }
     }
 
     _updateContent() {
